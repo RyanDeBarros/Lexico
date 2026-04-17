@@ -81,7 +81,11 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QPlainTextEdit" name="inputText"/>
+      <widget class="QPlainTextEdit" name="inputText">
+       <property name="tabStopDistance">
+        <double>20.000000000000000</double>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -99,7 +103,11 @@
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QVBoxLayout" name="verticalLayout_6">
      <item>
-      <widget class="QPlainTextEdit" name="scriptText"/>
+      <widget class="QPlainTextEdit" name="scriptText">
+       <property name="tabStopDistance">
+        <double>20.000000000000000</double>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -117,7 +125,11 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_7">
      <item>
-      <widget class="QPlainTextEdit" name="logText"/>
+      <widget class="QPlainTextEdit" name="logText">
+       <property name="tabStopDistance">
+        <double>20.000000000000000</double>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -138,6 +150,9 @@
       <widget class="QPlainTextEdit" name="outputText">
        <property name="readOnly">
         <bool>true</bool>
+       </property>
+       <property name="tabStopDistance">
+        <double>20.000000000000000</double>
        </property>
       </widget>
      </item>

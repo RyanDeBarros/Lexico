@@ -1,5 +1,3 @@
-from curses.ascii import isspace
-
 from . import Statement, Token, ScriptPosition
 
 
@@ -17,10 +15,18 @@ class Lexer:
 	def run(self):
 		in_quotes = False
 		escaping_quote = False
+		line_number = 0
+		col_number = 0
 
 		statement = Statement()
 		token_data = ""
 		token_pos: ScriptPosition | None = None
+
+		def add_token_char(c: str):
+			nonlocal token_data, token_pos
+			token_data += c
+			if token_pos is None:
+				token_pos = ScriptPosition(line_number, col_number)
 
 		def add_token():
 			nonlocal token_data, token_pos
@@ -35,24 +41,19 @@ class Lexer:
 		def add_statement():
 			nonlocal statement
 
-			if not in_quotes:
+			if in_quotes:
+				add_token_char('\n')
+			else:
 				add_token()
 				if len(statement.tokens) > 0:
 					self.statements.append(statement)
 					statement = Statement()
 
-		line_number = 0
 		for line in self.script_text.splitlines():
 			line_number += 1
 			col_number = 0
 
 			add_statement()
-
-			def add_token_char(c: str):
-				nonlocal token_data, token_pos
-				token_data += c
-				if token_pos is None:
-					token_pos = ScriptPosition(line_number, col_number)
 
 			for c in line:
 				col_number += 1
@@ -75,7 +76,7 @@ class Lexer:
 						if escaping_quote:
 							add_token_char(ESCAPE_CHAR)
 						add_token_char(c)
-				elif isspace(c):
+				elif c.isspace():
 					add_token()
 				elif c == COMMENT_CHAR:
 					add_token()
@@ -103,3 +104,4 @@ class Lexer:
 			if previous_statement.tokens[-1].data == RUNOFF_CHAR:
 				previous_statement.tokens = previous_statement.tokens[:-1] + current_statement.tokens
 				self.statements.pop(i)
+			i -= 1

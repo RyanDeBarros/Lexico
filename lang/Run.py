@@ -7,4 +7,12 @@ def run(inp: InputStruct) -> OutputStruct:
 	lexer.run()
 	parser = Parser(lexer.statements)
 	parser.run()
-	return OutputStruct(inp.input_text, True, "success!")  # TODO
+
+	output_text = ""
+	for statement in parser.statements:
+		output_text += "Statement:\n"
+		for token in statement.tokens:
+			output_text += f"\t{token.data} ({token.pos.row}:{token.pos.col})\n"
+		output_text += "\n"
+
+	return OutputStruct(output_text, True, "success!")  # TODO
