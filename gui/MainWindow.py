@@ -20,5 +20,10 @@ class MainWindow(QMainWindow):
 	def run_script(self) -> None:
 		input_text = self.ui.inputText.toPlainText()
 		script_text = self.ui.scriptText.toPlainText()
-		output_text = lang.Run.run(input_text, script_text)
-		self.ui.outputText.setPlainText(output_text)
+		inp = lang.InputStruct(input_text, script_text)
+		out = lang.Run.run(inp)
+		self.ui.logText.setPlainText(out.log_text)
+		if out.success:
+			self.ui.outputText.setPlainText(out.output_text)
+		else:
+			self.ui.outputText.setPlainText("")
