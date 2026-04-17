@@ -4,7 +4,8 @@ from . import Statement, Token, ScriptPosition
 COMMENT_CHAR = '#'
 QUOTE_CHAR = '"'
 ESCAPE_CHAR = '\\'
-RUNOFF_CHAR = '\\'
+RUNOFF_LINE_TOKEN = '\\'
+RUNOFF_WORD_TOKEN = '\\+'
 
 
 class Lexer:
@@ -97,11 +98,29 @@ class Lexer:
 		self._combine_runoff_statements()
 
 	def _combine_runoff_statements(self):
-		i = len(self.statements) - 1
-		while i > 0:
-			current_statement = self.statements[i]
-			previous_statement = self.statements[i - 1]
-			if previous_statement.tokens[-1].data == RUNOFF_CHAR:
-				previous_statement.tokens = previous_statement.tokens[:-1] + current_statement.tokens
-				self.statements.pop(i)
-			i -= 1
+		def _runoff_lines():
+			i = len(self.statements) - 1
+			while i > 0:
+				current_statement = self.statements[i]
+				previous_statement = self.statements[i - 1]
+				if previous_statement.tokens[-1].data == RUNOFF_LINE_TOKEN:
+					previous_statement.tokens = previous_statement.tokens[:-1] + current_statement.tokens
+					self.statements.pop(i)
+				i -= 1
+
+		def _runoff_words():
+			i = len(self.statements) - 1
+			while i > 0:
+				current_statement = self.statements[i]
+				previous_statement = self.statements[i - 1]
+				if previous_statement.tokens[-1].data == RUNOFF_WORD_TOKEN:
+					if len(previous_statement.tokens) > 1:
+						previous_statement.tokens[-2].data += current_statement.tokens[0].data
+						previous_statement.tokens = previous_statement.tokens[:-1] + current_statement.tokens[1:]
+						self.statements.pop(i)
+					else:
+						pass  # TODO lexer error
+				i -= 1
+
+		_runoff_lines()
+		_runoff_words()
