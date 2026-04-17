@@ -1,18 +1,27 @@
+from io import StringIO
+
 from lang import InputStruct, OutputStruct
-from lang.core import Lexer, Parser
+from lang.core import Lexer, Parser, LxSyntaxErrorList
 
 
 def run(inp: InputStruct) -> OutputStruct:
-	lexer = Lexer(inp.script_text)
-	lexer.run()
-	parser = Parser(lexer.statements)
-	parser.run()
+	success = True
+	log = StringIO()
+	out = StringIO()
 
-	output_text = ""
-	for statement in parser.statements:
-		output_text += "Statement:\n"
-		for token in statement.tokens:
-			output_text += f"\t{token.data} ({token.pos.row}:{token.pos.col})\n"
-		output_text += "\n"
+	try:
+		lexer = Lexer(inp.script_text)
+		lexer.run()
+		parser = Parser(lexer.statements)
+		parser.run()
 
-	return OutputStruct(output_text, True, "success!")  # TODO
+		for statement in parser.statements:
+			out.write("Statement:\n")
+			for token in statement.tokens:
+				out.write(f"\t{token.data} ({token.pos.line}:{token.pos.col})\n")
+			out.write('\n')
+	except LxSyntaxErrorList as err:
+		success = False
+		log.writelines(e.message + '\n' for e in err.errors)
+
+	return OutputStruct(out.getvalue(), success, log.getvalue())

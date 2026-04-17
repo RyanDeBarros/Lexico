@@ -126,6 +126,11 @@
     <layout class="QVBoxLayout" name="verticalLayout_7">
      <item>
       <widget class="QPlainTextEdit" name="logText">
+       <property name="font">
+        <font>
+         <family>Courier New</family>
+        </font>
+       </property>
        <property name="tabStopDistance">
         <double>20.000000000000000</double>
        </property>

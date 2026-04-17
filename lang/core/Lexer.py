@@ -1,5 +1,4 @@
-from . import Statement, Token, ScriptPosition
-
+from . import LxSyntaxError, LxSyntaxErrorList, Statement, Token, ScriptPosition
 
 COMMENT_CHAR = '#'
 QUOTE_CHAR = '"'
@@ -14,7 +13,9 @@ class Lexer:
 		self.statements: list[Statement] = []
 
 	def run(self):
-		in_quotes = False
+		e = LxSyntaxErrorList()
+
+		quote_pos: ScriptPosition | None = None
 		escaping_quote = False
 		line_number = 0
 		col_number = 0
@@ -33,7 +34,7 @@ class Lexer:
 			nonlocal token_data, token_pos
 
 			if len(token_data) > 0:
-				assert token_pos is not None  # TODO don't use asserts
+				assert token_pos is not None
 				token = Token(token_pos, token_data)
 				token_data = ""
 				token_pos = None
@@ -42,13 +43,13 @@ class Lexer:
 		def add_statement():
 			nonlocal statement
 
-			if in_quotes:
-				add_token_char('\n')
-			else:
+			if quote_pos is None:
 				add_token()
 				if len(statement.tokens) > 0:
 					self.statements.append(statement)
 					statement = Statement()
+			else:
+				add_token_char('\n')
 
 		for line in self.script_text.splitlines():
 			line_number += 1
@@ -59,13 +60,13 @@ class Lexer:
 			for c in line:
 				col_number += 1
 
-				if in_quotes:
+				if quote_pos is not None:
 					if c == QUOTE_CHAR:
 						if escaping_quote:
 							escaping_quote = False
 							add_token_char(c)
 						else:
-							in_quotes = False
+							quote_pos = None
 							add_token()
 					elif c == ESCAPE_CHAR:
 						if escaping_quote:
@@ -85,20 +86,24 @@ class Lexer:
 				elif c == QUOTE_CHAR:
 					if len(token_data) > 0:
 						pass  # TODO lexer error: " appears immediately after token -> unless doing string prefixes like f"" or r""
-					in_quotes = True
-					# TODO don't add quotes to token, unless doing string prefixes
+					quote_pos = ScriptPosition(line_number, col_number)
+				# TODO don't add quotes to token, unless doing string prefixes
 				else:
 					add_token_char(c)
 
 		add_statement()
 
-		if in_quotes:
-			pass  # TODO lexer error
+		if quote_pos is not None:
+			pass
+		e.errors.append(LxSyntaxError(f"[Lexer Error] Missing closing quote character:\n{quote_pos.message_pointer(self.script_text)}"))
 
-		self._combine_runoff_statements()
+		self._combine_runoff_statements(e)
 
-	def _combine_runoff_statements(self):
-		def _runoff_lines():
+		if len(e.errors) > 0:
+			raise e
+
+	def _combine_runoff_statements(self, e: LxSyntaxErrorList):
+		def _runoff_lines(e: LxSyntaxErrorList):
 			i = len(self.statements) - 1
 			while i > 0:
 				current_statement = self.statements[i]
@@ -108,7 +113,7 @@ class Lexer:
 					self.statements.pop(i)
 				i -= 1
 
-		def _runoff_words():
+		def _runoff_words(e: LxSyntaxErrorList):
 			i = len(self.statements) - 1
 			while i > 0:
 				current_statement = self.statements[i]
@@ -119,8 +124,9 @@ class Lexer:
 						previous_statement.tokens = previous_statement.tokens[:-1] + current_statement.tokens[1:]
 						self.statements.pop(i)
 					else:
-						pass  # TODO lexer error
+						e.errors.append(
+							LxSyntaxError(f"[Lexer Error] {RUNOFF_WORD_TOKEN} has no preceding operand to append to:\n{previous_statement.tokens[-1].pos.message_pointer(self.script_text)}"))
 				i -= 1
 
-		_runoff_lines()
-		_runoff_words()
+		_runoff_lines(e)
+		_runoff_words(e)
