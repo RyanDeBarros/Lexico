@@ -1,11 +1,11 @@
 from lang.core import LxSyntaxError, LxSyntaxErrorList
 from . import Statement, Token, ScriptPosition
-from ..common import SpecialTokens
+from .. import SpecialTokens
 
 
 class Lexer:
-	def __init__(self, script_text: str):
-		self.script_text = script_text
+	def __init__(self, script_lines: list[str]):
+		self.script_lines = script_lines
 		self.statements: list[Statement] = []
 
 	def run(self):
@@ -47,7 +47,7 @@ class Lexer:
 			else:
 				add_token_char('\n')
 
-		for line in self.script_text.splitlines():
+		for line in self.script_lines:
 			line_number += 1
 			col_number = 0
 
@@ -92,7 +92,7 @@ class Lexer:
 
 		if quote_pos is not None:
 			pass
-		e.errors.append(LxSyntaxError(f"[Lexer Error] Missing closing quote character:\n{quote_pos.message_pointer(self.script_text)}"))
+		e.errors.append(LxSyntaxError(f"[Lexer Error] Missing closing quote character:\n{quote_pos.message_pointer(self.script_lines)}"))
 
 		self._expand_invocations(e)
 		self._combine_runoff_statements(e)
@@ -109,7 +109,7 @@ class Lexer:
 										Token(ScriptPosition(instruction.pos.line, instruction.pos.col + 1), instruction.data[1:])] + statement.tokens[1:]
 				else:
 					e.errors.append(LxSyntaxError(f"[Lexer Error] expected function name after {SpecialTokens.INVOKE_CHAR}:\n" +
-												  f"{statement.tokens[0].pos.message_pointer(self.script_text)}"))
+												  f"{statement.tokens[0].pos.message_pointer(self.script_lines)}"))
 
 	def _combine_runoff_statements(self, e: LxSyntaxErrorList):
 		def _runoff_lines(e: LxSyntaxErrorList):
@@ -135,7 +135,7 @@ class Lexer:
 					else:
 						e.errors.append(
 							LxSyntaxError(
-								f"[Lexer Error] {SpecialTokens.RUNOFF_WORD_TOKEN} has no preceding operand to append to:\n{previous_statement.tokens[-1].pos.message_pointer(self.script_text)}"))
+								f"[Lexer Error] {SpecialTokens.RUNOFF_WORD_TOKEN} has no preceding operand to append to:\n{previous_statement.tokens[-1].pos.message_pointer(self.script_lines)}"))
 				i -= 1
 
 		_runoff_lines(e)

@@ -1,11 +1,10 @@
 from typing import Protocol, Type
 
-from .. import Statement, Token, LxSyntaxError
-from ..common import SpecialTokens
+from .. import Statement, Token, LxSyntaxError, SpecialTokens
 
 
-def message_pointer(script_text: str, statement: Statement, i: int):
-	return statement.tokens[i].pos.message_pointer(script_text, show_cursor=i > 0)
+def message_pointer(script_lines: list[str], statement: Statement, i: int):
+	return statement.tokens[i].pos.message_pointer(script_lines, show_cursor=i > 0)
 
 
 class ASTNode:
@@ -31,7 +30,7 @@ class InstructionNode(ASTNode):
 
 class ParsableInstruction(Protocol):
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		...
 
 
@@ -64,13 +63,13 @@ class PushStackNode(InstructionNode):
 		self.frame = frame
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) == 2:
 			return PushStackNode(statement.tokens[0], statement.tokens[1])
 		elif len(statement.tokens) < 2:
-			return LxSyntaxError("[Parser Error] missing push stack frame:\n" + message_pointer(script_text, statement, 0))
+			return LxSyntaxError("[Parser Error] missing push stack frame:\n" + message_pointer(script_lines, statement, 0))
 		else:
-			return LxSyntaxError("[Parser Error] too many arguments for stack frame:\n" + message_pointer(script_text, statement, 2))
+			return LxSyntaxError("[Parser Error] too many arguments for stack frame:\n" + message_pointer(script_lines, statement, 2))
 
 
 @parsable_instruction('pop')
@@ -79,11 +78,11 @@ class PopStackNode(InstructionNode):
 		super().__init__(keyword)
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) == 1:
 			return PopStackNode(statement.tokens[0])
 		else:
-			return LxSyntaxError("[Parser Error] expected no arguments for popping stack frame:\n" + message_pointer(script_text, statement, 1))
+			return LxSyntaxError("[Parser Error] expected no arguments for popping stack frame:\n" + message_pointer(script_lines, statement, 1))
 
 
 @parsable_instruction('fn')
@@ -94,11 +93,11 @@ class DefineFunctionNode(BlockNode):
 		self.args = args
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) > 1:
 			return DefineFunctionNode(statement.tokens[0], statement.tokens[1], statement.tokens[2:])
 		else:
-			return LxSyntaxError("[Parser Error] no function name in definition:\n" + message_pointer(script_text, statement, 0))
+			return LxSyntaxError("[Parser Error] no function name in definition:\n" + message_pointer(script_lines, statement, 0))
 
 
 @parsable_instruction('var')
@@ -109,16 +108,16 @@ class DefineVariableNode(InstructionNode):
 		self.value = value
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) > 1:
 			if len(statement.tokens) == 3:
 				return DefineVariableNode(statement.tokens[0], statement.tokens[1], statement.tokens[2])
 			elif len(statement.tokens) > 3:
-				return LxSyntaxError("[Parser Error] too many operands in variable definition:\n" + message_pointer(script_text, statement, 3))
+				return LxSyntaxError("[Parser Error] too many operands in variable definition:\n" + message_pointer(script_lines, statement, 3))
 			else:
-				return LxSyntaxError("[Parser Error] missing value in variable definition:\n" + message_pointer(script_text, statement, 0))
+				return LxSyntaxError("[Parser Error] missing value in variable definition:\n" + message_pointer(script_lines, statement, 0))
 		else:
-			return LxSyntaxError("[Parser Error] missing name in variable definition:\n" + message_pointer(script_text, statement, 0))
+			return LxSyntaxError("[Parser Error] missing name in variable definition:\n" + message_pointer(script_lines, statement, 0))
 
 
 @parsable_instruction(SpecialTokens.INVOKE_INSTRUCTION)
@@ -129,11 +128,11 @@ class CallFunctionNode(InstructionNode):
 		self.args = args
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) > 1:
 			return CallFunctionNode(statement.tokens[0], statement.tokens[1], statement.tokens[2:])
 		else:
-			return LxSyntaxError("[Parser Error] no function name in call instruction:\n" + message_pointer(script_text, statement, 0))
+			return LxSyntaxError("[Parser Error] no function name in call instruction:\n" + message_pointer(script_lines, statement, 0))
 
 
 @parsable_instruction('end')
@@ -143,18 +142,18 @@ class EndBlockNode(InstructionNode):
 		self.block_name = block_name
 
 	@staticmethod
-	def parse(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+	def parse(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 		if len(statement.tokens) == 2:
 			return EndBlockNode(statement.tokens[0], statement.tokens[1])
 		elif len(statement.tokens) > 2:
-			return LxSyntaxError("[Parser Error] too many operands in block end:\n" + message_pointer(script_text, statement, 2))
+			return LxSyntaxError("[Parser Error] too many operands in block end:\n" + message_pointer(script_lines, statement, 2))
 		else:
-			return LxSyntaxError("[Parser Error] missing keyword in block end:\n" + message_pointer(script_text, statement, 0))
+			return LxSyntaxError("[Parser Error] missing keyword in block end:\n" + message_pointer(script_lines, statement, 0))
 
 
-def parse_instruction_node(script_text: str, statement: Statement) -> InstructionNode | LxSyntaxError:
+def parse_instruction_node(script_lines: list[str], statement: Statement) -> InstructionNode | LxSyntaxError:
 	instruction = statement.tokens[0].data
 	if instruction in INSTRUCTION_MAP:
-		return INSTRUCTION_MAP[instruction].parse(script_text, statement)
+		return INSTRUCTION_MAP[instruction].parse(script_lines, statement)
 	else:
-		return LxSyntaxError("[Parser Error] unrecognized instruction:\n" + statement.tokens[0].pos.message_pointer(script_text))
+		return LxSyntaxError("[Parser Error] unrecognized instruction:\n" + statement.tokens[0].pos.message_pointer(script_lines))

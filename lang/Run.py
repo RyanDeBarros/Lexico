@@ -1,20 +1,25 @@
 from io import StringIO
 
 from lang import InputStruct, OutputStruct
-from lang.core import Lexer, Parser, LxSyntaxErrorList
+from lang.core import Lexer, Parser, SemanticAnalyser, LxSyntaxErrorList
 
 
 def run(inp: InputStruct) -> OutputStruct:
+	script_lines = inp.script_text.splitlines()
+
 	success = True
 	log = StringIO()
 	out = StringIO()
 
 	try:
-		lexer = Lexer(inp.script_text)
+		lexer = Lexer(script_lines)
 		lexer.run()
 
-		parser = Parser(inp.script_text, lexer.statements)
+		parser = Parser(script_lines, lexer.statements)
 		parser.run()
+
+		analyser = SemanticAnalyser(script_lines, parser.global_node)
+		analyser.run()
 
 		for statement in parser.statements:
 			out.write("Statement:\n")
