@@ -1,5 +1,6 @@
-from lang.core import Statement, parse_instruction_node, LxSyntaxError, LxSyntaxErrorList
-from lang.core.parser.InstructionNode import EndBlockNode, GlobalNode, BlockNode
+from . import parse_instruction_node
+from .InstructionNode import EndBlockNode, GlobalNode, BlockNode
+from .. import Statement, LxSyntaxError, LxSyntaxErrorList
 
 
 class Parser:
