@@ -1,4 +1,4 @@
-from lang.core.parser.InstructionNode import GlobalNode
+from lang.core.InstructionNode import GlobalNode
 
 
 class SemanticAnalyser:

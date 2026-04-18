@@ -1,6 +1,6 @@
 from typing import Protocol, Type
 
-from .. import Statement, Token, LxSyntaxError, SpecialTokens
+from lang.core import Statement, Token, LxSyntaxError, SpecialTokens
 
 
 def message_pointer(script_lines: list[str], statement: Statement, i: int):

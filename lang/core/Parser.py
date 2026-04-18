@@ -1,6 +1,4 @@
-from . import parse_instruction_node
-from .InstructionNode import EndBlockNode, GlobalNode, BlockNode
-from .. import Statement, LxSyntaxError, LxSyntaxErrorList
+from . import Statement, LxSyntaxError, LxSyntaxErrorList, parse_instruction_node, EndBlockNode, GlobalNode, BlockNode
 
 
 class Parser:

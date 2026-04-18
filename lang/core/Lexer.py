@@ -1,6 +1,4 @@
-from lang.core import LxSyntaxError, LxSyntaxErrorList
-from . import Statement, Token, ScriptPosition
-from .. import SpecialTokens
+from . import LxSyntaxError, LxSyntaxErrorList, SpecialTokens, Statement, Token, ScriptPosition
 
 
 class Lexer:
