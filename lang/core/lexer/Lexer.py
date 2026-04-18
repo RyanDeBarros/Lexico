@@ -1,4 +1,5 @@
-from . import LxSyntaxError, LxSyntaxErrorList, Statement, Token, ScriptPosition
+from lang.core import LxSyntaxError, LxSyntaxErrorList
+from . import Statement, Token, ScriptPosition
 
 COMMENT_CHAR = '#'
 QUOTE_CHAR = '"'
@@ -67,6 +68,7 @@ class Lexer:
 							add_token_char(c)
 						else:
 							quote_pos = None
+							add_token_char(c)
 							add_token()
 					elif c == ESCAPE_CHAR:
 						if escaping_quote:
@@ -87,7 +89,7 @@ class Lexer:
 					if len(token_data) > 0:
 						pass  # TODO lexer error: " appears immediately after token -> unless doing string prefixes like f"" or r""
 					quote_pos = ScriptPosition(line_number, col_number)
-				# TODO don't add quotes to token, unless doing string prefixes
+					add_token_char(c)
 				else:
 					add_token_char(c)
 

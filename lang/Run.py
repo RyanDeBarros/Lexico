@@ -12,7 +12,8 @@ def run(inp: InputStruct) -> OutputStruct:
 	try:
 		lexer = Lexer(inp.script_text)
 		lexer.run()
-		parser = Parser(lexer.statements)
+
+		parser = Parser(inp.script_text, lexer.statements)
 		parser.run()
 
 		for statement in parser.statements:
