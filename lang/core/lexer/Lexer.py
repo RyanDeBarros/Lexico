@@ -94,11 +94,22 @@ class Lexer:
 			pass
 		e.errors.append(LxSyntaxError(f"[Lexer Error] Missing closing quote character:\n{quote_pos.message_pointer(self.script_text)}"))
 
+		self._expand_invocations(e)
 		self._combine_runoff_statements(e)
-		self._expand_shorthand(e)
 
 		if len(e.errors) > 0:
 			raise e
+
+	def _expand_invocations(self, e: LxSyntaxErrorList):
+		for statement in self.statements:
+			instruction = statement.tokens[0]
+			if instruction.data.startswith(SpecialTokens.INVOKE_CHAR):
+				if len(instruction.data) > 1:
+					statement.tokens = [Token(instruction.pos, SpecialTokens.INVOKE_INSTRUCTION),
+										Token(ScriptPosition(instruction.pos.line, instruction.pos.col + 1), instruction.data[1:])] + statement.tokens[1:]
+				else:
+					e.errors.append(LxSyntaxError(f"[Lexer Error] expected function name after {SpecialTokens.INVOKE_CHAR}:\n" +
+												  f"{statement.tokens[0].pos.message_pointer(self.script_text)}"))
 
 	def _combine_runoff_statements(self, e: LxSyntaxErrorList):
 		def _runoff_lines(e: LxSyntaxErrorList):
@@ -123,17 +134,9 @@ class Lexer:
 						self.statements.pop(i)
 					else:
 						e.errors.append(
-							LxSyntaxError(f"[Lexer Error] {SpecialTokens.RUNOFF_WORD_TOKEN} has no preceding operand to append to:\n{previous_statement.tokens[-1].pos.message_pointer(self.script_text)}"))
+							LxSyntaxError(
+								f"[Lexer Error] {SpecialTokens.RUNOFF_WORD_TOKEN} has no preceding operand to append to:\n{previous_statement.tokens[-1].pos.message_pointer(self.script_text)}"))
 				i -= 1
 
 		_runoff_lines(e)
 		_runoff_words(e)
-
-	def _expand_shorthand(self, e: LxSyntaxErrorList):
-		for statement in self.statements:
-			instruction = statement.tokens[0].data
-			if instruction.startswith(SpecialTokens.INVOKE_CHAR):
-				if len(instruction) > 1:
-					statement.tokens = [SpecialTokens.INVOKE_INSTRUCTION, instruction[1:]] + statement.tokens[1:]
-				else:
-					e.errors.append(LxSyntaxError(f"[Lexer Error] expected function name after {SpecialTokens.INVOKE_CHAR}:\n{statement.tokens[0].pos.message_pointer(self.script_text)}"))
