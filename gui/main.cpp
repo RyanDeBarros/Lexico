@@ -4,19 +4,103 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <imgui_internal.h>
+
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+
+static const char* DOCKSPACE_UID = "MyDockSpace";
+static const char* INPUT_WINDOW = "Input";
+static const char* OUTPUT_WINDOW = "Output";
+static const char* SCRIPT_WINDOW = "Script";
+static const char* LOG_WINDOW = "Log";
 
 static void glfw_error_callback(int error, const char* description)
 {
     std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
 
+static void build_dockspace_layout()
+{
+    ImGuiID dockspace_id = ImGui::GetID(DOCKSPACE_UID);
+    ImGui::DockBuilderRemoveNode(dockspace_id);
+    ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->WorkSize);
+
+    ImGuiID dock_main = dockspace_id;
+
+    ImGuiID dock_top, dock_bottom;
+    dock_top = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Up, 0.5f, nullptr, &dock_bottom);
+
+    ImGuiID dock_top_left, dock_top_right;
+    dock_top_left = ImGui::DockBuilderSplitNode(dock_top, ImGuiDir_Left, 0.5f, nullptr, &dock_top_right);
+
+    ImGuiID dock_bottom_left, dock_bottom_right;
+    dock_bottom_left = ImGui::DockBuilderSplitNode(dock_bottom, ImGuiDir_Left, 0.5f, nullptr, &dock_bottom_right);
+
+    ImGui::DockBuilderDockWindow(INPUT_WINDOW, dock_top_left);
+    ImGui::DockBuilderDockWindow(OUTPUT_WINDOW, dock_top_right);
+    ImGui::DockBuilderDockWindow(SCRIPT_WINDOW, dock_bottom_left);
+    ImGui::DockBuilderDockWindow(LOG_WINDOW, dock_bottom_right);
+
+    ImGui::DockBuilderFinish(dockspace_id);
+}
+
+static void dockspace()
+{
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+    ImGuiWindowFlags window_flags =
+        ImGuiWindowFlags_MenuBar |
+        ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar |
+        ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::Begin("DockSpace Window", nullptr, window_flags);
+    ImGui::PopStyleVar(2);
+
+    ImGuiID dockspace_id = ImGui::GetID(DOCKSPACE_UID);
+    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+
+    static bool first_time = true;
+    if (first_time)
+    {
+        first_time = false;
+        build_dockspace_layout();
+    }
+
+    ImGui::End();
+}
+
 static void frame()
 {
-    ImGui::Begin("Hello");
-    ImGui::Text("It works!");
+    dockspace();
+
+    ImGui::Begin(INPUT_WINDOW);
+    ImGui::Text("input text...");
+    ImGui::End();
+
+    ImGui::Begin(OUTPUT_WINDOW);
+    ImGui::Text("output text...");
+    ImGui::End();
+
+    ImGui::Begin(SCRIPT_WINDOW);
+    ImGui::Text("input script...");
+    ImGui::End();
+
+    ImGui::Begin(LOG_WINDOW);
+    ImGui::Text("output log...");
     ImGui::End();
 }
 
@@ -41,8 +125,11 @@ int main()
     ImGui::CreateContext();
 
     ImGui::StyleColorsDark();
-    ImGui::GetIO().FontGlobalScale = main_scale;
     ImGui::GetStyle().ScaleAllSizes(main_scale);
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = main_scale;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
