@@ -150,6 +150,9 @@ static void draw_script_window()
         if (ImGui::Button("Run"))
             run_script();
 
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Run Script (F5)");
+
         ImGui::EndMenuBar();
     }
 
@@ -173,6 +176,12 @@ static void draw_frame()
 
     draw_output_window();
     draw_log_window();
+}
+
+static void handle_shortcuts()
+{
+    if (ImGui::IsKeyPressed(ImGuiKey_F5))
+        run_script();
 }
 
 int main()
@@ -213,6 +222,7 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        handle_shortcuts();
         draw_frame();
 
         ImGui::Render();
