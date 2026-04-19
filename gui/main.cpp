@@ -1,4 +1,4 @@
-#include <lang.hpp>
+#include <lang.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -15,6 +15,21 @@ static const char* INPUT_WINDOW = "Input";
 static const char* OUTPUT_WINDOW = "Output";
 static const char* SCRIPT_WINDOW = "Script";
 static const char* LOG_WINDOW = "Log";
+
+struct EditorState
+{
+    std::string input;
+    std::string output;
+    std::string script;
+    std::string log;
+};
+
+static EditorState STATE{};
+
+static void run_script()
+{
+    lx::execute(STATE.script, STATE.input, STATE.output, STATE.log);
+}
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -47,7 +62,7 @@ static void build_dockspace_layout()
     ImGui::DockBuilderFinish(dockspace_id);
 }
 
-static void dockspace()
+static void draw_dockspace()
 {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -58,7 +73,6 @@ static void dockspace()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
     ImGuiWindowFlags window_flags =
-        ImGuiWindowFlags_MenuBar |
         ImGuiWindowFlags_NoDocking |
         ImGuiWindowFlags_NoTitleBar |
         ImGuiWindowFlags_NoCollapse |
@@ -83,25 +97,82 @@ static void dockspace()
     ImGui::End();
 }
 
-static void frame()
+static int resize_buffer_callback(ImGuiInputTextCallbackData* data)
 {
-    dockspace();
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
+    {
+        auto* str = (std::string*)data->UserData;
+        str->resize(data->BufTextLen);
+        data->Buf = str->data();
+    }
 
+    return 0;
+}
+
+static void draw_input_buffer(std::string& buffer)
+{
+    ImGui::InputTextMultiline(
+        "##editor",
+        buffer.data(),
+        buffer.capacity() + 1,
+        ImVec2(-FLT_MIN, -FLT_MIN),
+        ImGuiInputTextFlags_CallbackResize,
+        resize_buffer_callback,
+        &buffer
+    );
+}
+
+static void draw_output_buffer(std::string& buffer)
+{
+    ImGui::TextUnformatted(buffer.data());
+}
+
+static void draw_input_window()
+{
     ImGui::Begin(INPUT_WINDOW);
-    ImGui::Text("input text...");
+    draw_input_buffer(STATE.input);
     ImGui::End();
+}
 
+static void draw_output_window()
+{
     ImGui::Begin(OUTPUT_WINDOW);
-    ImGui::Text("output text...");
+    draw_output_buffer(STATE.output);
     ImGui::End();
+}
 
-    ImGui::Begin(SCRIPT_WINDOW);
-    ImGui::Text("input script...");
+static void draw_script_window()
+{
+    ImGui::Begin(SCRIPT_WINDOW, nullptr, ImGuiWindowFlags_MenuBar);
+
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::Button("Run"))
+            run_script();
+
+        ImGui::EndMenuBar();
+    }
+
+    draw_input_buffer(STATE.script);
     ImGui::End();
+}
 
+static void draw_log_window()
+{
     ImGui::Begin(LOG_WINDOW);
-    ImGui::Text("output log...");
+    draw_output_buffer(STATE.log);
     ImGui::End();
+}
+
+static void draw_frame()
+{
+    draw_dockspace();
+    
+    draw_input_window();
+    draw_script_window();
+
+    draw_output_window();
+    draw_log_window();
 }
 
 int main()
@@ -142,7 +213,7 @@ int main()
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        frame();
+        draw_frame();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);

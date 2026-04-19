@@ -1,5 +1,5 @@
 set(LANG_HEADERS
-	lang.hpp
+	lang.h
 )
 
 set(LANG_SOURCES
