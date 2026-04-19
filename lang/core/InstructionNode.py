@@ -1,6 +1,6 @@
 from typing import Protocol, Type
 
-from lang.core import Statement, Token, LxSyntaxError, SpecialTokens
+from . import Statement, Token, LxSyntaxError, SpecialTokens
 
 
 def message_pointer(script_lines: list[str], statement: Statement, i: int):
@@ -9,7 +9,7 @@ def message_pointer(script_lines: list[str], statement: Statement, i: int):
 
 class ASTNode:
 	def __init__(self):
-		self.parent: BlockNode | GlobalNode | None = None
+		self.parent: ASTNode | None = None
 
 
 class GlobalNode(ASTNode):
@@ -122,9 +122,9 @@ class DefineVariableNode(InstructionNode):
 
 @parsable_instruction(SpecialTokens.INVOKE_INSTRUCTION)
 class CallFunctionNode(InstructionNode):
-	def __init__(self, keyword: Token, function: Token, args: list[Token]):
+	def __init__(self, keyword: Token, name: Token, args: list[Token]):
 		super().__init__(keyword)
-		self.function = function
+		self.name = name
 		self.args = args
 
 	@staticmethod
