@@ -6,4 +6,9 @@ Lightweight text manipulation scripting language. It acts as a simple, versatile
 * Highlighting
 
 ## Graphical User Interface
-The main interface for the interpreter is the GUI, written with [imgui](https://github.com/ocornut/imgui).
+The main interface for the interpreter is the GUI, written with [imgui](##licensing).
+
+## Licensing
+View the `licenses/` folder for more licensing information. The third-party libraries used are:
+* [imgui](https://github.com/ocornut/imgui)
+* [glfw](https://github.com/glfw/glfw)
