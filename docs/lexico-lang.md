@@ -15,15 +15,15 @@ TODO recursion built into patterns (see parentheses balancing example)
 
 ### `capid`
 
-### `capture`
+### `cap`
 
 | Attribute | Type | Description |
 | - | - |
 | `exists` | `bool` | is `true` if the group was captured, `false` otherwise |
-| `start` | `mark` | starting position |
-| `end` | `mark` | ending position (one after last character) |
-| `len` | `marklen` | length of group |
-| `pos` | `range` | position range of group |
+| `start` | `int` | starting position |
+| `end` | `int` | ending position (one after last character) |
+| `len` | `int` | length of group |
+| `pos` | `irange` | position range of group |
 | `str` | `string` | string of characters captured |
 | `sub` | `match` | characters captured as a submatch |
 
@@ -32,22 +32,33 @@ TODO recursion built into patterns (see parentheses balancing example)
 | Attribute | Type | Description |
 | - | - |
 | `caps` | `list` | list of captures |
-| `[]` | `capture` | returns a named capture |
-| `start` | `mark` | starting position |
-| `end` | `mark` | ending position (one after last character) |
-| `len` | `marklen` | length of group |
-| `pos` | `range` | position range of group |
+| `[]` | `cap` | returns a named capture |
+| `start` | `int` | starting position |
+| `end` | `int` | ending position (one after last character) |
+| `len` | `int` | length of group |
+| `pos` | `irange` | position range of group |
 | `str` | `string` | character subtext as a string |
 
-### `range`
+### `irange`
 
-A positive-indexed range which can be constructed from the following forms:
+Can be constructed from the following forms:
 
 ```
-<int>           # specific index
-<int> to <int>  # inclusive min/max
-min <int>       # inclusive min, unbounded max
-max <int>       # inclusive max, from min = 0
+<int>          # specific index
+<int> to <int> # inclusive min/max
+min <int>      # inclusive min, unbounded max
+max <int>      # 0 to inclusive max, shorthand for 0 to <int>
+```
+
+### `srange`
+
+Can be constructed from the following forms:
+
+```
+<char>           # specific character
+<char> to <char> # inclusive min/max
+min <char>       # inclusive lowercase min to "z", or inclusive uppercase min to "Z"
+max <char>       # "a" to inclusive lowercase max, or "A" to inclusive uppercase max
 ```
 
 ## Pattern building
@@ -305,81 +316,23 @@ By default, patterns use greedy searches, but subpatterns can be marked explicit
 
 ```
 pattern quote
-append "\"", $any* lazy, "\""
+append "\"", lazy $any*, "\""
 ```
 
 ### Pattern order of operations
 
-Grouping with parentheses forces order of operations, and each `append` statement is self-contained.
+Grouping with `()` parentheses forces order of operations, and each `append` statement is self-contained.
 In other words, operations don't carry over to multiple `append` statemenets.
-Otherwise a full breakdown is listed below (with equivalent precedence read left to right):
+Otherwise a full breakdown is listed below (with equivalent precedence executed inside to outside).
 
-| Precedence | Operation | Position |
+| Precedence | Operation | Type |
 | - | - | - |
-| 1 | () | - |
-| 2 | `as` | middle |
-| 3 | `to` | middle - only defined between literals |
-| 4 | `not` | prefix |
-| 5 | `+`<br>`*`<br>`except`<br>`repeat` | postfix |
-| 6 | `optional`<br>`ahead`/`not ahead`<br>`behind`/`not behind` | prefix |
-| 7 | `lazy` | postfix |
-| 8 | `or` | middle |
-| 9 | `,` | middle |
-| 10 | `ref` | prefix |
-| 11 | `capture` | prefix |
-| 12 | `append` | - |
-
-For example:
-
-```
-pattern prime
-append "2" or "3" or "5" or "7"
-
-pattern example
-append capture _ ("d" to "f" * or optional $digit except prime repeat min 3, not "z" +) repeat 2, "()"
-```
-
-This is equivalent to (precedence from right to left):
-
-```
-pattern _1
-append "d" to "f"
-
-pattern _2
-append _1*
-
-pattern _3
-append $digit except prime
-
-pattern _4
-append _3 repeat min 3
-
-pattern _5
-append optional _4
-
-pattern _6
-append _2 or _5
-
-pattern _7
-append not "z"
-
-pattern _8
-append _7+
-
-pattern _9
-append _6
-append _8
-
-pattern _10
-append _9 repeat 2
-
-pattern _11
-append _10
-append "()"
-
-pattern result
-append capture _ _11
-```
+| 1 | `as`<br>`+`<br>`*`<br>`repeat` | Postfix |
+| 2 | `not`<br>`optional`<br>`ahead`<br>`not ahead`<br>`behind`<br>`not behind`<br>`ref` | Prefix |
+| 3 | `except` | Binary |
+| 4 | `or` | Binary |
+| 5 | `,` | Binary |
+| 6 | `lazy`<br>`capture` | Wrapper |
 
 ## Match querying
 
@@ -457,29 +410,29 @@ highlight -1 to -3  # use reverse indexing to highlight last three
 You can also specify a color with:
 
 ```
-highlight 3 color Red
+highlight 3 color red
 ```
 
 In version 1.0, the color operand must be a predefined color from these 8 symbols:
-* `Yellow` (default)
-* `Red`
-* `Green`
-* `Blue`
-* `Grey`/`Gray`
-* `Purple`
-* `Orange`
-* `Mono` (black in light mode, white in dark mode)
+* `yellow` (default)
+* `red`
+* `green`
+* `blue`
+* `grey`/`gray`
+* `purple`
+* `orange`
+* `mono` (black in light mode, white in dark mode)
 
 To remove a pattern from highlighting, use:
 
 ```
-highlight delete match_ color Red
+highlight delete match_ color red
 ```
 
 Or simply clear all highlighting with:
 
 ```
-highlight delete color Red
+highlight delete color red
 ```
 
 ### Filtering
@@ -664,8 +617,8 @@ end for
 * `matches`: iterate over match objects
 * `match`: iterate over capture objects
 * `list`: iterate over elements
-* `range`: iterate over inclusive range
-* `marklen`: iterate over right-open range
+* `irange`: iterate over inclusive integer range
+* `srange`: iterate over inclusive character range
 
 Both loops support standard `break` and `continue` statements.
 
@@ -692,6 +645,7 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `behind` |
 | `bool` |
 | `break` |
+| `cap` |
 | `capid` |
 | `capture` |
 | `color` |
@@ -709,15 +663,15 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `if` |
 | `in` |
 | `int` |
+| `irange` |
 | `lazy` |
 | `let` |
 | `list` |
-| `mark` |
-| `marklen` |
 | `match` |
 | `matches` |
 | `max` |
 | `min` |
+| `mod` |
 | `not` |
 | `optional` |
 | `or` |
@@ -725,11 +679,11 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `pattern` |
 | `pop` |
 | `push` |
-| `range` |
 | `ref` |
 | `repeat` |
 | `replace` |
 | `scope` |
+| `srange` |
 | `string` |
 | `to` |
 | `var` |
@@ -1005,51 +959,141 @@ end for
 
 # Extended Backus-Naur Form
 
-## Top-level
+## Program Structure
 
 ```
-program   ::= { statement } ;
-statement ::= pattern_stmt | delete_stmt | append_stmt ;
-
-pattern_stmt ::= "pattern" identifier ;
-delete_stmt  ::= "delete" identifier ;
+program     ::= { statement } ;
+statement   ::= pattern_decl
+              | delete_stmt
+              | append_stmt
+              | scope_stmt
+              | find_stmt
+              | filter_stmt
+              | replace_stmt
+              | apply_stmt
+              | page_stmt
+              | fn_decl
+              | var_decl
+              | assignment
+              | control_stmt
+              | log_stmt
+              | highlight_stmt ;
 ```
 
-## Append statement
+## Pattern System
 
 ```
-append_stmt ::= "append" expression ;
-expression  ::= or_expr { "," or_expr } ;
-or_expr     ::= except_expr { "or" except_expr } ;
-except_expr ::= repeat_expr { "except" repeat_expr } ;
-repeat_expr ::= unary_expr { repetition } ;
+pattern_decl  ::= "pattern" identifier ;
+append_stmt   ::= "append" pattern_expr ;
+
+pattern_expr  ::= wrapper_expr ;
+wrapper_expr  ::= { wrapper_op } binary_expr ;
+wrapper_op    ::= "capture" identifier | "lazy" ;
+
+binary_expr   ::= or_expr { "," or_expr } ;
+or_expr       ::= except_expr { "or" except_expr } ;
+except_expr   ::= prefix_expr { "except" prefix_expr } ;
+
+prefix_expr   ::= { prefix_op } postfix_expr ;
+prefix_op     ::= "not" | "optional" | "ahead" | "not" "ahead" | "behind" | "not" "behind" | "ref" ;
+
+postfix_expr  ::= primary_expr { postfix_op } ;
+postfix_op    ::= "+" | "*" | repeat_clause ;
+repeat_clause ::= "repeat" irange_expr ;
+
+primary_expr  ::= expression | "(" pattern_expr ")" ;
 ```
 
-### Repetition
+## Match System
+
 ```
-repetition  ::= "+" | "*" | "repeat" repeat_spec ;
-repeat_spec ::= number | number "to" number | "min" number | "max" number ;
+scope_stmt   ::= "scope" builtin_symbol irange_expr ;
+find_stmt    ::= "find" identifier ;
+filter_stmt  ::= "filter" identifier ;
+replace_stmt ::= "replace" match_expr "with" string_expr ;
+apply_stmt   ::= "apply" identifier ;
 ```
 
-### Unary expression
+## Imperative System
+
 ```
-unary_expr   ::= [ prefix_op ] primary ;
-prefix_op    ::= "not" | "optional" | lookaround | capture_decl ;
-lookaround   ::= "ahead" | "behind" | "not ahead" | "not behind" ;
-capture_decl ::= "capture" + identifier ;
+block         ::= { statement } ;
+fn_decl       ::= "fn" identifier "(" [ param_list ] ")" "->" type_name block [ return_stmt ] "end" "fn" ;
+return_stmt   ::= "return" expression ;
+
+param_list    ::= param { "," param } ;
+param         ::= data_type identifier ;
+
+var_decl      ::= var_op assignment ;
+var_op        ::= "var" | "let" ;
+assignment    ::= identifier "=" expression ;
+
+control_stmt  ::= if_stmt | while_stmt | for_stmt | "break" | "continue" ;
+if_stmt       ::= "if" expression block { "elif" expression block } [ "else" block ] "end" "if" ;
+while_stmt    ::= "while" expression block "end" "while" ;
+for_stmt      ::= "for" identifier "in" expression block "end" "for" ;
+
+function_call ::= identifier "(" [ arg_list ] ")" ;
+arg_list      ::= expression { "," expression } ;
 ```
 
-### Primary
+## Expressions
+
 ```
-primary    ::= range_expr | identifier | builtin | group ;
-group      ::= "(" expression ")" ;
-range_expr ::= string | string "to" string ;
+irange_expr         ::= int_expr | int_expr "to" int_expr | "min" int_expr | "max" int_expr ;
+int_expr            ::= expression
+srange_expr         ::= letter_expr | letter_expr "to" letter_expr | "min" letter_expr | "max" letter_expr ;
+letter_expr         ::= expression
+
+expression          ::= logic_expr ;
+logic_expr          ::= comparison_expr { ("and" | "or") comparison_expr } ;
+comparison_expr     ::= additive_expr [ comparison_op additive_expr ] | as_expr ;
+comparison_op       ::= "==" | "!=" | "<" | ">" | "<=" | ">=" ;
+as_expr             ::= logic_expr "as" type_name ;
+additive_expr       ::= multiplicative_expr { ("+" | "-") multiplicative_expr } ;
+multiplicative_expr ::= mod_expr { ("*" | "/") mod_expr } ;
+mod_expr            ::= base_expr [ "mod" base_expr ] ;
+base_expr           ::= literal | identifier | builtin_symbol | function_call | "(" expression ")" ;
+```
+
+## Miscallaneous
+
+```
+delete_stmt    ::= "delete" identifier ;
+
+page_stmt      ::= "page" page_op ;
+page_op        ::= "push" string_expr | "pop" ;
+
+log_stmt       ::= "log" expression { "," expression } ;
+highlight_stmt ::= "highlight" [ "delete" ] [ match_expr | irange_expr ] [ "color" color ]
+color          ::= "yellow"
+                 | "red"
+                 | "green"
+                 | "blue"
+                 | "grey"
+                 | "gray"
+                 | "purple"
+                 | "orange"
+                 | "mono" ;
 ```
 
 ## Terminals
+
 ```
-identifier ::= letter { letter | digit | "_" } ;
-builtin    ::= "$" identifier ;
-string     ::= '"' { character } '"' ;
-number     ::= digit { digit } ;
+type_name     ::= "int"
+                | "float"
+                | "bool"
+                | "string"
+                | "void"
+                | "match"
+                | "matches"
+                | "capid"
+                | "cap"
+                | "irange"
+                | "srange"
+                | "list" ;
+
+literal       ::= int_leteral | float_literal | bool_literal | string_literal ;
+bool_literal  ::= "true" | "false" ;
+float_literal ::= "integer" "." "integer" ;
 ```
