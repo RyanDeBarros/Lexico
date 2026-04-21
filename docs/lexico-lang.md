@@ -5,7 +5,50 @@
 * A script consists of sequences of statements, mostly one per line.
 * Extra whitespace within a line is ignored.
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
-* Comments are supported, and begin with a `;` character.
+* Comments are supported, and begin with a `#` character.
+
+TODO aggregation / SQL constructs
+
+TODO recursion built into patterns (see parentheses balancing example)
+
+## Data types
+
+### `capid`
+
+### `capture`
+
+| Attribute | Type | Description |
+| - | - |
+| `exists` | `bool` | is `true` if the group was captured, `false` otherwise |
+| `start` | `mark` | starting position |
+| `end` | `mark` | ending position (one after last character) |
+| `len` | `marklen` | length of group |
+| `pos` | `range` | position range of group |
+| `str` | `string` | string of characters captured |
+| `sub` | `match` | characters captured as a submatch |
+
+### `match`
+
+| Attribute | Type | Description |
+| - | - |
+| `caps` | `list` | list of captures |
+| `[]` | `capture` | returns a named capture |
+| `start` | `mark` | starting position |
+| `end` | `mark` | ending position (one after last character) |
+| `len` | `marklen` | length of group |
+| `pos` | `range` | position range of group |
+| `str` | `string` | character subtext as a string |
+
+### `range`
+
+A positive-indexed range which can be constructed from the following forms:
+
+```
+<int>           # specific index
+<int> to <int>  # inclusive min/max
+min <int>       # inclusive min, unbounded max
+max <int>       # inclusive max, from min = 0
+```
 
 ## Pattern building
 
@@ -45,7 +88,17 @@ pattern dog
 append "dog"
 ```
 
-The operand for `append` must be a string or a pattern. You can append multiple patterns at once with:
+The operand for `append` must be a string or a pattern. You can cast other data types if possible:
+
+```
+pattern one
+append 1 as string
+
+pattern two
+append 2 as pattern
+```
+
+You can also append multiple patterns at once with:
 
 ```
 pattern full
@@ -98,8 +151,11 @@ append "a" to "z"
 pattern $uppercase
 append "A" to "Z"
 
+pattern $letter
+append $lowercase or $uppercase
+
 pattern $alphanumeric
-append $digit or $lowercase or $uppercase
+append $digit or $letter
 
 pattern $varname
 append $alphanumeric or "_"
@@ -107,8 +163,20 @@ append $alphanumeric or "_"
 pattern $space
 append " " or "\t" or "\n" or "\r" or "\v"
 
+pattern $newline
+append "\r\n" or "\n" or "\r"
+
+pattern $start
+# no script equivalent - but equivalent to `^` in regex
+
+pattern $end
+# no script equivalent - but equivalent to `$` in regex
+
 pattern $any
-; no script equivalent - represents any character, like regex `.`
+# no script equivalent - represents any character, like regex `.`
+
+pattern $cap
+# no script equivalent - represents an empty character, used purely for marking capture groups
 ```
 
 ### Negation
@@ -175,17 +243,69 @@ Also, note that `repeat 0 to 1` is equivalent to prefixing with `optional`.
 
 ### Capture groups
 
-Capture groups are named subpatterns that can be referenced in matches. Define a capture group within a pattern as so:
+Capture groups are named subpatterns that can be referenced in matches.
+If no name is provided, they'll need to be referenced in matches by index.
+Define a capture group within a pattern as so:
 
 ```
 pattern ageField
 append "age", "="
 
-pattern age
+pattern value
 append $digit repeat 1 to 3
 
 pattern ageField
-append capture age
+append capture age value  # named
+
+pattern weightField
+append "weight", "="
+append capture _ value  # unnamed
+```
+
+Note that the data type of the capture group name is `capid`.
+
+### Back-referencing
+
+You can force groups within a pattern to be the same using back-referencing:
+
+```
+pattern repeatedWord
+append capture word $alphanumeric+
+append $space+
+append ref word
+```
+
+The referred `capid` must be captured explicitly exactly once somewhere in the pattern, and may be re-captured
+for referencing in match objects.
+
+### Lookarounds
+
+You can search for non-consuming patterns using lookarounds:
+
+```
+pattern cats
+append "cat"
+append ahead "s"
+
+pattern cat
+append "cat"
+append not ahead $space
+
+pattern hotdog
+append before "hot"
+append "dog"
+
+pattern dog
+append not before "hot"
+append "dog"
+```
+
+### Lazy searching
+By default, patterns use greedy searches, but subpatterns can be marked explicitly lazy:
+
+```
+pattern quote
+append "\"", $any* lazy, "\""
 ```
 
 ### Pattern order of operations
@@ -196,15 +316,18 @@ Otherwise a full breakdown is listed below (with equivalent precedence read left
 
 | Precedence | Operation | Position |
 | - | - | - |
-| 0 | () | - |
-| 1 | `to` | middle - only defined between literals |
-| 2 | `not` | prefix |
-| 3 | `+`<br>`*`<br>`except`<br>`repeat` | postfix |
-| 4 | `optional` | prefix |
-| 5 | `or` | middle |
-| 6 | `,` | middle |
-| 7 | `capture` | prefix |
-| 8 | `append` | - |
+| 1 | () | - |
+| 2 | `as` | middle |
+| 3 | `to` | middle - only defined between literals |
+| 4 | `not` | prefix |
+| 5 | `+`<br>`*`<br>`except`<br>`repeat` | postfix |
+| 6 | `optional`<br>`ahead`/`not ahead`<br>`behind`/`not behind` | prefix |
+| 7 | `lazy` | postfix |
+| 8 | `or` | middle |
+| 9 | `,` | middle |
+| 10 | `ref` | prefix |
+| 11 | `capture` | prefix |
+| 12 | `append` | - |
 
 For example:
 
@@ -213,7 +336,7 @@ pattern prime
 append "2" or "3" or "5" or "7"
 
 pattern example
-append capture ("d" to "f" * or optional $digit except prime repeat min 3, not "z" +) repeat 2, "()"
+append capture _ ("d" to "f" * or optional $digit except prime repeat min 3, not "z" +) repeat 2, "()"
 ```
 
 This is equivalent to (precedence from right to left):
@@ -255,7 +378,7 @@ append _10
 append "()"
 
 pattern result
-append capture _11
+append capture _ _11
 ```
 
 ## Match querying
@@ -274,6 +397,12 @@ You can then pop it with:
 page pop
 ```
 
+You can pop all with:
+
+```
+page delete
+```
+
 To save the current page state, you can use the built-in `$page` string variable:
 
 ```
@@ -282,11 +411,11 @@ let saveState = $page
 
 ### Match creation
 
-Lexico also uses a global state for match queries, stored in the built-in `$matches` matches variable. To re-generate it, use:
+Lexico also uses a global state for match queries, stored in the built-in `%` matches variable. To re-generate it, use:
 
 ```
 find <pattern>
-let matches_ = $matches
+let matches_ = %
 ```
 
 To get a specific match, use:
@@ -295,15 +424,15 @@ To get a specific match, use:
 let firstMatch = matches[0]
 ```
 
-To restore `$matches` to a previous state, simply reassign it:
+To restore `%` to a previous state, simply reassign it:
 
 ```
-$matches = matches_
+% = matches_
 ```
 
 ### Highlighting
 
-Like other match operations, highlighting works on the global `$matches` object.
+Like other match operations, highlighting works on the global `%` object.
 To highlight all matches in the GUI, simply use:
 
 ```
@@ -314,13 +443,15 @@ You can specify a specific matches or match object to highlight:
 
 ```
 find oldPattern
-let matches = $matches
+let matches_ = %
 
 find newPattern
 
 highlight matches_
 highlight matches_[0]
-highlight 0  ; uses new $matches[0]
+highlight 0  # uses new %[0]
+highlight 1 to 5
+highlight -1 to -3  # use reverse indexing to highlight last three
 ```
 
 You can also specify a color with:
@@ -353,18 +484,18 @@ highlight delete color Red
 
 ### Filtering
 
-Filtering removes match objects directly from `$matches`, using a predicate function.
+Filtering removes match objects directly from `%`, using a predicate function.
 
 ```
 fn AtLeastLength(match m) -> bool
-  return m.len > 10
+  return m.str.len > 10
 end fn
 
 find $alphanumeric+
 filter AtLeastLength
 highlight
 
-let x = 10
+var x = 10
 fn LessThan(match m) -> bool
   return m as int < x
 end fn
@@ -378,36 +509,140 @@ filter LessThan
 highlight color Blue
 ```
 
-### Replacing
+### Capture groups
 
-## Keywords
-
-### `let`
-
-Creates a new variable.
+You can query a capture object via:
 
 ```
-let age = 42
-age = age + 1  ; no need to use `let` again
+pattern ageField
+append "age", "="
+append capture age $digit repeat 1 to 3
+
+fn isAdult(match m) -> bool
+  return m[age] >= 18
+end fn
+
+find ageField
+filter isAdult
 ```
 
-### `if`/`elif`/`else`
+You can also query by index:
 
-Conditional branching blocks.
+```
+pattern addition
+append capture _ $digit+
+
+pattern adder
+append $space*, "+", $space*
+append capture _ $digit+
+
+pattern addition
+append adder*
+
+find addition
+
+for m in %
+  let sum = 0
+  for i in 0 to m.caps.len - 1
+    sum += m.caps[i].str as int
+  end for
+  log m.str, " = ", sum
+end for
+```
+
+### Replacement
+
+To do match-based replacement, use `replace`:
+
+```
+replace <match> with <string>
+apply <function(match)->string>
+```
+
+For example:
+
+```
+pattern name
+append capture firstName $any+
+append capture middle ", "
+append capture lastName $any+
+
+fn switch(match m) -> string
+  return m[lastName].str + m[middle].str + m[firstName].str
+end fn
+
+find name
+apply switch
+```
+
+### Scoping
+
+You can limit the searching scope for `find` statements using `scope`:
+
+```
+scope $line           # match must fit in single line
+scope $lines <range>  # match must fit in line range
+```
+
+Note that `scope $line` is equivalent to `scope $lines 1`.
+
+## Computation
+
+### Variables
+
+There are 2 classes of variables: global and local. Global variables can be accessed and mutated in any scope,
+including in functions without being passed as a parameter, as long as they are defined before-hand.
+Local variables only exist in a scope or its inner block scopes (loops, branches, etc.), but not in different
+function scopes.
+
+A global variable is defined using `var`, and can only be declared in the program scope:
+
+```
+var threshold = 100
+```
+
+A local variable is defined using `let`, and can be declared anywhere:
+
+```
+let i = 0
+```
+
+### Branching
+
+Lexico supports typical conditional branching blocks.
 
 ```
 if myCond
-  ; do something
+  # do something
 elif myOtherCond
-  ; do something else
+  # do something else
 else
-  ; do something different
+  # do something different
 end if
 ```
 
-### `while`
+For example:
 
-Conditional looping block.
+```
+pattern phoneNumber
+append capture par1 "("
+append $digit repeat 3
+append capture par2 ")"
+append "-", $digit repeat 3, "-", $digit repeat 4
+
+fn validate(match m) -> bool
+  let p1 = m[par1].exists
+  let p2 = m[par2].exists
+  return p1 and p2 or not p1 and not p2
+end fn
+
+find phoneNumber
+filter validate
+```
+
+### Looping
+
+Lexico supports two kinds of loops. The first is a while loop:
 
 ```
 let i = 0
@@ -417,7 +652,24 @@ while i < 10
 end while
 ```
 
-## Output
+The second is a for loop:
+
+```
+for <element> in <iterable>
+  # do stuff
+end for
+```
+
+`<iterable>` here can be any of these objects:
+* `matches`: iterate over match objects
+* `match`: iterate over capture objects
+* `list`: iterate over elements
+* `range`: iterate over inclusive range
+* `marklen`: iterate over right-open range
+
+Both loops support standard `break` and `continue` statements.
+
+### Logging
 
 You can log data to the log output with:
 
@@ -426,7 +678,330 @@ log "Hello World!"
 log "Length of first element = ", len(%[0])
 ```
 
+## Reserved words
+
+Here is a comprehensive list of reserved words, meaning new identifiers cannot use them:
+
+| Keyword | Description |
+| - | - |
+| `ahead` |
+| `and` |
+| `append` |
+| `apply` |
+| `as` |
+| `behind` |
+| `bool` |
+| `break` |
+| `capid` |
+| `capture` |
+| `color` |
+| `continue` |
+| `delete` |
+| `elif` |
+| `else` |
+| `end` |
+| `except` |
+| `filter` |
+| `find` |
+| `float` |
+| `fn` |
+| `highlight` |
+| `if` |
+| `in` |
+| `int` |
+| `lazy` |
+| `let` |
+| `list` |
+| `mark` |
+| `marklen` |
+| `match` |
+| `matches` |
+| `max` |
+| `min` |
+| `not` |
+| `optional` |
+| `or` |
+| `page` |
+| `pattern` |
+| `pop` |
+| `push` |
+| `range` |
+| `ref` |
+| `repeat` |
+| `replace` |
+| `scope` |
+| `string` |
+| `to` |
+| `var` |
+| `void` |
+| `while` |
+| `with` |
+
+### Built-in symbols
+
+Here is a list of built-in symbols:
+
+| Symbol | Description |
+| - | - |
+| `%` |
+| `$alphanumeric` |
+| `$any` |
+| `$cap` |
+| `$digit` |
+| `$end` |
+| `$letter` |
+| `$line` |
+| `$lines` |
+| `$lowercase` |
+| `$newline` |
+| `$page` |
+| `$space` |
+| `$start` |
+| `$uppercase` |
+| `$varname` |
+
 # Regex examples
+
+### Literal
+
+#### regex
+```
+cat
+```
+
+#### lexico
+```
+pattern cat
+append "cat"
+find cat
+```
+
+### Alternation
+
+#### regex
+```
+cat|dog|bird
+```
+
+#### lexico
+```
+pattern pet
+append "cat" or "dog" or "bird"
+find pet
+```
+
+### Repeated word
+
+#### regex
+```
+(\w+)\s+\1
+```
+
+#### lexico
+```
+pattern repeatedWord
+append capture word $alphanumeric+
+append $space+
+append ref word
+
+find repeatedWord
+```
+
+### Date capturing
+
+#### regex
+```
+(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})
+```
+
+#### lexico
+```
+pattern date
+append capture year $digit repeat 4
+append "-"
+append capture month $digit repeat 2
+append "-"
+append capture day $digit repeat 2
+
+find date
+```
+
+### Blank line
+
+#### regex
+```
+^\s*$
+```
+
+#### lexico
+```
+pattern line
+append $start, $space*, $end
+scope $line
+find line
+```
+
+### Line length constraint
+
+#### regex
+```
+^.{0,80}$
+```
+
+#### lexico
+```
+pattern line
+append $start, $any* repeat max 80, $end
+scope $line
+find line
+```
+
+### Email
+
+#### regex
+```
+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}
+```
+
+#### lexico
+TODO standard library with built-in patterns/functions
+```
+pattern userChar
+append $alphanumeric or "." or "_" or "%" or "+" or "-"
+
+pattern domainChar
+append $alphanumeric or "." or "-"
+
+pattern email
+append userChar+
+append "@"
+append domainChar+
+append "."
+append $lowercase repeat min 2
+
+find email
+```
+
+### URL
+
+#### regex
+```
+https?:\/\/(www\.)?[\w\-]+\.\w+
+```
+
+#### lexico
+```
+pattern URL
+append "http", optional "s", "://", optional "www."
+append ($alphanumeric or "-")+
+append ".", $alphanumeric+
+```
+
+### Name switching
+
+#### regex
+```
+find:
+(\w+), (\w+)
+
+replace:
+$2 $1
+```
+
+#### lexico
+
+```
+pattern name
+append capture _ $alphanumeric+
+append ", "
+append capture _ $alphanumeric+
+
+fn switch(match m) -> string
+  return m.caps[1].str + " " + m.caps[0].str
+end fn
+
+find name
+apply switch
+```
+
+### Reformat date
+
+#### regex
+```
+find:
+(\d{4})-(\d{2})-(\d{2})
+
+replace:
+$3/$2/$1
+```
+
+#### lexico
+```
+pattern date
+append capture _ $digit repeat 4
+append "-"
+append capture _ $digit repeat 2
+append "-"
+append capture _ $digit repeat 2
+
+fn rewrite(match m) -> string
+  return m.caps[2].str + "/" + m.caps[1].str + "/" + m.caps[0].str
+end fn
+
+find date
+apply rewrite
+```
+
+### Balanced parentheses
+
+#### regex
+DNE
+
+#### lexico
+```
+pattern group
+append capture par1 optional "("
+append capture sub $any*
+append capture par2 optional ")"
+
+fn balanced(match m) -> bool
+  let p1 = m[par1].exists
+  let p2 = m[par2].exists
+  
+  if not p1
+    if p2
+      return false
+    else
+      return true
+    end if
+  elif not p2
+    return false
+  end if
+  
+  page push m[sub].str
+  let pass = true
+
+  let old = %
+  find group
+  for m in %
+    if not balanced(m)
+      pass = false
+      break
+    end if
+  end for
+  % = old
+
+  page pop
+  return pass
+end fn
+
+find group
+for m in %
+  if not balanced(m)
+    log "Unbalanced: ", m.str
+  end if
+end for
+```
 
 # Extended Backus-Naur Form
 
@@ -434,9 +1009,7 @@ log "Length of first element = ", len(%[0])
 
 ```
 program   ::= { statement } ;
-statement ::= pattern_stmt
-            | delete_stmt
-            | append_stmt ;
+statement ::= pattern_stmt | delete_stmt | append_stmt ;
 
 pattern_stmt ::= "pattern" identifier ;
 delete_stmt  ::= "delete" identifier ;
@@ -460,8 +1033,10 @@ repeat_spec ::= number | number "to" number | "min" number | "max" number ;
 
 ### Unary expression
 ```
-unary_expr ::= [ prefix_op ] primary ;
-prefix_op  ::= "not" | "optional" | "capture" ;
+unary_expr   ::= [ prefix_op ] primary ;
+prefix_op    ::= "not" | "optional" | lookaround | capture_decl ;
+lookaround   ::= "ahead" | "behind" | "not ahead" | "not behind" ;
+capture_decl ::= "capture" + identifier ;
 ```
 
 ### Primary
