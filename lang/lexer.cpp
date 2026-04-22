@@ -194,12 +194,58 @@ namespace lx
 		{
 			const char c = script[i];
 
+			if (token.type == TokenType::String)
+			{
+				if (c == '\\')
+				{
+					if (i + 1 < script.size())
+					{
+						if (script[i + 1] == '"')
+						{
+							add_token();
+							++i;
+							column += 2;
+							continue;
+						}
+						else if (script[i + 1] == '\\' && i + 2 < script.size() && script[i + 2] == '"')
+						{
+							token.lexeme += '\\';
+							++i;
+							column += 2;
+							continue;
+						}
+					}
+				}
+
+				token.lexeme += c;
+
+				if (c == '\n' || c == '\r')
+				{
+					if (c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
+						++i;
+
+					column = 0;
+					++line;
+				}
+				else
+					++column;
+				continue;
+			}
+
+			if (c == '"')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::String);
+				++column;
+				continue;
+			}
+
 			if (c == '\n' || c == '\r')
 			{
+				add_token();  // add ongoing token
+
 				if (c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
 					++i;
-
-				add_token(); // add ongoing token
 
 				// add newline token - don't add multiple consecutively or if at beginning of script
 				if (!tokens.empty() && tokens.back().type != TokenType::Newline)
@@ -216,7 +262,7 @@ namespace lx
 
 			if (c == '#')
 			{
-				add_token(); // add ongoing token
+				add_token();  // add ongoing token
 
 				size_t j = i;
 				while (j + 1 < script.size() && script[j + 1] != '\n' && script[j + 1] != '\r')
@@ -227,13 +273,241 @@ namespace lx
 				continue;
 			}
 
-			// TODO tokenize
+			if (c == ',')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Comma);
+				add_token();
+				++column;
+				continue;
+			}
 
+			if (c == '\\')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Runoff);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '%')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Percent);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '$')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::BuiltinSymbol);
+				token.lexeme = c;
+				++column;
+				continue;
+			}
+
+			if (c == '(')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::LParen);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == ')')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::RParen);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '[')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::LBracket);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == ']')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::RBracket);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '+')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Plus);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '-')
+			{
+				add_token();  // add ongoing token
+
+				if (i + 1 < script.size() && script[i + 1] == '>')
+				{
+					start_token(TokenType::Arrow);
+					add_token();
+					++i;
+					++column;
+				}
+				else
+				{
+					start_token(TokenType::Minus);
+					add_token();
+				}
+
+				++column;
+				continue;
+			}
+
+			if (c == '/')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Slash);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '*')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Asterisk);
+				add_token();
+				++column;
+				continue;
+			}
+
+			if (c == '=')
+			{
+				add_token();  // add ongoing token
+				
+				if (i + 1 < script.size() && script[i + 1] == '=')
+				{
+					start_token(TokenType::EqualTo);
+					add_token();
+					++i;
+					++column;
+				}
+				else
+				{
+					start_token(TokenType::Assign);
+					add_token();
+				}
+
+				++column;
+				continue;
+			}
+
+			if (c == '<')
+			{
+				add_token();  // add ongoing token
+
+				if (i + 1 < script.size() && script[i + 1] == '=')
+				{
+					start_token(TokenType::LessThanOrEqualTo);
+					add_token();
+					++i;
+					++column;
+				}
+				else
+				{
+					start_token(TokenType::LessThan);
+					add_token();
+				}
+
+				++column;
+				continue;
+			}
+
+			if (c == '>')
+			{
+				add_token();  // add ongoing token
+
+				if (i + 1 < script.size() && script[i + 1] == '=')
+				{
+					start_token(TokenType::GreaterThanOrEqualTo);
+					add_token();
+					++i;
+					++column;
+				}
+				else
+				{
+					start_token(TokenType::GreaterThan);
+					add_token();
+				}
+
+				++column;
+				continue;
+			}
+
+			if (c == '.')
+			{
+				if (token.type == TokenType::Integer)
+				{
+					token.type = TokenType::Float;
+					token.lexeme += c;
+				}
+				else
+				{
+					add_token();  // add ongoing token
+
+					if (i + 1 < script.size() && isdigit(script[i + 1]))
+					{
+						start_token(TokenType::Float);
+						token.lexeme = c;
+					}
+					else
+					{
+						start_token(TokenType::Dot);
+						add_token();
+					}
+				}
+
+				++column;
+				continue;
+			}
+
+			if (isdigit(c))
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::Integer);
+				token.lexeme = c;
+				++column;
+				continue;
+			}
+
+			if (c == ' ' || c == '\t')
+			{
+				add_token();  // add ongoing token
+				++column;
+				continue;
+			}
+
+			if (token.type == TokenType::EndOfFile)
+				token.type = TokenType::Identifier;
+
+			token.lexeme += c;
 			++column;
 		}
 
 		add_token();
-		tokens.push_back(token); // EOF token
+		tokens.push_back(token);  // EOF token
 
 		// TODO remove cancellation (RUNOFF, NEWLINE) pairs before loading tokens
 
