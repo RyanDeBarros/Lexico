@@ -15,6 +15,7 @@ namespace lx
 		Newline,
 		Runoff,
 		EndOfFile,
+		Comma,
 
 		// Literals
 		Integer,
@@ -70,7 +71,6 @@ namespace lx
 		Ahead,
 		Behind,
 		Capture,
-		Comma,
 		Except,
 		Lazy,
 		Max,
@@ -106,11 +106,11 @@ namespace lx
 
 	struct Token
 	{
-		TokenType type;
+		TokenType type = TokenType::EndOfFile;
 
 		std::string lexeme;
-		size_t line;
-		size_t column;
+		size_t line = 0;
+		size_t column = 0;
 	};
 
 	class TokenStream
@@ -133,5 +133,7 @@ namespace lx
 
 	public:
 		void tokenize(const std::string_view script);
+		const TokenStream& stream() const;
+		TokenStream& stream();
 	};
 }
