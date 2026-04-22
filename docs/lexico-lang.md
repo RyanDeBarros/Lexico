@@ -2,7 +2,7 @@
 
 `lexico` is an expressive regex-centric scripting language. It is interpreted, strongly typed, and strictly typed.
 
-* A script consists of sequences of statements, mostly one per line.
+* A script consists of sequences of statements, mostly one per line - use `\` as a runoff to continue a statement onto the next line.
 * Extra whitespace within a line is ignored.
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
@@ -410,18 +410,18 @@ highlight -1 to -3  # use reverse indexing to highlight last three
 You can also specify a color with:
 
 ```
-highlight 3 color red
+highlight 3 color $red
 ```
 
 In version 1.0, the color operand must be a predefined color from these 8 symbols:
-* `yellow` (default)
-* `red`
-* `green`
-* `blue`
-* `grey`/`gray`
-* `purple`
-* `orange`
-* `mono` (black in light mode, white in dark mode)
+* `$yellow` (default)
+* `$red`
+* `$green`
+* `$blue`
+* `$grey`/`$gray`
+* `$purple`
+* `$orange`
+* `$mono` (black in light mode, white in dark mode)
 
 To remove a pattern from highlighting, use:
 
@@ -682,6 +682,7 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `ref` |
 | `repeat` |
 | `replace` |
+| `return` |
 | `scope` |
 | `srange` |
 | `string` |
@@ -1066,15 +1067,15 @@ page_op        ::= "push" string_expr | "pop" ;
 
 log_stmt       ::= "log" expression { "," expression } ;
 highlight_stmt ::= "highlight" [ "delete" ] [ match_expr | irange_expr ] [ "color" color ]
-color          ::= "yellow"
-                 | "red"
-                 | "green"
-                 | "blue"
-                 | "grey"
-                 | "gray"
-                 | "purple"
-                 | "orange"
-                 | "mono" ;
+color          ::= "$yellow"
+                 | "$red"
+                 | "$green"
+                 | "$blue"
+                 | "$grey"
+                 | "$gray"
+                 | "$purple"
+                 | "$orange"
+                 | "$mono" ;
 ```
 
 ## Terminals
@@ -1087,6 +1088,7 @@ type_name     ::= "int"
                 | "void"
                 | "match"
                 | "matches"
+                | "pattern"
                 | "capid"
                 | "cap"
                 | "irange"
