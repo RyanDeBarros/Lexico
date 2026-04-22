@@ -100,6 +100,7 @@ namespace lx
 		LessThan,
 		LessThanOrEqualTo,
 		Minus,
+		NotEqualTo,
 		Plus,
 		Slash,
 	};

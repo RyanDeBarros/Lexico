@@ -18,7 +18,7 @@ namespace lx
 
 	void TokenStream::advance(size_t n)
 	{
-		if (n >= tokens_left())
+		if (n > tokens_left())
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": cannot advance by " << n << " - only " << tokens_left() << " token(s) left";
@@ -175,7 +175,7 @@ namespace lx
 
 		Token token;
 
-		auto start_token = [&token, line, column](TokenType type) {
+		auto start_token = [&token, &line, &column](TokenType type) {
 			token.type = type;
 			token.line = line;
 			token.column = column;
@@ -196,13 +196,20 @@ namespace lx
 
 			if (token.type == TokenType::String)
 			{
+				if (c == '"')
+				{
+					add_token();
+					++column;
+					continue;
+				}
+
 				if (c == '\\')
 				{
 					if (i + 1 < script.size())
 					{
 						if (script[i + 1] == '"')
 						{
-							add_token();
+							token.lexeme += '"';
 							++i;
 							column += 2;
 							continue;
@@ -393,6 +400,16 @@ namespace lx
 				continue;
 			}
 
+			if (c == '!' && i + 1 < script.size() && script[i + 1] == '=')
+			{
+				add_token();  // add ongoing token
+				start_token(TokenType::NotEqualTo);
+				add_token();
+				++i;
+				column += 2;
+				continue;
+			}
+
 			if (c == '=')
 			{
 				add_token();  // add ongoing token
@@ -485,9 +502,12 @@ namespace lx
 
 			if (isdigit(c))
 			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Integer);
-				token.lexeme = c;
+				if (token.type != TokenType::Integer && token.type != TokenType::Float)
+				{
+					add_token();  // add ongoing token
+					start_token(TokenType::Integer);
+				}
+				token.lexeme += c;
 				++column;
 				continue;
 			}
@@ -499,19 +519,42 @@ namespace lx
 				continue;
 			}
 
-			if (token.type == TokenType::EndOfFile)
-				token.type = TokenType::Identifier;
+			if (isalpha(c) || c == '_')
+			{
+				if (token.type == TokenType::EndOfFile)
+				{
+					add_token();  // add ongoing token
+					start_token(TokenType::Identifier);
+				}
 
-			token.lexeme += c;
+				token.lexeme += c;
+				++column;
+				continue;
+			}
+
+			add_token();
 			++column;
 		}
 
-		add_token();
-		tokens.push_back(token);  // EOF token
+		add_token();  // add ongoing token
 
-		// TODO remove cancellation (RUNOFF, NEWLINE) pairs before loading tokens
+		start_token(TokenType::EndOfFile);
+		tokens.push_back(token);
 
-		_stream.load(std::move(tokens));
+		// cancel runoff + newline cancellation pairs
+		std::vector<Token> final_tokens;
+		for (size_t i = 0; i < tokens.size(); ++i)
+		{
+			if (tokens[i].type == TokenType::Runoff)
+			{
+				if (i < tokens.size() && tokens[i].type == TokenType::Newline)
+					++i;
+				continue;
+			}
+
+			final_tokens.push_back(std::move(tokens[i]));
+		}
+		_stream.load(std::move(final_tokens));
 	}
 
 	const TokenStream& Lexer::stream() const
