@@ -1,6 +1,7 @@
 set(LANG_SOURCES
 	lang.cpp
 	token.cpp
+	ast.cpp
 	lexer.cpp
 	parser.cpp
 )

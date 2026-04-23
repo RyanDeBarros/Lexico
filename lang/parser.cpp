@@ -8,4 +8,14 @@ namespace lx
 
 		// TODO
 	}
+
+	const AbstractSyntaxTree& Parser::tree() const
+	{
+		return _tree;
+	}
+
+	AbstractSyntaxTree& Parser::tree()
+	{
+		return _tree;
+	}
 }
