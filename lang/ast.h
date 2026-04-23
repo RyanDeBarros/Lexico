@@ -3,22 +3,13 @@
 #include <memory>
 
 #include "token.h"
+#include "types.h"
 
 namespace lx
 {
 	struct ASTNode
 	{
 		virtual ~ASTNode() = default;
-	};
-
-	class AbstractSyntaxTree
-	{
-		std::vector<std::unique_ptr<ASTNode>> _nodes;
-
-	public:
-		ASTNode& add(std::unique_ptr<ASTNode>&& node);
-		const ASTNode& root() const;
-		ASTNode& root();
 	};
 
 	class Block : public ASTNode
@@ -29,9 +20,24 @@ namespace lx
 		void append(ASTNode& child);
 	};
 
+	class ASTRoot : public Block
+	{
+	};
+
+	class AbstractSyntaxTree
+	{
+		ASTRoot _root;
+		std::vector<std::unique_ptr<ASTNode>> _nodes;
+
+	public:
+		ASTNode& add(std::unique_ptr<ASTNode>&& node);
+		const ASTNode& root() const;
+		ASTNode& root();
+	};
+
 	struct Expression : public ASTNode
 	{
-		// TODO virtual value variant
+		virtual DataType value() const = 0;
 	};
 
 	class VariableDeclaration : public ASTNode
@@ -53,6 +59,8 @@ namespace lx
 
 	public:
 		LiteralExpression(Token&& literal);
+
+		DataType value() const;
 	};
 
 	class BinaryExpression : public Expression
@@ -63,6 +71,8 @@ namespace lx
 
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
+
+		DataType value() const;
 	};
 
 	class VariableExpression : public Expression
@@ -71,6 +81,8 @@ namespace lx
 
 	public:
 		VariableExpression(Token&& identifier);
+
+		DataType value() const;
 	};
 
 	class FunctionExpression : public Expression
@@ -80,5 +92,7 @@ namespace lx
 
 	public:
 		FunctionExpression(Token&& identifier, std::vector<Expression*>&& args);
+
+		DataType value() const;
 	};
 }

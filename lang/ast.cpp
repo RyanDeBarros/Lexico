@@ -14,12 +14,12 @@ namespace lx
 
 	const ASTNode& AbstractSyntaxTree::root() const
 	{
-		return *_nodes[0];
+		return _root;
 	}
 
 	ASTNode& AbstractSyntaxTree::root()
 	{
-		return *_nodes[0];
+		return _root;
 	}
 
 	void Block::append(ASTNode& child)
@@ -47,9 +47,21 @@ namespace lx
 	{
 	}
 
+	DataType LiteralExpression::value() const
+	{
+		// TODO
+		return VoidType();
+	}
+
 	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
 		: _op(std::move(op)), _left(&left), _right(&right)
 	{
+	}
+
+	DataType BinaryExpression::value() const
+	{
+		// TODO
+		return VoidType();
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -57,8 +69,20 @@ namespace lx
 	{
 	}
 
+	DataType VariableExpression::value() const
+	{
+		// TODO
+		return VoidType();
+	}
+
 	FunctionExpression::FunctionExpression(Token&& identifier, std::vector<Expression*>&& args)
 		: _identifier(std::move(identifier)), _args(std::move(args))
 	{
+	}
+
+	DataType FunctionExpression::value() const
+	{
+		// TODO
+		return VoidType();
 	}
 }

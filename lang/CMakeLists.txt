@@ -1,9 +1,13 @@
 set(LANG_SOURCES
 	lang.cpp
-	token.cpp
-	ast.cpp
 	lexer.cpp
 	parser.cpp
+	errors.cpp
+	token.cpp
+	ast.cpp
+	types.cpp
+	pattern.cpp
+	match.cpp
 )
 
 add_library(lexico-lang ${LANG_SOURCES} "lang.h")

@@ -19,7 +19,7 @@ namespace lx
 		while (!lexer.stream().eof())
 		{
 			const Token& token = lexer.stream().peek();
-			out << (int)token.type << ": " << token.lexeme << " (" << token.line << ":" << token.column << ")\n";
+			out << (int)token.type << ": " << token.lexeme << " (" << token.start_line << ":" << token.start_column << ")\n";
 			lexer.stream().advance();
 		}
 

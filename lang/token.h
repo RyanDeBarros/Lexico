@@ -110,8 +110,10 @@ namespace lx
 		TokenType type = TokenType::EndOfFile;
 
 		std::string lexeme;
-		size_t line = 0;
-		size_t column = 0;
+		unsigned int start_line = 0;
+		unsigned int end_line = 0;
+		unsigned int start_column = 0;
+		unsigned int end_column = 0;
 	};
 
 	class TokenStream

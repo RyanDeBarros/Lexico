@@ -127,21 +127,67 @@ namespace lx
 	{
 		std::vector<Token> tokens;
 
-		size_t line = 0;
-		size_t column = 0;
+		class ScriptPointer
+		{
+			unsigned int _line = 1;
+			unsigned int _last_line = 1;
+			unsigned int _column = 1;
+			unsigned int _last_column = 1;
 
+		public:
+			void move_right(unsigned int n = 1)
+			{
+				for (unsigned int i = 0; i < n; ++i)
+				{
+					_last_column = _column;
+					++_column;
+				}
+			}
+
+			void move_down()
+			{
+				_last_line = _line;
+				++_line;
+				_last_column = _column;
+				_column = 1;
+			}
+
+			unsigned int line() const
+			{
+				return _line;
+			}
+
+			unsigned int last_line() const
+			{
+				return _last_line;
+			}
+
+			unsigned int column() const
+			{
+				return _column;
+			}
+
+			unsigned int last_column() const
+			{
+				return _last_column;
+			}
+		};
+
+		ScriptPointer ptr;
 		Token token;
 
-		auto start_token = [&token, &line, &column](TokenType type) {
+		auto start_token = [&token, &ptr](TokenType type) {
 			token.type = type;
-			token.line = line;
-			token.column = column;
+			token.start_line = ptr.line();
+			token.start_column = ptr.column();
 			};
 
-		auto add_token = [&token, &tokens]() {
+		auto add_token = [&token, &tokens, &ptr]() {
 			if (token.type != TokenType::EndOfFile)
 			{
 				token.type = resolve_identifier(token);
+				token.end_line = ptr.last_line();
+				token.end_column = ptr.last_column();
 				tokens.push_back(std::move(token));
 				token = {};
 			}
@@ -156,7 +202,7 @@ namespace lx
 				if (c == '"')
 				{
 					add_token();
-					++column;
+					ptr.move_right();
 					continue;
 				}
 
@@ -168,14 +214,14 @@ namespace lx
 						{
 							token.lexeme += '"';
 							++i;
-							column += 2;
+							ptr.move_right(2);
 							continue;
 						}
 						else if (script[i + 1] == '\\' && i + 2 < script.size() && script[i + 2] == '"')
 						{
 							token.lexeme += '\\';
 							++i;
-							column += 2;
+							ptr.move_right(2);
 							continue;
 						}
 					}
@@ -188,11 +234,10 @@ namespace lx
 					if (c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
 						++i;
 
-					column = 0;
-					++line;
+					ptr.move_down();
 				}
 				else
-					++column;
+					ptr.move_right();
 				continue;
 			}
 
@@ -200,7 +245,7 @@ namespace lx
 			{
 				add_token();  // add ongoing token
 				start_token(TokenType::String);
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -218,9 +263,7 @@ namespace lx
 					add_token();
 				}
 
-				column = 0;
-				++line;
-
+				ptr.move_down();
 				continue;
 			}
 
@@ -232,7 +275,7 @@ namespace lx
 				while (j + 1 < script.size() && script[j + 1] != '\n' && script[j + 1] != '\r')
 					++j;
 
-				column += j - i;
+				ptr.move_right(j - i);
 				i = j;
 				continue;
 			}
@@ -242,7 +285,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Comma);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -251,7 +294,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Runoff);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -260,7 +303,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Percent);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -269,7 +312,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::BuiltinSymbol);
 				token.lexeme = c;
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -278,7 +321,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::LParen);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -287,7 +330,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::RParen);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -296,7 +339,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::LBracket);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -305,7 +348,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::RBracket);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -314,7 +357,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Plus);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -327,7 +370,7 @@ namespace lx
 					start_token(TokenType::Arrow);
 					add_token();
 					++i;
-					++column;
+					ptr.move_right();
 				}
 				else
 				{
@@ -335,7 +378,7 @@ namespace lx
 					add_token();
 				}
 
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -344,7 +387,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Slash);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -353,7 +396,7 @@ namespace lx
 				add_token();  // add ongoing token
 				start_token(TokenType::Asterisk);
 				add_token();
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -363,7 +406,7 @@ namespace lx
 				start_token(TokenType::NotEqualTo);
 				add_token();
 				++i;
-				column += 2;
+				ptr.move_right(2);
 				continue;
 			}
 
@@ -376,7 +419,7 @@ namespace lx
 					start_token(TokenType::EqualTo);
 					add_token();
 					++i;
-					++column;
+					ptr.move_right();
 				}
 				else
 				{
@@ -384,7 +427,7 @@ namespace lx
 					add_token();
 				}
 
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -397,7 +440,7 @@ namespace lx
 					start_token(TokenType::LessThanOrEqualTo);
 					add_token();
 					++i;
-					++column;
+					ptr.move_right();
 				}
 				else
 				{
@@ -405,7 +448,7 @@ namespace lx
 					add_token();
 				}
 
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -418,7 +461,7 @@ namespace lx
 					start_token(TokenType::GreaterThanOrEqualTo);
 					add_token();
 					++i;
-					++column;
+					ptr.move_right();
 				}
 				else
 				{
@@ -426,7 +469,7 @@ namespace lx
 					add_token();
 				}
 
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -453,14 +496,14 @@ namespace lx
 					}
 				}
 
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
 			if (c == ' ' || c == '\t')
 			{
 				add_token();  // add ongoing token
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -473,7 +516,7 @@ namespace lx
 					start_token(TokenType::Integer);
 				}
 				token.lexeme += c;
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
@@ -486,12 +529,12 @@ namespace lx
 				}
 
 				token.lexeme += c;
-				++column;
+				ptr.move_right();
 				continue;
 			}
 
 			add_token();
-			++column;
+			ptr.move_right();
 		}
 
 		add_token();  // add ongoing token
