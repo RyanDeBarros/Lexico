@@ -457,21 +457,22 @@ namespace lx
 				continue;
 			}
 
+			if (c == ' ' || c == '\t')
+			{
+				add_token();  // add ongoing token
+				++column;
+				continue;
+			}
+
 			if (isdigit(c))
 			{
-				if (token.type != TokenType::Integer && token.type != TokenType::Float)
+				if (token.type != TokenType::Identifier && token.type != TokenType::BuiltinSymbol
+					&& token.type != TokenType::Integer && token.type != TokenType::Float)
 				{
 					add_token();  // add ongoing token
 					start_token(TokenType::Integer);
 				}
 				token.lexeme += c;
-				++column;
-				continue;
-			}
-
-			if (c == ' ' || c == '\t')
-			{
-				add_token();  // add ongoing token
 				++column;
 				continue;
 			}
