@@ -12,12 +12,12 @@ namespace lx
 		return *ref;
 	}
 
-	const ASTNode& AbstractSyntaxTree::root() const
+	const ASTRoot& AbstractSyntaxTree::root() const
 	{
 		return _root;
 	}
 
-	ASTNode& AbstractSyntaxTree::root()
+	ASTRoot& AbstractSyntaxTree::root()
 	{
 		return _root;
 	}
@@ -47,21 +47,9 @@ namespace lx
 	{
 	}
 
-	DataType LiteralExpression::value() const
-	{
-		// TODO
-		return VoidType();
-	}
-
 	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
 		: _op(std::move(op)), _left(&left), _right(&right)
 	{
-	}
-
-	DataType BinaryExpression::value() const
-	{
-		// TODO
-		return VoidType();
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -69,20 +57,148 @@ namespace lx
 	{
 	}
 
-	DataType VariableExpression::value() const
-	{
-		// TODO
-		return VoidType();
-	}
-
-	FunctionExpression::FunctionExpression(Token&& identifier, std::vector<Expression*>&& args)
+	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args)
 		: _identifier(std::move(identifier)), _args(std::move(args))
 	{
 	}
 
-	DataType FunctionExpression::value() const
+	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, Token&& return_type)
+		: _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
 	{
-		// TODO
-		return VoidType();
+	}
+
+	ReturnStatement::ReturnStatement(Expression* expression)
+		: _expression(expression)
+	{
+	}
+	
+	IfStatement::IfStatement(Expression* condition)
+		: _condition(condition)
+	{
+	}
+	
+	ElifStatement::ElifStatement(Expression* condition)
+		: _condition(condition)
+	{
+	}
+	
+	WhileLoopStatement::WhileLoopStatement(Expression* condition)
+		: _condition(condition)
+	{
+	}
+	
+	ForLoopStatement::ForLoopStatement(Token&& iterator, Expression* iterable)
+		: _iterator(std::move(iterator)), _iterable(iterable)
+	{
+	}
+	
+	LogStatement::LogStatement(std::vector<Expression*>&& args)
+		: _args(std::move(args))
+	{
+	}
+	
+	HighlightStatement::HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color)
+		: _clear(clear), _highlightable(highlightable), _color(std::move(color))
+	{
+	}
+
+	DeletePattern::DeletePattern(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+
+	PatternDeclaration::PatternDeclaration(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+
+	PatternLiteral::PatternLiteral(Token&& literal)
+		: _literal(std::move(literal))
+	{
+	}
+
+	PatternIdentifier::PatternIdentifier(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+
+	PatternBuiltin::PatternBuiltin(Token&& builtin_symbol)
+		: _builtin_symbol(std::move(builtin_symbol))
+	{
+	}
+	
+	PatternAs::PatternAs(PatternExpression* expression, Token&& type)
+		: _expression(expression), _type(std::move(type))
+	{
+	}
+	
+	PatternRepeat::PatternRepeat(PatternExpression* expression, Expression* range)
+		: _expression(expression), _range(range)
+	{
+	}
+	
+	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression* expression, Token&& op)
+		: _expression(expression), _op(std::move(op))
+	{
+	}
+	
+	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression* expression)
+		: _op(std::move(op)), _expression(expression)
+	{
+	}
+	
+	PatternBackRef::PatternBackRef(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+	
+	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression* left, PatternExpression* right)
+		: _op(std::move(op)), _left(left), _right(right)
+	{
+	}
+	
+	PatternLazy::PatternLazy(PatternExpression* expression)
+		: _expression(expression)
+	{
+	}
+	
+	PatternCapture::PatternCapture(Token&& identifier, PatternExpression* expression)
+		: _identifier(std::move(identifier)), _expression(expression)
+	{
+	}
+
+	AppendStatement::AppendStatement(PatternExpression* expression)
+		: _expression(expression)
+	{
+	}
+
+	FindStatement::FindStatement(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+	
+	FilterStatement::FilterStatement(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+	
+	ReplaceStatement::ReplaceStatement(Token&& identifier, Expression* string)
+		: _identifier(std::move(identifier)), _string(string)
+	{
+	}
+	
+	ApplyStatement::ApplyStatement(Token&& identifier)
+		: _identifier(std::move(identifier))
+	{
+	}
+	
+	ScopeStatement::ScopeStatement(Token&& specifier, Expression* range)
+		: _specifier(std::move(specifier)), _range(range)
+	{
+	}
+	
+	PagePush::PagePush(Expression* page)
+		: _page(page)
+	{
 	}
 }

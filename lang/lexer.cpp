@@ -548,9 +548,34 @@ namespace lx
 		{
 			if (tokens[i].type == TokenType::Runoff)
 			{
-				if (i < tokens.size() && tokens[i].type == TokenType::Newline)
+				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Newline)
 					++i;
 				continue;
+			}
+
+			if (tokens[i].type == TokenType::Not)
+			{
+				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Ahead)
+				{
+					Token token = std::move(tokens[i]);
+					token.end_column = tokens[i + 1].end_column;
+					token.end_line = tokens[i + 1].end_line;
+					token.type = TokenType::NotAhead;
+					final_tokens.push_back(std::move(token));
+					++i;
+					continue;
+				}
+
+				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Behind)
+				{
+					Token token = std::move(tokens[i]);
+					token.end_column = tokens[i + 1].end_column;
+					token.end_line = tokens[i + 1].end_line;
+					token.type = TokenType::NotBehind;
+					final_tokens.push_back(std::move(token));
+					++i;
+					continue;
+				}
 			}
 
 			final_tokens.push_back(std::move(tokens[i]));
