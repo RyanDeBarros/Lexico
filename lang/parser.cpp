@@ -28,6 +28,52 @@ namespace lx
 		}
 
 	private:
+		class TokenOffset
+		{
+			size_t& _full_offset;
+			size_t _local_offset;
+			bool alive = true;
+
+		public:
+			TokenOffset(size_t& full_offset, size_t local_offset)
+				: _full_offset(full_offset), _local_offset(local_offset)
+			{
+				_full_offset += _local_offset;
+			}
+
+			TokenOffset(const TokenOffset&) = delete;
+
+			TokenOffset(TokenOffset&& other) noexcept
+				: alive(other.alive), _full_offset(other._full_offset), _local_offset(other._local_offset)
+			{
+				other.alive = false;
+			}
+
+			~TokenOffset()
+			{
+				if (alive)
+					_full_offset -= _local_offset;
+			}
+
+			size_t offset() const
+			{
+				return _local_offset;
+			}
+			
+			static size_t offset(const std::vector<TokenOffset>& offsets)
+			{
+				size_t off = 0;
+				for (const TokenOffset& offset : offsets)
+					off += offset.offset();
+				return off;
+			}
+		};
+
+		TokenOffset token_offset(size_t offset)
+		{
+			return TokenOffset(_token_offset, offset);
+		}
+
 		size_t tokens_left()
 		{
 			size_t actual = _stream.tokens_left();
@@ -46,19 +92,17 @@ namespace lx
 
 		void advance(size_t n)
 		{
-			if (_token_offset > 0)
-			{
-				std::stringstream ss;
-				ss << __FUNCTION__ << ": token offset is non-zero (" << _token_offset << ")";
-				throw std::runtime_error(ss.str());
-			}
-
 			_stream.advance(n);
 		}
 
 		bool eof() const
 		{
 			return _stream.eof();
+		}
+
+		bool statement_ends(size_t n)
+		{
+			return tokens_left() <= n || peek(n).type == TokenType::Newline || peek(n).type == TokenType::EndOfFile;
 		}
 
 		Block& context()
@@ -164,6 +208,12 @@ namespace lx
 				return false;
 			}
 
+			if (!statement_ends(2))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
 			append_to_context(std::make_unique<DeletePattern>(std::move(ref(1))));
 			advance(2);
 			return true;
@@ -189,20 +239,119 @@ namespace lx
 
 		bool parse_filter_statement()
 		{
-			// TODO
-			return false;
+			if (eof())
+				return false;
+
+			if (peek(0).type != TokenType::Filter)
+				return false;
+
+			if (tokens_left() < 2)
+			{
+				// TODO parser error: too few operands
+				return false;
+			}
+
+			if (peek(1).type != TokenType::Identifier)
+			{
+				// TODO parser error: expected predicate
+				return false;
+			}
+
+			if (!statement_ends(2))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
+			append_to_context(std::make_unique<FilterStatement>(std::move(ref(1))));
+			advance(2);
+			return true;
 		}
 
 		bool parse_replace_statement()
 		{
-			// TODO
-			return false;
+			if (eof())
+				return false;
+
+			if (peek(0).type != TokenType::Filter)
+				return false;
+
+			auto match_offset = token_offset(1);
+			std::unique_ptr<Expression> match_expr;
+			size_t match_length;
+
+			if (!parse_expression(match_expr, match_length))
+			{
+				// TODO parser error
+				return false;
+			}
+
+			auto with_offset = token_offset(match_length);
+
+			if (eof())
+			{
+				// TODO parser error: expected 'with' clause
+				return false;
+			}
+
+			if (peek(0).type != TokenType::With)
+			{
+				// TODO parser error: expected 'with' clause
+				return false;
+			}
+
+			auto string_offset = token_offset(1);
+			std::unique_ptr<Expression> string_expr;
+			size_t string_length;
+			
+			if (!parse_expression(string_expr, string_length))
+			{
+				// TODO parser error
+				return false;
+			}
+
+			if (!statement_ends(string_length))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
+			append_to_context(std::make_unique<ReplaceStatement>(*match_expr, *string_expr));
+			_tree.add(std::move(match_expr));
+			_tree.add(std::move(string_expr));
+			advance(match_offset.offset() + with_offset.offset() + string_offset.offset() + string_length);
+			return true;
 		}
 
 		bool parse_apply_statement()
 		{
-			// TODO
-			return false;
+			if (eof())
+				return false;
+
+			if (peek(0).type != TokenType::Apply)
+				return false;
+
+			if (tokens_left() < 2)
+			{
+				// TODO parser error: too few operands
+				return false;
+			}
+
+			if (peek(1).type != TokenType::Identifier)
+			{
+				// TODO parser error: expected predicate
+				return false;
+			}
+
+			if (!statement_ends(2))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
+			append_to_context(std::make_unique<ApplyStatement>(std::move(ref(1))));
+			advance(2);
+			return true;
 		}
 
 		bool parse_page_statement()
@@ -227,29 +376,46 @@ namespace lx
 					return false;
 				}
 
-				_token_offset += 2;
-				Expression* page = nullptr;
-				size_t length = 0;
-				bool parsed = parse_expression(page, length);
-				_token_offset -= 2;
-				if (!parsed)
+				auto offset = token_offset(2);
+				std::unique_ptr<Expression> page;
+				size_t length;
+				if (!parse_expression(page, length))
 				{
 					// TODO parser error: expected expression
 					return false;
 				}
 
-				append_to_context(std::make_unique<PagePush>(page));
-				advance(2 + length);
+				if (!statement_ends(length))
+				{
+					// TODO parser error: unexpected token
+					return false;
+				}
+
+				append_to_context(std::make_unique<PagePush>(*page));
+				_tree.add(std::move(page));
+				advance(offset.offset() + length);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Pop)
 			{
+				if (!statement_ends(2))
+				{
+					// TODO parser error: unexpected token
+					return false;
+				}
+
 				append_to_context(std::make_unique<PagePop>());
 				advance(2);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Delete)
 			{
+				if (!statement_ends(2))
+				{
+					// TODO parser error: unexpected token
+					return false;
+				}
+
 				append_to_context(std::make_unique<PageClearStack>());
 				advance(2);
 				return true;
@@ -287,13 +453,11 @@ namespace lx
 				return false;
 			}
 
-			_token_offset += 3;
-			Expression* expr = nullptr;
-			size_t length = 0;
-			bool parsed = parse_expression(expr, length);
-			_token_offset -= 3;
+			auto offset = token_offset(3);
+			std::unique_ptr<Expression> expr;
+			size_t length;
 
-			if (!parsed)
+			if (!parse_expression(expr, length))
 			{
 				// TODO parser error
 				return false;
@@ -301,8 +465,15 @@ namespace lx
 
 			bool global = peek(0).type == TokenType::Var;
 
+			if (!statement_ends(length))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
 			append_to_context(std::make_unique<VariableDeclaration>(global, std::move(ref(1)), *expr));
-			advance(3 + length);
+			_tree.add(std::move(expr));
+			advance(offset.offset() + length);
 			return true;
 		}
 
@@ -320,20 +491,25 @@ namespace lx
 				return false;
 			}
 
-			_token_offset += 2;
-			Expression* expr = nullptr;
-			size_t length = 0;
-			bool parsed = parse_expression(expr, length);
-			_token_offset -= 2;
+			auto offset = token_offset(2);
+			std::unique_ptr<Expression> expr;
+			size_t length;
 
-			if (!parsed)
+			if (!parse_expression(expr, length))
 			{
 				// TODO parser error
 				return false;
 			}
 
+			if (!statement_ends(length))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
 			append_to_context(std::make_unique<VariableAssignment>(std::move(ref(0)), *expr));
-			advance(2 + length);
+			_tree.add(std::move(expr));
+			advance(offset.offset() + length);
 			return true;
 		}
 
@@ -345,20 +521,128 @@ namespace lx
 
 		bool parse_log_statement()
 		{
-			// TODO
-			return false;
+			if (eof())
+				return false;
+
+			if (peek(0).type != TokenType::Log)
+				return false;
+
+			if (tokens_left() < 2)
+			{
+				// TODO parser error: expected operands
+				return false;
+			}
+
+			auto offset = token_offset(1);
+
+			std::vector<std::unique_ptr<Expression>> args_source;
+			std::vector<Expression*> args;
+			std::vector<TokenOffset> offsets;
+			std::unique_ptr<Expression> expr;
+			size_t length;
+			bool comma_ended = false;
+			while (parse_expression(expr, length))
+			{
+				args.push_back(expr.get());
+				args_source.push_back(std::move(expr));
+				expr = nullptr;
+				offsets.push_back(token_offset(length));
+				comma_ended = false;
+				if (eof() || peek(0).type != TokenType::Comma)
+					break;
+				else
+				{
+					offsets.push_back(token_offset(1));
+					comma_ended = true;
+				}
+			}
+
+			if (comma_ended)
+			{
+				// TODO parser error: expected expression
+				return false;
+			}
+
+			if (args.empty())
+			{
+				// TODO parser error: expected expression
+				return false;
+			}
+
+			if (!statement_ends(0))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
+			append_to_context(std::make_unique<LogStatement>(std::move(args)));
+			for (auto& arg : args_source)
+				_tree.add(std::move(arg));
+			advance(offset.offset() + TokenOffset::offset(offsets));
+			return true;
 		}
 
 		bool parse_highlight_statement()
 		{
-			// TODO
-			return false;
+			if (eof())
+				return false;
+
+			if (peek(0).type != TokenType::Highlight)
+				return false;
+
+			std::vector<TokenOffset> offsets;
+			offsets.push_back(token_offset(1));
+
+			bool clear = false;
+			if (!eof() && peek(0).type == TokenType::Delete)
+			{
+				offsets.push_back(token_offset(1));
+				clear = true;
+			}
+
+			std::unique_ptr<Expression> expr = nullptr;
+			size_t length = 0;
+			if (!eof() && parse_expression(expr, length))
+				offsets.push_back(token_offset(length));
+
+			BuiltinSymbol color = BuiltinSymbol::Yellow;
+			if (!eof() && peek(0).type == TokenType::Color)
+			{
+				offsets.push_back(token_offset(1));
+				if (eof() || peek(0).type != TokenType::BuiltinSymbol)
+				{
+					// TODO parser error: expected color symbol
+					return false;
+				}
+
+				if (auto c = parse_builtin_symbol(peek(0).lexeme))
+				{
+					color = *c;
+					offsets.push_back(token_offset(1));
+				}
+				else
+				{
+					// TODO parser error: unrecognized color symbol
+					return false;
+				}
+			}
+
+			if (!statement_ends(0))
+			{
+				// TODO parser error: unexpected token
+				return false;
+			}
+
+			append_to_context(std::make_unique<HighlightStatement>(clear, *expr, color));
+			_tree.add(std::move(expr));
+			advance(TokenOffset::offset(offsets));
+			return true;
 		}
 
-		bool parse_expression(Expression*& expr, size_t& length)
+		bool parse_expression(std::unique_ptr<Expression>& expr, size_t& length)
 		{
 			expr = nullptr;
-			length = 1;
+			length = 0;
 			// TODO
 			return false;
 		}

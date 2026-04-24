@@ -56,6 +56,7 @@ namespace lx
 		If,
 		In,
 		Let,
+		Log,
 		Page,
 		Pop,
 		Push,

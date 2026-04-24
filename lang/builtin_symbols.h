@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string_view>
+#include <optional>
+
 namespace lx
 {
 	enum class BuiltinSymbol
@@ -19,6 +22,18 @@ namespace lx
 		Space,
 		Start,
 		Uppercase,
-		Varname
+		Varname,
+
+		// Colors
+		Yellow,
+		Red,
+		Green,
+		Blue,
+		Grey,
+		Purple,
+		Orange,
+		Mono,
 	};
+
+	extern std::optional<BuiltinSymbol> parse_builtin_symbol(const std::string_view symbol);
 }

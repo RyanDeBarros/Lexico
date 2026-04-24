@@ -5,9 +5,7 @@ set(LANG_SOURCES
 	errors.cpp
 	token.cpp
 	ast.cpp
-	types.cpp
-	pattern.cpp
-	match.cpp
+	builtin_symbols.cpp
 )
 
 add_library(lexico-lang ${LANG_SOURCES} "lang.h")

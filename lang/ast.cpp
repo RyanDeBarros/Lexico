@@ -62,6 +62,11 @@ namespace lx
 	{
 	}
 
+	BuiltinSymbolExpression::BuiltinSymbolExpression(BuiltinSymbol builtin_symbol)
+		: _builtin_symbol(builtin_symbol)
+	{
+	}
+
 	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args)
 		: _identifier(std::move(identifier)), _args(std::move(args))
 	{
@@ -72,28 +77,28 @@ namespace lx
 	{
 	}
 
-	ReturnStatement::ReturnStatement(Expression* expression)
-		: _expression(expression)
+	ReturnStatement::ReturnStatement(Expression& expression)
+		: _expression(&expression)
 	{
 	}
 	
-	IfStatement::IfStatement(Expression* condition)
-		: _condition(condition)
+	IfStatement::IfStatement(Expression& condition)
+		: _condition(&condition)
 	{
 	}
 	
-	ElifStatement::ElifStatement(Expression* condition)
-		: _condition(condition)
+	ElifStatement::ElifStatement(Expression& condition)
+		: _condition(&condition)
 	{
 	}
 	
-	WhileLoopStatement::WhileLoopStatement(Expression* condition)
-		: _condition(condition)
+	WhileLoopStatement::WhileLoopStatement(Expression& condition)
+		: _condition(&condition)
 	{
 	}
 	
-	ForLoopStatement::ForLoopStatement(Token&& iterator, Expression* iterable)
-		: _iterator(std::move(iterator)), _iterable(iterable)
+	ForLoopStatement::ForLoopStatement(Token&& iterator, Expression& iterable)
+		: _iterator(std::move(iterator)), _iterable(&iterable)
 	{
 	}
 	
@@ -102,8 +107,8 @@ namespace lx
 	{
 	}
 	
-	HighlightStatement::HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color)
-		: _clear(clear), _highlightable(highlightable), _color(std::move(color))
+	HighlightStatement::HighlightStatement(bool clear, Expression& highlightable, BuiltinSymbol color)
+		: _clear(clear), _highlightable(&highlightable), _color(color)
 	{
 	}
 
@@ -127,28 +132,28 @@ namespace lx
 	{
 	}
 
-	PatternBuiltin::PatternBuiltin(Token&& builtin_symbol)
-		: _builtin_symbol(std::move(builtin_symbol))
+	PatternBuiltin::PatternBuiltin(BuiltinSymbol builtin_symbol)
+		: _builtin_symbol(builtin_symbol)
 	{
 	}
 	
-	PatternAs::PatternAs(PatternExpression* expression, Token&& type)
-		: _expression(expression), _type(std::move(type))
+	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
+		: _expression(&expression), _type(std::move(type))
 	{
 	}
 	
-	PatternRepeat::PatternRepeat(PatternExpression* expression, Expression* range)
-		: _expression(expression), _range(range)
+	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
+		: _expression(&expression), _range(&range)
 	{
 	}
 	
-	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression* expression, Token&& op)
-		: _expression(expression), _op(std::move(op))
+	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
+		: _expression(&expression), _op(std::move(op))
 	{
 	}
 	
-	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression* expression)
-		: _op(std::move(op)), _expression(expression)
+	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
+		: _op(std::move(op)), _expression(&expression)
 	{
 	}
 	
@@ -157,23 +162,23 @@ namespace lx
 	{
 	}
 	
-	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression* left, PatternExpression* right)
-		: _op(std::move(op)), _left(left), _right(right)
+	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
+		: _op(std::move(op)), _left(&left), _right(&right)
 	{
 	}
 	
-	PatternLazy::PatternLazy(PatternExpression* expression)
-		: _expression(expression)
+	PatternLazy::PatternLazy(PatternExpression& expression)
+		: _expression(&expression)
 	{
 	}
 	
-	PatternCapture::PatternCapture(Token&& identifier, PatternExpression* expression)
-		: _identifier(std::move(identifier)), _expression(expression)
+	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
+		: _identifier(std::move(identifier)), _expression(&expression)
 	{
 	}
 
-	AppendStatement::AppendStatement(PatternExpression* expression)
-		: _expression(expression)
+	AppendStatement::AppendStatement(PatternExpression& expression)
+		: _expression(&expression)
 	{
 	}
 
@@ -187,8 +192,8 @@ namespace lx
 	{
 	}
 	
-	ReplaceStatement::ReplaceStatement(Token&& identifier, Expression* string)
-		: _identifier(std::move(identifier)), _string(string)
+	ReplaceStatement::ReplaceStatement(Expression& match, Expression& string)
+		: _match(&match), _string(&string)
 	{
 	}
 	
@@ -197,13 +202,13 @@ namespace lx
 	{
 	}
 	
-	ScopeStatement::ScopeStatement(Token&& specifier, Expression* range)
-		: _specifier(std::move(specifier)), _range(range)
+	ScopeStatement::ScopeStatement(Token&& specifier, Expression& range)
+		: _specifier(std::move(specifier)), _range(&range)
 	{
 	}
 	
-	PagePush::PagePush(Expression* page)
-		: _page(page)
+	PagePush::PagePush(Expression& page)
+		: _page(&page)
 	{
 	}
 }

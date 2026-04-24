@@ -71,6 +71,8 @@ namespace lx
 			return TokenType::In;
 		else if (token.lexeme == "let")
 			return TokenType::Let;
+		else if (token.lexeme == "log")
+			return TokenType::Log;
 		else if (token.lexeme == "page")
 			return TokenType::Page;
 		else if (token.lexeme == "pop")

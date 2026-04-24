@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "token.h"
-#include "types.h"
+#include "builtin_symbols.h"
 
 namespace lx
 {
@@ -96,8 +96,12 @@ namespace lx
 		VariableExpression(Token&& identifier);
 	};
 
-	struct PercentExpression : public Expression
+	struct BuiltinSymbolExpression : public Expression
 	{
+		BuiltinSymbol _builtin_symbol;
+
+	public:
+		BuiltinSymbolExpression(BuiltinSymbol builtin_symbol);
 	};
 
 	class FunctionCallExpression : public Expression
@@ -124,7 +128,7 @@ namespace lx
 		Expression* _expression;
 
 	public:
-		ReturnStatement(Expression* expression);
+		ReturnStatement(Expression& expression);
 	};
 
 	class IfStatement : public Block
@@ -132,7 +136,7 @@ namespace lx
 		Expression* _condition;
 
 	public:
-		IfStatement(Expression* condition);
+		IfStatement(Expression& condition);
 	};
 
 	class ElifStatement : public Block
@@ -140,7 +144,7 @@ namespace lx
 		Expression* _condition;
 
 	public:
-		ElifStatement(Expression* condition);
+		ElifStatement(Expression& condition);
 	};
 
 	class ElseStatement : public Block
@@ -152,7 +156,7 @@ namespace lx
 		Expression* _condition;
 
 	public:
-		WhileLoopStatement(Expression* condition);
+		WhileLoopStatement(Expression& condition);
 	};
 
 	class ForLoopStatement : public Block
@@ -161,7 +165,7 @@ namespace lx
 		Expression* _iterable;
 
 	public:
-		ForLoopStatement(Token&& iterator, Expression* iterable);
+		ForLoopStatement(Token&& iterator, Expression& iterable);
 	};
 
 	class LogStatement : public ASTNode
@@ -176,10 +180,10 @@ namespace lx
 	{
 		bool _clear;
 		Expression* _highlightable;
-		std::optional<Token> _color;
+		BuiltinSymbol _color;
 
 	public:
-		HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color);
+		HighlightStatement(bool clear, Expression& highlightable, BuiltinSymbol color);
 	};
 
 	class DeletePattern : public ASTNode
@@ -198,7 +202,7 @@ namespace lx
 		PatternDeclaration(Token&& identifier);
 	};
 
-	struct PatternExpression : public Expression
+	struct PatternExpression : public ASTNode
 	{
 	};
 
@@ -220,10 +224,10 @@ namespace lx
 
 	class PatternBuiltin : public PatternExpression
 	{
-		Token _builtin_symbol;
+		BuiltinSymbol _builtin_symbol;
 
 	public:
-		PatternBuiltin(Token&& builtin_symbol);
+		PatternBuiltin(BuiltinSymbol builtin_symbol);
 	};
 
 	class PatternAs : public PatternExpression
@@ -232,7 +236,7 @@ namespace lx
 		Token _type;
 
 	public:
-		PatternAs(PatternExpression* expression, Token&& type);
+		PatternAs(PatternExpression& expression, Token&& type);
 	};
 
 	class PatternRepeat : public PatternExpression
@@ -241,7 +245,7 @@ namespace lx
 		Expression* _range;
 
 	public:
-		PatternRepeat(PatternExpression* expression, Expression* range);
+		PatternRepeat(PatternExpression& expression, Expression& range);
 	};
 
 	class PatternSimpleRepeat : public PatternExpression
@@ -250,7 +254,7 @@ namespace lx
 		Token _op;
 
 	public:
-		PatternSimpleRepeat(PatternExpression* expression, Token&& op);
+		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
 	};
 
 	class PatternPrefixOperation : public PatternExpression
@@ -259,7 +263,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternPrefixOperation(Token&& op, PatternExpression* expression);
+		PatternPrefixOperation(Token&& op, PatternExpression& expression);
 	};
 
 	class PatternBackRef : public PatternExpression
@@ -277,7 +281,7 @@ namespace lx
 		PatternExpression* _right;
 
 	public:
-		PatternBinaryOperation(Token&& op, PatternExpression* left, PatternExpression* right);
+		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
 	};
 
 	class PatternLazy : public PatternExpression
@@ -285,7 +289,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternLazy(PatternExpression* expression);
+		PatternLazy(PatternExpression& expression);
 	};
 
 	class PatternCapture : public PatternExpression
@@ -294,7 +298,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternCapture(Token&& identifier, PatternExpression* expression);
+		PatternCapture(Token&& identifier, PatternExpression& expression);
 	};
 
 	class AppendStatement : public ASTNode
@@ -302,7 +306,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		AppendStatement(PatternExpression* expression);
+		AppendStatement(PatternExpression& expression);
 	};
 
 	class FindStatement : public ASTNode
@@ -323,11 +327,11 @@ namespace lx
 
 	class ReplaceStatement : public ASTNode
 	{
-		Token _identifier;
+		Expression* _match;
 		Expression* _string;
 
 	public:
-		ReplaceStatement(Token&& identifier, Expression* string);
+		ReplaceStatement(Expression& match, Expression& string);
 	};
 
 	class ApplyStatement : public ASTNode
@@ -344,7 +348,7 @@ namespace lx
 		Expression* _range;
 
 	public:
-		ScopeStatement(Token&& specifier, Expression* range);
+		ScopeStatement(Token&& specifier, Expression& range);
 	};
 
 	class PagePush : public ASTNode
@@ -352,7 +356,7 @@ namespace lx
 		Expression* _page;
 
 	public:
-		PagePush(Expression* page);
+		PagePush(Expression& page);
 	};
 
 	class PagePop : public ASTNode
