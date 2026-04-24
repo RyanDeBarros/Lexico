@@ -7,8 +7,9 @@
 
 namespace lx
 {
-	struct ASTNode
+	class ASTNode
 	{
+	public:
 		virtual ~ASTNode() = default;
 	};
 
@@ -42,7 +43,7 @@ namespace lx
 		}
 	};
 
-	struct Expression : public ASTNode
+	class Expression : public ASTNode
 	{
 	};
 
@@ -96,7 +97,7 @@ namespace lx
 		VariableExpression(Token&& identifier);
 	};
 
-	struct BuiltinSymbolExpression : public Expression
+	class BuiltinSymbolExpression : public Expression
 	{
 		BuiltinSymbol _builtin_symbol;
 
@@ -168,6 +169,14 @@ namespace lx
 		ForLoopStatement(Token&& iterator, Expression& iterable);
 	};
 
+	class BreakStatement : public ASTNode
+	{
+	};
+
+	class ContinueStatement : public ASTNode
+	{
+	};
+
 	class LogStatement : public ASTNode
 	{
 		std::vector<Expression*> _args;
@@ -202,7 +211,7 @@ namespace lx
 		PatternDeclaration(Token&& identifier);
 	};
 
-	struct PatternExpression : public ASTNode
+	class PatternExpression : public ASTNode
 	{
 	};
 
