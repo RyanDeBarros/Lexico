@@ -13,18 +13,29 @@ namespace lx
 		lexer.tokenize(script);
 
 		Parser parser;
-		parser.parse(lexer.stream());
+		parser.parse(lexer.stream(), lexer.script_lines());
 
-		std::stringstream out;
-		while (!lexer.stream().eof())
+		if (parser.errors().empty())
 		{
-			const Token& token = lexer.stream().peek();
-			out << (int)token.type << ": " << token.lexeme << " (" << token.start_line << ":" << token.start_column << ")\n";
-			lexer.stream().advance();
+			std::stringstream out;
+			while (!lexer.stream().eof())
+			{
+				const Token& token = lexer.stream().peek();
+				out << (int)token.type << ": " << token.lexeme << " (" << token.start_line << ":" << token.start_column << ")\n";
+				lexer.stream().advance();
+			}
+
+			output = out.str();
+		}
+		else
+		{
+			std::stringstream out;
+			for (const auto& e : parser.errors())
+				out << e.what() << "\n\n";
+
+			log = out.str();
 		}
 
-		output = out.str();
-		log = "success!";
 		return true;
 	}
 }

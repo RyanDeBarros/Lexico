@@ -6,26 +6,50 @@
 
 namespace lx
 {
+	namespace errors
+	{
+		constexpr const char* UNRECOGNIZED_TOKEN = "unrecognized token";
+		constexpr const char* EXPECTED_OPERAND = "expected operand";
+		constexpr const char* UNRECOGNIZED_OPERAND = "unrecognized operand";
+		constexpr const char* EXPECTED_STATEMENT_END = "unexpected token - expected statement end";
+		constexpr const char* EXPECTED_EXPRESSION = "expected expression";
+		constexpr const char* EXPECTED_IDENTIFIER = "expected identifier";
+		constexpr const char* EXPECTED_PREDICATE = "expected predicate";
+		constexpr const char* EXPECTED_WITH_CLAUSE = "expected 'with' clause";
+		constexpr const char* EXPECTED_COLOR_CLAUSE = "expected color symbol";
+		constexpr const char* UNRECOGNIZED_COLOR_CLAUSE = "unrecognized color symbol";
+		constexpr const char* EXPECTED_ASSIGN_OPERATOR = "expected '='";
+	};
+
 	class ASTBuilder
 	{
 		TokenStream& _stream;
+		std::vector<SyntaxError>& _errors;
+		const std::vector<std::string_view>& _script_lines;
 		size_t _token_offset = 0;
 		AbstractSyntaxTree& _tree;
 		std::stack<Block*> _context_stack;
-		std::vector<std::unique_ptr<ASTNode>> _pending_nodes;
 
 	public:
-		ASTBuilder(TokenStream& stream, AbstractSyntaxTree& tree)
-			: _stream(stream), _tree(tree)
+		ASTBuilder(TokenStream& stream, std::vector<SyntaxError>& errors, const std::vector<std::string_view>& script_lines, AbstractSyntaxTree& tree)
+			: _stream(stream), _errors(errors), _script_lines(script_lines), _tree(tree)
 		{
 			stream.seek();
 			size_t tokens_left = SIZE_MAX;
 			while (!_stream.eof() && _stream.tokens_left() < tokens_left)
 			{
-				PendingSafeguard safeguard(*this);
-				if (parse_statement())
-					publish_pending_nodes();
-				// TODO try-catch if not successful, advance to past the next newline and continue building -> throw at the end, but build list of errors
+				try
+				{
+					parse_statement();
+				}
+				catch (const SyntaxError& e)
+				{
+					_errors.push_back(e);
+					while (!_stream.eof() && _stream.peek(0).type != TokenType::Newline && _stream.peek(0).type != TokenType::EndOfFile)
+						_stream.advance();
+					if (!_stream.eof())
+						_stream.advance();
+				}
 
 				tokens_left = _stream.tokens_left();
 			}
@@ -107,9 +131,7 @@ namespace lx
 		void assert_statement_ends(size_t n)
 		{
 			if (tokens_left() > n && peek(n).type != TokenType::Newline && peek(n).type != TokenType::EndOfFile)
-			{
-				// TODO parser error: unexpected token - expected statement end (newline or eof)
-			}
+				throw_error(errors::EXPECTED_STATEMENT_END, n);
 		}
 
 		Block& context()
@@ -139,75 +161,67 @@ namespace lx
 			context().append(_tree.add(std::move(node)));
 		}
 
-		class PendingSafeguard
+		void throw_error(const char* cause, size_t peek_offset)
 		{
-			ASTBuilder& _builder;
-
-		public:
-			PendingSafeguard(ASTBuilder& builder)
-				: _builder(builder)
+			std::stringstream ss;
+			ss << "[Parser Error] " << cause;
+			if (!eof())
 			{
+				ss << ":\n\t";
+				if (peek_offset >= tokens_left())
+				{
+					ss << _script_lines.back();
+					ss << '\n';
+					Token token = peek(tokens_left() - 1);
+					token.start_column = token.end_column;
+					++token.end_column;
+					token.start_line = token.end_line;
+					ss << SyntaxError::underline(token);
+				}
+				else
+				{
+					ss << _script_lines[peek(peek_offset).start_line];
+					ss << '\n';
+					ss << SyntaxError::underline(peek(peek_offset));
+				}
 			}
-
-			PendingSafeguard(const PendingSafeguard&) = delete;
-			PendingSafeguard(PendingSafeguard&&) = delete;
-
-			~PendingSafeguard()
-			{
-				_builder._pending_nodes.clear();
-			}
-		};
-
-		template<typename T>
-		T* add_pending_node(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
-		{
-			T* n = node.get();
-			_pending_nodes.push_back(std::move(node));
-			return n;
+			throw SyntaxError(ss.str());
 		}
 
-		void publish_pending_nodes()
-		{
-			for (auto& node : _pending_nodes)
-				_tree.add(std::move(node));
-			_pending_nodes.clear();
-		}
-
-		bool parse_statement()
+		void parse_statement()
 		{
 			if (parse_pattern_declaration())
-				return true;
+				return;
 			if (parse_delete_pattern())
-				return true;
+				return;
 			if (parse_append_statement())
-				return true;
+				return;
 			if (parse_scope_statement())
-				return true;
+				return;
 			if (parse_find_statement())
-				return true;
+				return;
 			if (parse_filter_statement())
-				return true;
+				return;
 			if (parse_replace_statement())
-				return true;
+				return;
 			if (parse_apply_statement())
-				return true;
+				return;
 			if (parse_page_statement())
-				return true;
+				return;
 			if (parse_function_definition())
-				return true;
+				return;
 			if (parse_variable_declaration())
-				return true;
+				return;
 			if (parse_assignment())
-				return true;
+				return;
 			if (parse_control_statement())
-				return true;
+				return;
 			if (parse_log_statement())
-				return true;
+				return;
 			if (parse_highlight_statement())
-				return true;
+				return;
 
-			// TODO parser error: unrecognized token
-			return false;
+			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
 		}
 
 		bool parse_pattern_declaration()
@@ -219,10 +233,7 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected identifier
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			assert_statement_ends(2);
 			append_to_context(std::make_unique<PatternDeclaration>(std::move(ref(1))));
@@ -239,10 +250,7 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected identifier
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			assert_statement_ends(2);
 			append_to_context(std::make_unique<DeletePattern>(std::move(ref(1))));
@@ -271,10 +279,7 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected identifier
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			assert_statement_ends(2);
 			append_to_context(std::make_unique<FindStatement>(std::move(ref(1))));
@@ -291,10 +296,7 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected predicate
-				return false;
-			}
+				throw_error(errors::EXPECTED_PREDICATE, 1);
 
 			assert_statement_ends(2);
 			append_to_context(std::make_unique<FilterStatement>(std::move(ref(1))));
@@ -312,31 +314,16 @@ namespace lx
 
 			auto match_offset = token_offset(1);
 			Expression* match_expr;
-			size_t match_length;
-
-			if (!parse_expression(match_expr, match_length))
-			{
-				// TODO parser error
-				return false;
-			}
+			size_t match_length = parse_expression(match_expr);
 
 			auto with_offset = token_offset(match_length);
 
 			if (eof() || peek(0).type != TokenType::With)
-			{
-				// TODO parser error: expected 'with' clause
-				return false;
-			}
+				throw_error(errors::EXPECTED_WITH_CLAUSE, 0);
 
 			auto string_offset = token_offset(1);
 			Expression* string_expr;
-			size_t string_length;
-			
-			if (!parse_expression(string_expr, string_length))
-			{
-				// TODO parser error
-				return false;
-			}
+			size_t string_length = parse_expression(string_expr);
 
 			assert_statement_ends(string_length);
 			append_to_context(std::make_unique<ReplaceStatement>(*match_expr, *string_expr));
@@ -353,10 +340,7 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected predicate
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			assert_statement_ends(2);
 			append_to_context(std::make_unique<ApplyStatement>(std::move(ref(1))));
@@ -373,27 +357,16 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2)
-			{
-				// TODO parser error: expected operand
-				return false;
-			}
+				throw_error(errors::EXPECTED_OPERAND, 1);
 
 			if (peek(1).type == TokenType::Push)
 			{
 				if (tokens_left() < 3)
-				{
-					// TODO parser error: missing page to push
-					return false;
-				}
+					throw_error(errors::EXPECTED_EXPRESSION, 2);
 
 				auto offset = token_offset(2);
 				Expression* page;
-				size_t length;
-				if (!parse_expression(page, length))
-				{
-					// TODO parser error: expected expression
-					return false;
-				}
+				size_t length = parse_expression(page);
 
 				assert_statement_ends(length);
 				append_to_context(std::make_unique<PagePush>(*page));
@@ -415,10 +388,7 @@ namespace lx
 				return true;
 			}
 			else
-			{
-				// TODO parser error: unrecognized operand
-				return false;
-			}
+				throw_error(errors::UNRECOGNIZED_OPERAND, 1);
 		}
 
 		bool parse_function_definition()
@@ -436,26 +406,14 @@ namespace lx
 				return false;
 
 			if (peek(1).type != TokenType::Identifier)
-			{
-				// TODO parser error: expected identifier
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			if (peek(2).type != TokenType::Assign)
-			{
-				// TODO parser error: expected '='
-				return false;
-			}
+				throw_error(errors::EXPECTED_ASSIGN_OPERATOR, 2);
 
 			auto offset = token_offset(3);
 			Expression* expr;
-			size_t length;
-
-			if (!parse_expression(expr, length))
-			{
-				// TODO parser error
-				return false;
-			}
+			size_t length = parse_expression(expr);
 
 			bool global = peek(0).type == TokenType::Var;
 
@@ -474,20 +432,11 @@ namespace lx
 				return false;
 
 			if (peek(1).type != TokenType::Assign)
-			{
-				// TODO parser error: expected identifier
-				return false;
-			}
+				throw_error(errors::EXPECTED_ASSIGN_OPERATOR, 1);
 
 			auto offset = token_offset(2);
 			Expression* expr;
-			size_t length;
-
-			if (!parse_expression(expr, length))
-			{
-				// TODO parser error
-				return false;
-			}
+			size_t length = parse_expression(expr);
 
 			assert_statement_ends(length);
 			append_to_context(std::make_unique<VariableAssignment>(std::move(ref(0)), *expr));
@@ -510,38 +459,30 @@ namespace lx
 				return false;
 
 			if (tokens_left() < 2)
-			{
-				// TODO parser error: expected operands
-				return false;
-			}
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
 			auto offset = token_offset(1);
 
 			std::vector<Expression*> args;
 			std::vector<TokenOffset> offsets;
-			Expression* expr;
-			size_t length;
-			bool comma_ended = false;
-			while (parse_expression(expr, length))
+
+			while (!eof() && peek(0).type != TokenType::Newline && peek(0).type != TokenType::EndOfFile)
 			{
+				Expression* expr;
+				size_t length = parse_expression(expr);
 				args.push_back(expr);
-				expr = nullptr;
 				offsets.push_back(token_offset(length));
-				comma_ended = false;
-				if (eof() || peek(0).type != TokenType::Comma)
+
+				if (eof() || peek(0).type == TokenType::Newline || peek(0).type == TokenType::EndOfFile)
 					break;
-				else
-				{
+				else if (peek(0).type == TokenType::Comma)
 					offsets.push_back(token_offset(1));
-					comma_ended = true;
-				}
+				else
+					throw_error(errors::EXPECTED_EXPRESSION, 0);
 			}
 
-			if (comma_ended || args.empty())
-			{
-				// TODO parser error: expected expression
-				return false;
-			}
+			if (args.empty())
+				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
 			assert_statement_ends(0);
 			append_to_context(std::make_unique<LogStatement>(std::move(args)));
@@ -567,20 +508,20 @@ namespace lx
 				clear = true;
 			}
 
-			Expression* expr = nullptr;
-			size_t length = 0;
-			if (!eof() && parse_expression(expr, length))
-				offsets.push_back(token_offset(length));
-
 			BuiltinSymbol color = BuiltinSymbol::Yellow;
+			Expression* expr = nullptr;
+
+			if (!eof() && peek(0).type != TokenType::Color)
+			{
+				size_t length = parse_expression(expr);
+				offsets.push_back(token_offset(length));
+			}
+
 			if (!eof() && peek(0).type == TokenType::Color)
 			{
 				offsets.push_back(token_offset(1));
 				if (eof() || peek(0).type != TokenType::BuiltinSymbol)
-				{
-					// TODO parser error: expected color symbol
-					return false;
-				}
+					throw_error(errors::EXPECTED_COLOR_CLAUSE, 0);
 
 				if (auto c = parse_builtin_symbol(peek(0).lexeme))
 				{
@@ -588,10 +529,7 @@ namespace lx
 					offsets.push_back(token_offset(1));
 				}
 				else
-				{
-					// TODO parser error: unrecognized color symbol
-					return false;
-				}
+					throw_error(errors::UNRECOGNIZED_COLOR_CLAUSE, 0);
 			}
 
 			assert_statement_ends(0);
@@ -600,19 +538,20 @@ namespace lx
 			return true;
 		}
 
-		bool parse_expression(Expression*& expr, size_t& length)
+		size_t parse_expression(Expression*& expr)
 		{
 			expr = nullptr;
-			length = 0;
 
-			// TODO use add_pending_node for expressions
-			return false;
+			// TODO Expressions should copy tokens for now, since they might not be published. Use string_view in tokens instead, but that means including \ from escape characters in string. So, string literals should have a resolve method that will produce a new string without the \s.
+
+			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
+			return 0;
 		}
 	};
 
-	void Parser::parse(TokenStream& stream)
+	void Parser::parse(TokenStream& stream, const std::vector<std::string_view>& script_lines)
 	{
-		ASTBuilder builder(stream, _tree);
+		ASTBuilder builder(stream, _errors, script_lines, _tree);
 	}
 
 	const AbstractSyntaxTree& Parser::tree() const
@@ -620,8 +559,8 @@ namespace lx
 		return _tree;
 	}
 
-	AbstractSyntaxTree& Parser::tree()
+	const std::vector<SyntaxError>& Parser::errors() const
 	{
-		return _tree;
+		return _errors;
 	}
 }

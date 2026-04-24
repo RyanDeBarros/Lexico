@@ -594,4 +594,9 @@ namespace lx
 	{
 		return _stream;
 	}
+
+	const std::vector<std::string_view>& Lexer::script_lines() const
+	{
+		return _script_lines;
+	}
 }

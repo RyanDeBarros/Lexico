@@ -112,7 +112,7 @@ namespace lx
 	{
 		TokenType type = TokenType::EndOfFile;
 
-		std::string_view lexeme;
+		std::string lexeme;
 		unsigned int start_line = 0;
 		unsigned int end_line = 0;
 		unsigned int start_column = 0;
