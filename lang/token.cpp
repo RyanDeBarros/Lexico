@@ -40,6 +40,18 @@ namespace lx
 		return _tokens[_ptr + n];
 	}
 
+	Token& TokenStream::ref(size_t n)
+	{
+		if (n >= tokens_left())
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": cannot ref by " << n << " - only " << tokens_left() << " token(s) left";
+			throw std::out_of_range(ss.str());
+		}
+
+		return _tokens[_ptr + n];
+	}
+
 	void TokenStream::seek(size_t i)
 	{
 		if (i > _tokens.size())

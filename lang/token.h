@@ -129,6 +129,7 @@ namespace lx
 		bool eof() const;
 		void advance(size_t n = 1);
 		const Token& peek(size_t n = 0) const;
+		Token& ref(size_t n = 0);
 		void seek(size_t i = 0);
 		size_t tokens_left() const;
 	};

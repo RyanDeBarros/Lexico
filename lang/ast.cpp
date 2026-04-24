@@ -5,7 +5,7 @@
 
 namespace lx
 {
-	ASTNode& AbstractSyntaxTree::add(std::unique_ptr<ASTNode>&& node)
+	ASTNode& AbstractSyntaxTree::impl_add(std::unique_ptr<ASTNode>&& node)
 	{
 		ASTNode* ref = node.get();
 		_nodes.push_back(std::move(node));
@@ -27,19 +27,24 @@ namespace lx
 		_children.push_back(&child);
 	}
 
-	VariableDeclaration::VariableDeclaration(Token&& declarer, Token&& identifier, Expression& expression)
-		: _declarer(std::move(declarer)), _identifier(std::move(identifier)), _expression(&expression)
+	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, Expression& expression)
+		: _global(global), _identifier(std::move(identifier)), _expression(&expression)
 	{
 	}
 
 	bool VariableDeclaration::is_global() const
 	{
-		return _declarer.type == TokenType::Var;
+		return _global;
 	}
 
 	const std::string& VariableDeclaration::variable_name() const
 	{
 		return _identifier.lexeme;
+	}
+
+	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
+		: _identifier(std::move(identifier)), _expression(&expression)
+	{
 	}
 
 	LiteralExpression::LiteralExpression(Token&& literal)

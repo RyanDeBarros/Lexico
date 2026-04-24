@@ -29,10 +29,17 @@ namespace lx
 		ASTRoot _root;
 		std::vector<std::unique_ptr<ASTNode>> _nodes;
 
+		ASTNode& impl_add(std::unique_ptr<ASTNode>&& node);
+
 	public:
-		ASTNode& add(std::unique_ptr<ASTNode>&& node);
 		const ASTRoot& root() const;
 		ASTRoot& root();
+
+		template<typename T>
+		T& add(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
+		{
+			return static_cast<T&>(impl_add(std::move(node)));
+		}
 	};
 
 	struct Expression : public ASTNode
@@ -41,14 +48,25 @@ namespace lx
 
 	class VariableDeclaration : public ASTNode
 	{
-		Token _declarer;
+		bool _global;
 		Token _identifier;
 		Expression* _expression;
 
 	public:
-		VariableDeclaration(Token&& declarer, Token&& identifier, Expression& expression);
+		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
 		
 		bool is_global() const;
+		const std::string& variable_name() const;
+	};
+
+	class VariableAssignment : public ASTNode
+	{
+		Token _identifier;
+		Expression* _expression;
+
+	public:
+		VariableAssignment(Token&& identifier, Expression& expression);
+
 		const std::string& variable_name() const;
 	};
 

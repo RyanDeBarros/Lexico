@@ -533,8 +533,9 @@ apply switch
 You can limit the searching scope for `find` statements using `scope`:
 
 ```
-scope $line           # match must fit in single line
+scope $line           # match must fit in single line (default)
 scope $lines <range>  # match must fit in line range
+scope $page           # match exists in whole page
 ```
 
 Note that `scope $line` is equivalent to `scope $lines 1`.
@@ -792,7 +793,6 @@ find date
 ```
 pattern line
 append $start, $space*, $end
-scope $line
 find line
 ```
 
@@ -807,7 +807,6 @@ find line
 ```
 pattern line
 append $start, $any* repeat max 80, $end
-scope $line
 find line
 ```
 
@@ -1063,7 +1062,7 @@ base_expr           ::= literal | identifier | builtin_symbol | function_call | 
 delete_stmt    ::= "delete" identifier ;
 
 page_stmt      ::= "page" page_op ;
-page_op        ::= "push" string_expr | "pop" ;
+page_op        ::= "push" string_expr | "pop" | "delete" ;
 
 log_stmt       ::= "log" expression { "," expression } ;
 highlight_stmt ::= "highlight" [ "delete" ] [ match_expr | irange_expr ] [ "color" color ]
