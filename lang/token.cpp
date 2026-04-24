@@ -5,6 +5,32 @@
 
 namespace lx
 {
+	std::string Token::resolved() const
+	{
+		std::string str;
+		bool escaping = false;
+
+		for (char c : lexeme)
+		{
+			if (escaping)
+			{
+				escaping = false;
+				if (c != '\\' && c != '"')
+					str += '\\';
+				str += c;
+			}
+			else if (c == '\\')
+				escaping = true;
+			else
+				str += c;
+		}
+
+		if (escaping)
+			str += '\\';
+
+		return str;
+	}
+
 	void TokenStream::load(std::vector<Token>&& tokens)
 	{
 		_tokens = std::move(tokens);

@@ -59,7 +59,7 @@ namespace lx
 		Expression* _expression;
 
 	public:
-		VariableAssignment(const Token& identifier, Expression& expression);
+		VariableAssignment(Token&& identifier, Expression& expression);
 
 		const std::string& variable_name() const;
 	};
@@ -69,7 +69,7 @@ namespace lx
 		Token _literal;
 
 	public:
-		LiteralExpression(const Token& literal);
+		LiteralExpression(Token&& literal);
 	};
 
 	class BinaryExpression : public Expression
@@ -79,7 +79,7 @@ namespace lx
 		Expression* _right;
 
 	public:
-		BinaryExpression(const Token& op, Expression& left, Expression& right);
+		BinaryExpression(Token&& op, Expression& left, Expression& right);
 	};
 
 	class VariableExpression : public Expression
@@ -87,7 +87,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		VariableExpression(const Token& identifier);
+		VariableExpression(Token&& identifier);
 	};
 
 	class BuiltinSymbolExpression : public Expression
@@ -104,7 +104,7 @@ namespace lx
 		std::vector<Expression*> _args;
 
 	public:
-		FunctionCallExpression(const Token& identifier, std::vector<Expression*>&& args);
+		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args);
 	};
 
 	class FunctionDefinition : public Block
@@ -213,7 +213,7 @@ namespace lx
 		Token _literal;
 
 	public:
-		PatternLiteral(const Token& literal);
+		PatternLiteral(Token&& literal);
 	};
 
 	class PatternIdentifier : public PatternExpression
@@ -221,7 +221,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		PatternIdentifier(const Token& identifier);
+		PatternIdentifier(Token&& identifier);
 	};
 
 	class PatternBuiltin : public PatternExpression
@@ -238,7 +238,7 @@ namespace lx
 		Token _type;
 
 	public:
-		PatternAs(PatternExpression& expression, const Token& type);
+		PatternAs(PatternExpression& expression, Token&& type);
 	};
 
 	class PatternRepeat : public PatternExpression
@@ -256,7 +256,7 @@ namespace lx
 		Token _op;
 
 	public:
-		PatternSimpleRepeat(PatternExpression& expression, const Token& op);
+		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
 	};
 
 	class PatternPrefixOperation : public PatternExpression
@@ -265,7 +265,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternPrefixOperation(const Token& op, PatternExpression& expression);
+		PatternPrefixOperation(Token&& op, PatternExpression& expression);
 	};
 
 	class PatternBackRef : public PatternExpression
@@ -273,7 +273,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		PatternBackRef(const Token& identifier);
+		PatternBackRef(Token&& identifier);
 	};
 
 	class PatternBinaryOperation : public PatternExpression
@@ -283,7 +283,7 @@ namespace lx
 		PatternExpression* _right;
 
 	public:
-		PatternBinaryOperation(const Token& op, PatternExpression& left, PatternExpression& right);
+		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
 	};
 
 	class PatternLazy : public PatternExpression
@@ -300,7 +300,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternCapture(const Token& identifier, PatternExpression& expression);
+		PatternCapture(Token&& identifier, PatternExpression& expression);
 	};
 
 	class AppendStatement : public ASTNode

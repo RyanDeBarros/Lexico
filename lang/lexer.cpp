@@ -125,464 +125,373 @@ namespace lx
 			return TokenType::Identifier;
 	}
 
+	class ScriptPointer
+	{
+		unsigned int _line = 1;
+		unsigned int _last_line = 1;
+		unsigned int _column = 1;
+		unsigned int _last_column = 1;
+		unsigned int _index = 0;
+
+	public:
+		void move_right(unsigned int n = 1)
+		{
+			for (unsigned int i = 0; i < n; ++i)
+			{
+				_last_column = _column;
+				++_column;
+			}
+
+			_index += n;
+		}
+
+		void move_down()
+		{
+			_last_line = _line;
+			++_line;
+			_last_column = _column;
+			_column = 1;
+			++_index;
+		}
+
+		unsigned int line() const
+		{
+			return _line;
+		}
+
+		unsigned int last_line() const
+		{
+			return _last_line;
+		}
+
+		unsigned int column() const
+		{
+			return _column;
+		}
+
+		unsigned int last_column() const
+		{
+			return _last_column;
+		}
+
+		unsigned int index() const
+		{
+			return _index;
+		}
+	};
+
+	class Tokenizer
+	{
+		const std::string_view _script;
+		std::vector<Token>& _tokens;
+		ScriptPointer _ptr;
+		unsigned int _str_offset = 0;
+		Token _token;
+		char _c;
+
+	public:
+		Tokenizer(const std::string_view script, std::vector<Token>& tokens)
+			: _script(script), _tokens(tokens)
+		{
+			for (size_t i = 0; i < script.size(); ++i)
+			{
+				_c = script[i];
+
+				if (_token.type == TokenType::String)
+				{
+					if (_c == '"')
+					{
+						add_token();
+						_ptr.move_right();
+						continue;
+					}
+
+					if (_c == '\\')
+					{
+						if (i + 1 < script.size())
+						{
+							if (script[i + 1] == '"')
+							{
+								++i;
+								_ptr.move_right(2);
+								continue;
+							}
+							else if (script[i + 1] == '\\' && i + 2 < script.size() && script[i + 2] == '"')
+							{
+								++i;
+								_ptr.move_right(2);
+								continue;
+							}
+						}
+					}
+
+					if (_c == '\n' || _c == '\r')
+					{
+						if (_c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
+							++i;
+
+						_ptr.move_down();
+					}
+					else
+						_ptr.move_right();
+					continue;
+				}
+
+				if (_c == '"')
+				{
+					add_token();  // add ongoing token
+					start_token(TokenType::String);
+					_ptr.move_right();
+					continue;
+				}
+
+				if (_c == '\n' || _c == '\r')
+				{
+					add_token();  // add ongoing token
+
+					if (_c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
+						++i;
+
+					// add newline token - don't add multiple consecutively or if at beginning of script
+					if (!tokens.empty() && tokens.back().type != TokenType::Newline)
+					{
+						start_token(TokenType::Newline);
+						add_token();
+					}
+
+					_ptr.move_down();
+					continue;
+				}
+
+				if (_c == '#')
+				{
+					add_token();  // add ongoing token
+
+					size_t j = i;
+					while (j + 1 < script.size() && script[j + 1] != '\n' && script[j + 1] != '\r')
+						++j;
+
+					_ptr.move_right(j - i);
+					i = j;
+					continue;
+				}
+
+				if (_c == '$')
+				{
+					add_token();  // add ongoing token
+					start_token(TokenType::BuiltinSymbol);
+					_ptr.move_right();
+					continue;
+				}
+
+				bool tokenized_char =
+					tokenize_char(',', TokenType::Comma) ||
+					tokenize_char('\\', TokenType::Runoff) ||
+					tokenize_char('%', TokenType::Percent) ||
+					tokenize_char('(', TokenType::LParen) ||
+					tokenize_char(')', TokenType::RParen) ||
+					tokenize_char('[', TokenType::LBracket) ||
+					tokenize_char(']', TokenType::RBracket) ||
+					tokenize_char('+', TokenType::Plus) ||
+					tokenize_char('/', TokenType::Slash) ||
+					tokenize_char('*', TokenType::Asterisk) ||
+					tokenize_char_combo('-', '>', i, TokenType::Minus, TokenType::Arrow) ||
+					tokenize_char_combo('=', '=', i, TokenType::EqualTo, TokenType::Assign) ||
+					tokenize_char_combo('<', '=', i, TokenType::LessThan, TokenType::LessThanOrEqualTo) ||
+					tokenize_char_combo('>', '=', i, TokenType::GreaterThan, TokenType::GreaterThanOrEqualTo) ||
+					tokenize_double_char('!', '=', i, TokenType::NotEqualTo);
+
+				if (tokenized_char)
+					continue;
+
+				if (_c == '.')
+				{
+					if (_token.type == TokenType::Integer)
+						_token.type = TokenType::Float;
+					else
+					{
+						add_token();  // add ongoing token
+
+						if (i + 1 < script.size() && isdigit(script[i + 1]))
+							start_token(TokenType::Float);
+						else
+						{
+							start_token(TokenType::Dot);
+							add_token();
+						}
+					}
+
+					_ptr.move_right();
+					continue;
+				}
+
+				if (_c == ' ' || _c == '\t')
+				{
+					add_token();  // add ongoing token
+					_ptr.move_right();
+					continue;
+				}
+
+				if (isdigit(_c))
+				{
+					if (_token.type != TokenType::Identifier && _token.type != TokenType::BuiltinSymbol
+						&& _token.type != TokenType::Integer && _token.type != TokenType::Float)
+					{
+						add_token();  // add ongoing token
+						start_token(TokenType::Integer);
+					}
+					_ptr.move_right();
+					continue;
+				}
+
+				if (isalpha(_c) || _c == '_')
+				{
+					if (_token.type == TokenType::EndOfFile)
+					{
+						add_token();  // add ongoing token
+						start_token(TokenType::Identifier);
+					}
+
+					_ptr.move_right();
+					continue;
+				}
+
+				add_token();
+				_ptr.move_right();
+			}
+
+			add_token();  // add ongoing token
+
+			start_token(TokenType::EndOfFile);
+			tokens.push_back(_token);
+			concat_runoffs();
+		}
+
+		void start_token(TokenType type)
+		{
+			_token.type = type;
+			_token.start_line = _ptr.line();
+			_token.start_column = _ptr.column();
+			_str_offset = _ptr.index();
+		}
+
+		void add_token()
+		{
+			if (_token.type == TokenType::EndOfFile)
+				return;
+
+			_token.type = resolve_identifier(_token);
+			_token.end_line = _ptr.last_line();
+			_token.end_column = _ptr.last_column();
+			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
+			_tokens.push_back(std::move(_token));
+			_token = {};
+			_str_offset = _ptr.index();
+		}
+
+		bool tokenize_char(char chr, TokenType type)
+		{
+			if (_c == chr)
+			{
+				add_token();  // add ongoing token
+				start_token(type);
+				add_token();
+				_ptr.move_right();
+				return true;
+			}
+			else
+				return false;
+		}
+
+		bool tokenize_char_combo(char chr1, char chr2, size_t& i, TokenType single, TokenType combo)
+		{
+			if (_c == chr1)
+			{
+				add_token();  // add ongoing token
+
+				if (i + 1 < _script.size() && _script[i + 1] == chr2)
+				{
+					start_token(combo);
+					add_token();
+					++i;
+					_ptr.move_right();
+				}
+				else
+				{
+					start_token(single);
+					add_token();
+				}
+
+				_ptr.move_right();
+				return true;
+			}
+			else
+				return false;
+		}
+
+		bool tokenize_double_char(char chr1, char chr2, size_t& i, TokenType type)
+		{
+			if (_c == chr1 && i + 1 < _script.size() && _script[i + 1] == chr2)
+			{
+				add_token();  // add ongoing token
+				start_token(type);
+				add_token();
+				++i;
+				_ptr.move_right(2);
+				return true;
+			}
+			else
+				return false;
+		}
+
+		void concat_runoffs()
+		{
+			std::vector<Token> final_tokens;
+			for (size_t i = 0; i < _tokens.size(); ++i)
+			{
+				if (_tokens[i].type == TokenType::Runoff)
+				{
+					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Newline)
+						++i;
+					continue;
+				}
+
+				if (_tokens[i].type == TokenType::Not)
+				{
+					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Ahead)
+					{
+						_token = std::move(_tokens[i]);
+						_token.end_column = _tokens[i + 1].end_column;
+						_token.end_line = _tokens[i + 1].end_line;
+						_token.type = TokenType::NotAhead;
+						final_tokens.push_back(std::move(_token));
+						++i;
+						continue;
+					}
+
+					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Behind)
+					{
+						_token = std::move(_tokens[i]);
+						_token.end_column = _tokens[i + 1].end_column;
+						_token.end_line = _tokens[i + 1].end_line;
+						_token.type = TokenType::NotBehind;
+						final_tokens.push_back(std::move(_token));
+						++i;
+						continue;
+					}
+				}
+
+				final_tokens.push_back(std::move(_tokens[i]));
+			}
+			std::swap(_tokens, final_tokens);
+		}
+	};
+
 	void Lexer::tokenize(const std::string_view script)
 	{
 		std::vector<Token> tokens;
-
-		class ScriptPointer
-		{
-			unsigned int _line = 1;
-			unsigned int _last_line = 1;
-			unsigned int _column = 1;
-			unsigned int _last_column = 1;
-
-		public:
-			void move_right(unsigned int n = 1)
-			{
-				for (unsigned int i = 0; i < n; ++i)
-				{
-					_last_column = _column;
-					++_column;
-				}
-			}
-
-			void move_down()
-			{
-				_last_line = _line;
-				++_line;
-				_last_column = _column;
-				_column = 1;
-			}
-
-			unsigned int line() const
-			{
-				return _line;
-			}
-
-			unsigned int last_line() const
-			{
-				return _last_line;
-			}
-
-			unsigned int column() const
-			{
-				return _column;
-			}
-
-			unsigned int last_column() const
-			{
-				return _last_column;
-			}
-		};
-
-		ScriptPointer ptr;
-		Token token;
-
-		auto start_token = [&token, &ptr](TokenType type) {
-			token.type = type;
-			token.start_line = ptr.line();
-			token.start_column = ptr.column();
-			};
-
-		auto add_token = [&token, &tokens, &ptr]() {
-			if (token.type != TokenType::EndOfFile)
-			{
-				token.type = resolve_identifier(token);
-				token.end_line = ptr.last_line();
-				token.end_column = ptr.last_column();
-				tokens.push_back(std::move(token));
-				token = {};
-			}
-			};
-
-		for (size_t i = 0; i < script.size(); ++i)
-		{
-			const char c = script[i];
-
-			if (token.type == TokenType::String)
-			{
-				if (c == '"')
-				{
-					add_token();
-					ptr.move_right();
-					continue;
-				}
-
-				if (c == '\\')
-				{
-					if (i + 1 < script.size())
-					{
-						if (script[i + 1] == '"')
-						{
-							token.lexeme += '"';
-							++i;
-							ptr.move_right(2);
-							continue;
-						}
-						else if (script[i + 1] == '\\' && i + 2 < script.size() && script[i + 2] == '"')
-						{
-							token.lexeme += '\\';
-							++i;
-							ptr.move_right(2);
-							continue;
-						}
-					}
-				}
-
-				token.lexeme += c;
-
-				if (c == '\n' || c == '\r')
-				{
-					if (c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
-						++i;
-
-					ptr.move_down();
-				}
-				else
-					ptr.move_right();
-				continue;
-			}
-
-			if (c == '"')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::String);
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '\n' || c == '\r')
-			{
-				add_token();  // add ongoing token
-
-				if (c == '\r' && i + 1 < script.size() && script[i + 1] == '\n')
-					++i;
-
-				// add newline token - don't add multiple consecutively or if at beginning of script
-				if (!tokens.empty() && tokens.back().type != TokenType::Newline)
-				{
-					start_token(TokenType::Newline);
-					add_token();
-				}
-
-				ptr.move_down();
-				continue;
-			}
-
-			if (c == '#')
-			{
-				add_token();  // add ongoing token
-
-				size_t j = i;
-				while (j + 1 < script.size() && script[j + 1] != '\n' && script[j + 1] != '\r')
-					++j;
-
-				ptr.move_right(j - i);
-				i = j;
-				continue;
-			}
-
-			if (c == ',')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Comma);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '\\')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Runoff);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '%')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Percent);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '$')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::BuiltinSymbol);
-				token.lexeme = c;
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '(')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::LParen);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == ')')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::RParen);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '[')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::LBracket);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == ']')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::RBracket);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '+')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Plus);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '-')
-			{
-				add_token();  // add ongoing token
-
-				if (i + 1 < script.size() && script[i + 1] == '>')
-				{
-					start_token(TokenType::Arrow);
-					add_token();
-					++i;
-					ptr.move_right();
-				}
-				else
-				{
-					start_token(TokenType::Minus);
-					add_token();
-				}
-
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '/')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Slash);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '*')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::Asterisk);
-				add_token();
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '!' && i + 1 < script.size() && script[i + 1] == '=')
-			{
-				add_token();  // add ongoing token
-				start_token(TokenType::NotEqualTo);
-				add_token();
-				++i;
-				ptr.move_right(2);
-				continue;
-			}
-
-			if (c == '=')
-			{
-				add_token();  // add ongoing token
-				
-				if (i + 1 < script.size() && script[i + 1] == '=')
-				{
-					start_token(TokenType::EqualTo);
-					add_token();
-					++i;
-					ptr.move_right();
-				}
-				else
-				{
-					start_token(TokenType::Assign);
-					add_token();
-				}
-
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '<')
-			{
-				add_token();  // add ongoing token
-
-				if (i + 1 < script.size() && script[i + 1] == '=')
-				{
-					start_token(TokenType::LessThanOrEqualTo);
-					add_token();
-					++i;
-					ptr.move_right();
-				}
-				else
-				{
-					start_token(TokenType::LessThan);
-					add_token();
-				}
-
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '>')
-			{
-				add_token();  // add ongoing token
-
-				if (i + 1 < script.size() && script[i + 1] == '=')
-				{
-					start_token(TokenType::GreaterThanOrEqualTo);
-					add_token();
-					++i;
-					ptr.move_right();
-				}
-				else
-				{
-					start_token(TokenType::GreaterThan);
-					add_token();
-				}
-
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == '.')
-			{
-				if (token.type == TokenType::Integer)
-				{
-					token.type = TokenType::Float;
-					token.lexeme += c;
-				}
-				else
-				{
-					add_token();  // add ongoing token
-
-					if (i + 1 < script.size() && isdigit(script[i + 1]))
-					{
-						start_token(TokenType::Float);
-						token.lexeme = c;
-					}
-					else
-					{
-						start_token(TokenType::Dot);
-						add_token();
-					}
-				}
-
-				ptr.move_right();
-				continue;
-			}
-
-			if (c == ' ' || c == '\t')
-			{
-				add_token();  // add ongoing token
-				ptr.move_right();
-				continue;
-			}
-
-			if (isdigit(c))
-			{
-				if (token.type != TokenType::Identifier && token.type != TokenType::BuiltinSymbol
-					&& token.type != TokenType::Integer && token.type != TokenType::Float)
-				{
-					add_token();  // add ongoing token
-					start_token(TokenType::Integer);
-				}
-				token.lexeme += c;
-				ptr.move_right();
-				continue;
-			}
-
-			if (isalpha(c) || c == '_')
-			{
-				if (token.type == TokenType::EndOfFile)
-				{
-					add_token();  // add ongoing token
-					start_token(TokenType::Identifier);
-				}
-
-				token.lexeme += c;
-				ptr.move_right();
-				continue;
-			}
-
-			add_token();
-			ptr.move_right();
-		}
-
-		add_token();  // add ongoing token
-
-		start_token(TokenType::EndOfFile);
-		tokens.push_back(token);
-
-		// cancel runoff + newline cancellation pairs
-		std::vector<Token> final_tokens;
-		for (size_t i = 0; i < tokens.size(); ++i)
-		{
-			if (tokens[i].type == TokenType::Runoff)
-			{
-				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Newline)
-					++i;
-				continue;
-			}
-
-			if (tokens[i].type == TokenType::Not)
-			{
-				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Ahead)
-				{
-					Token token = std::move(tokens[i]);
-					token.end_column = tokens[i + 1].end_column;
-					token.end_line = tokens[i + 1].end_line;
-					token.type = TokenType::NotAhead;
-					final_tokens.push_back(std::move(token));
-					++i;
-					continue;
-				}
-
-				if (i + 1 < tokens.size() && tokens[i + 1].type == TokenType::Behind)
-				{
-					Token token = std::move(tokens[i]);
-					token.end_column = tokens[i + 1].end_column;
-					token.end_line = tokens[i + 1].end_line;
-					token.type = TokenType::NotBehind;
-					final_tokens.push_back(std::move(token));
-					++i;
-					continue;
-				}
-			}
-
-			final_tokens.push_back(std::move(tokens[i]));
-		}
-		_stream.load(std::move(final_tokens));
+		Tokenizer tokenizer(script, tokens);
+		_stream.load(std::move(tokens));
 	}
 
 	const TokenStream& Lexer::stream() const

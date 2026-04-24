@@ -1018,7 +1018,8 @@ apply_stmt   ::= "apply" identifier ;
 
 ```
 block         ::= { statement } ;
-fn_decl       ::= "fn" identifier "(" [ param_list ] ")" "->" type_name block [ return_stmt ] "end" "fn" ;
+fn_decl       ::= "fn" identifier "(" [ param_list ] ")" "->" type_name fn_block "end" "fn" ;
+fn_block      ::= { statement | return_stmt }
 return_stmt   ::= "return" expression ;
 
 param_list    ::= param { "," param } ;

@@ -161,7 +161,7 @@ namespace lx
 			context().append(_tree.add(std::move(node)));
 		}
 
-		void throw_error(const char* cause, size_t peek_offset)
+		[[noreturn]] void throw_error(const char* cause, size_t peek_offset)
 		{
 			std::stringstream ss;
 			ss << "[Parser Error] " << cause;
@@ -190,38 +190,25 @@ namespace lx
 
 		void parse_statement()
 		{
-			if (parse_pattern_declaration())
-				return;
-			if (parse_delete_pattern())
-				return;
-			if (parse_append_statement())
-				return;
-			if (parse_scope_statement())
-				return;
-			if (parse_find_statement())
-				return;
-			if (parse_filter_statement())
-				return;
-			if (parse_replace_statement())
-				return;
-			if (parse_apply_statement())
-				return;
-			if (parse_page_statement())
-				return;
-			if (parse_function_definition())
-				return;
-			if (parse_variable_declaration())
-				return;
-			if (parse_assignment())
-				return;
-			if (parse_control_statement())
-				return;
-			if (parse_log_statement())
-				return;
-			if (parse_highlight_statement())
-				return;
+			bool parsed =
+				parse_pattern_declaration() ||
+				parse_delete_pattern() ||
+				parse_append_statement() ||
+				parse_scope_statement() ||
+				parse_find_statement() ||
+				parse_filter_statement() ||
+				parse_replace_statement() ||
+				parse_apply_statement() ||
+				parse_page_statement() ||
+				parse_function_definition() ||
+				parse_variable_declaration() ||
+				parse_assignment() ||
+				parse_control_statement() ||
+				parse_log_statement() ||
+				parse_highlight_statement();
 
-			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
+			if (!parsed)
+				throw_error(errors::UNRECOGNIZED_TOKEN, 0);
 		}
 
 		bool parse_pattern_declaration()
@@ -542,8 +529,16 @@ namespace lx
 		{
 			expr = nullptr;
 
-			// TODO Expressions should copy tokens for now, since they might not be published. Use string_view in tokens instead, but that means including \ from escape characters in string. So, string literals should have a resolve method that will produce a new string without the \s.
+			// TODO
+			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
+			return 0;
+		}
 
+		size_t parse_pattern_expression(PatternExpression*& expr)
+		{
+			expr = nullptr;
+
+			// TODO
 			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
 			return 0;
 		}

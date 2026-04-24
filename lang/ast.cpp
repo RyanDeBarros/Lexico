@@ -42,23 +42,23 @@ namespace lx
 		return _identifier.lexeme;
 	}
 
-	VariableAssignment::VariableAssignment(const Token& identifier, Expression& expression)
-		: _identifier(identifier), _expression(&expression)
+	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
+		: _identifier(std::move(identifier)), _expression(&expression)
 	{
 	}
 
-	LiteralExpression::LiteralExpression(const Token& literal)
-		: _literal(literal)
+	LiteralExpression::LiteralExpression(Token&& literal)
+		: _literal(std::move(literal))
 	{
 	}
 
-	BinaryExpression::BinaryExpression(const Token& op, Expression& left, Expression& right)
-		: _op(op), _left(&left), _right(&right)
+	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
+		: _op(std::move(op)), _left(&left), _right(&right)
 	{
 	}
 
-	VariableExpression::VariableExpression(const Token& identifier)
-		: _identifier(identifier)
+	VariableExpression::VariableExpression(Token&& identifier)
+		: _identifier(std::move(identifier))
 	{
 	}
 
@@ -67,8 +67,8 @@ namespace lx
 	{
 	}
 
-	FunctionCallExpression::FunctionCallExpression(const Token& identifier, std::vector<Expression*>&& args)
-		: _identifier(identifier), _args(std::move(args))
+	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args)
+		: _identifier(std::move(identifier)), _args(std::move(args))
 	{
 	}
 
@@ -122,13 +122,13 @@ namespace lx
 	{
 	}
 
-	PatternLiteral::PatternLiteral(const Token& literal)
-		: _literal(literal)
+	PatternLiteral::PatternLiteral(Token&& literal)
+		: _literal(std::move(literal))
 	{
 	}
 
-	PatternIdentifier::PatternIdentifier(const Token& identifier)
-		: _identifier(identifier)
+	PatternIdentifier::PatternIdentifier(Token&& identifier)
+		: _identifier(std::move(identifier))
 	{
 	}
 
@@ -137,8 +137,8 @@ namespace lx
 	{
 	}
 	
-	PatternAs::PatternAs(PatternExpression& expression, const Token& type)
-		: _expression(&expression), _type(type)
+	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
+		: _expression(&expression), _type(std::move(type))
 	{
 	}
 	
@@ -147,23 +147,23 @@ namespace lx
 	{
 	}
 	
-	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, const Token& op)
-		: _expression(&expression), _op(op)
+	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
+		: _expression(&expression), _op(std::move(op))
 	{
 	}
 	
-	PatternPrefixOperation::PatternPrefixOperation(const Token& op, PatternExpression& expression)
-		: _op(op), _expression(&expression)
+	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
+		: _op(std::move(op)), _expression(&expression)
 	{
 	}
 	
-	PatternBackRef::PatternBackRef(const Token& identifier)
-		: _identifier(identifier)
+	PatternBackRef::PatternBackRef(Token&& identifier)
+		: _identifier(std::move(identifier))
 	{
 	}
 	
-	PatternBinaryOperation::PatternBinaryOperation(const Token& op, PatternExpression& left, PatternExpression& right)
-		: _op(op), _left(&left), _right(&right)
+	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
+		: _op(std::move(op)), _left(&left), _right(&right)
 	{
 	}
 	
@@ -172,8 +172,8 @@ namespace lx
 	{
 	}
 	
-	PatternCapture::PatternCapture(const Token& identifier, PatternExpression& expression)
-		: _identifier(identifier), _expression(&expression)
+	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
+		: _identifier(std::move(identifier)), _expression(&expression)
 	{
 	}
 
