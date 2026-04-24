@@ -12,6 +12,7 @@ namespace lx
 		size_t _token_offset = 0;
 		AbstractSyntaxTree& _tree;
 		std::stack<Block*> _context_stack;
+		std::vector<std::unique_ptr<ASTNode>> _pending_nodes;
 
 	public:
 		ASTBuilder(TokenStream& stream, AbstractSyntaxTree& tree)
@@ -21,7 +22,11 @@ namespace lx
 			size_t tokens_left = SIZE_MAX;
 			while (!_stream.eof() && _stream.tokens_left() < tokens_left)
 			{
-				parse_statement();
+				PendingSafeguard safeguard(*this);
+				if (parse_statement())
+					publish_pending_nodes();
+				// TODO try-catch if not successful, advance to past the next newline and continue building -> throw at the end, but build list of errors
+
 				tokens_left = _stream.tokens_left();
 			}
 		}
@@ -99,9 +104,12 @@ namespace lx
 			return _stream.eof();
 		}
 
-		bool statement_ends(size_t n)
+		void assert_statement_ends(size_t n)
 		{
-			return tokens_left() <= n || peek(n).type == TokenType::Newline || peek(n).type == TokenType::EndOfFile;
+			if (tokens_left() > n && peek(n).type != TokenType::Newline && peek(n).type != TokenType::EndOfFile)
+			{
+				// TODO parser error: unexpected token - expected statement end (newline or eof)
+			}
 		}
 
 		Block& context()
@@ -131,40 +139,75 @@ namespace lx
 			context().append(_tree.add(std::move(node)));
 		}
 
-		void parse_statement()
+		class PendingSafeguard
+		{
+			ASTBuilder& _builder;
+
+		public:
+			PendingSafeguard(ASTBuilder& builder)
+				: _builder(builder)
+			{
+			}
+
+			PendingSafeguard(const PendingSafeguard&) = delete;
+			PendingSafeguard(PendingSafeguard&&) = delete;
+
+			~PendingSafeguard()
+			{
+				_builder._pending_nodes.clear();
+			}
+		};
+
+		template<typename T>
+		T* add_pending_node(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
+		{
+			T* n = node.get();
+			_pending_nodes.push_back(std::move(node));
+			return n;
+		}
+
+		void publish_pending_nodes()
+		{
+			for (auto& node : _pending_nodes)
+				_tree.add(std::move(node));
+			_pending_nodes.clear();
+		}
+
+		bool parse_statement()
 		{
 			if (parse_pattern_declaration())
-				return;
+				return true;
 			if (parse_delete_pattern())
-				return;
+				return true;
 			if (parse_append_statement())
-				return;
+				return true;
 			if (parse_scope_statement())
-				return;
+				return true;
 			if (parse_find_statement())
-				return;
+				return true;
 			if (parse_filter_statement())
-				return;
+				return true;
 			if (parse_replace_statement())
-				return;
+				return true;
 			if (parse_apply_statement())
-				return;
+				return true;
 			if (parse_page_statement())
-				return;
+				return true;
 			if (parse_function_definition())
-				return;
+				return true;
 			if (parse_variable_declaration())
-				return;
+				return true;
 			if (parse_assignment())
-				return;
+				return true;
 			if (parse_control_statement())
-				return;
+				return true;
 			if (parse_log_statement())
-				return;
+				return true;
 			if (parse_highlight_statement())
-				return;
+				return true;
 
 			// TODO parser error: unrecognized token
+			return false;
 		}
 
 		bool parse_pattern_declaration()
@@ -181,12 +224,7 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(2))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(2);
 			append_to_context(std::make_unique<PatternDeclaration>(std::move(ref(1))));
 			advance(3);
 			return true;
@@ -206,12 +244,7 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(2))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(2);
 			append_to_context(std::make_unique<DeletePattern>(std::move(ref(1))));
 			advance(3);
 			return true;
@@ -243,12 +276,7 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(2))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(2);
 			append_to_context(std::make_unique<FindStatement>(std::move(ref(1))));
 			advance(3);
 			return true;
@@ -268,12 +296,7 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(2))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(2);
 			append_to_context(std::make_unique<FilterStatement>(std::move(ref(1))));
 			advance(3);
 			return true;
@@ -288,7 +311,7 @@ namespace lx
 				return false;
 
 			auto match_offset = token_offset(1);
-			std::unique_ptr<Expression> match_expr;
+			Expression* match_expr;
 			size_t match_length;
 
 			if (!parse_expression(match_expr, match_length))
@@ -306,7 +329,7 @@ namespace lx
 			}
 
 			auto string_offset = token_offset(1);
-			std::unique_ptr<Expression> string_expr;
+			Expression* string_expr;
 			size_t string_length;
 			
 			if (!parse_expression(string_expr, string_length))
@@ -315,15 +338,8 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(string_length))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(string_length);
 			append_to_context(std::make_unique<ReplaceStatement>(*match_expr, *string_expr));
-			_tree.add(std::move(match_expr));
-			_tree.add(std::move(string_expr));
 			advance(match_offset.offset() + with_offset.offset() + string_offset.offset() + string_length + 1);
 			return true;
 		}
@@ -342,12 +358,7 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(2))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(2);
 			append_to_context(std::make_unique<ApplyStatement>(std::move(ref(1))));
 			advance(3);
 			return true;
@@ -376,7 +387,7 @@ namespace lx
 				}
 
 				auto offset = token_offset(2);
-				std::unique_ptr<Expression> page;
+				Expression* page;
 				size_t length;
 				if (!parse_expression(page, length))
 				{
@@ -384,37 +395,21 @@ namespace lx
 					return false;
 				}
 
-				if (!statement_ends(length))
-				{
-					// TODO parser error: unexpected token
-					return false;
-				}
-
+				assert_statement_ends(length);
 				append_to_context(std::make_unique<PagePush>(*page));
-				_tree.add(std::move(page));
 				advance(offset.offset() + length + 1);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Pop)
 			{
-				if (!statement_ends(2))
-				{
-					// TODO parser error: unexpected token
-					return false;
-				}
-
+				assert_statement_ends(2);
 				append_to_context(std::make_unique<PagePop>());
 				advance(3);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Delete)
 			{
-				if (!statement_ends(2))
-				{
-					// TODO parser error: unexpected token
-					return false;
-				}
-
+				assert_statement_ends(2);
 				append_to_context(std::make_unique<PageClearStack>());
 				advance(3);
 				return true;
@@ -453,7 +448,7 @@ namespace lx
 			}
 
 			auto offset = token_offset(3);
-			std::unique_ptr<Expression> expr;
+			Expression* expr;
 			size_t length;
 
 			if (!parse_expression(expr, length))
@@ -464,14 +459,8 @@ namespace lx
 
 			bool global = peek(0).type == TokenType::Var;
 
-			if (!statement_ends(length))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(length);
 			append_to_context(std::make_unique<VariableDeclaration>(global, std::move(ref(1)), *expr));
-			_tree.add(std::move(expr));
 			advance(offset.offset() + length + 1);
 			return true;
 		}
@@ -491,7 +480,7 @@ namespace lx
 			}
 
 			auto offset = token_offset(2);
-			std::unique_ptr<Expression> expr;
+			Expression* expr;
 			size_t length;
 
 			if (!parse_expression(expr, length))
@@ -500,14 +489,8 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(length))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(length);
 			append_to_context(std::make_unique<VariableAssignment>(std::move(ref(0)), *expr));
-			_tree.add(std::move(expr));
 			advance(offset.offset() + length + 1);
 			return true;
 		}
@@ -534,16 +517,14 @@ namespace lx
 
 			auto offset = token_offset(1);
 
-			std::vector<std::unique_ptr<Expression>> args_source;
 			std::vector<Expression*> args;
 			std::vector<TokenOffset> offsets;
-			std::unique_ptr<Expression> expr;
+			Expression* expr;
 			size_t length;
 			bool comma_ended = false;
 			while (parse_expression(expr, length))
 			{
-				args.push_back(expr.get());
-				args_source.push_back(std::move(expr));
+				args.push_back(expr);
 				expr = nullptr;
 				offsets.push_back(token_offset(length));
 				comma_ended = false;
@@ -562,15 +543,8 @@ namespace lx
 				return false;
 			}
 
-			if (!statement_ends(0))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
+			assert_statement_ends(0);
 			append_to_context(std::make_unique<LogStatement>(std::move(args)));
-			for (auto& arg : args_source)
-				_tree.add(std::move(arg));
 			advance(offset.offset() + TokenOffset::offset(offsets) + 1);
 			return true;
 		}
@@ -593,7 +567,7 @@ namespace lx
 				clear = true;
 			}
 
-			std::unique_ptr<Expression> expr = nullptr;
+			Expression* expr = nullptr;
 			size_t length = 0;
 			if (!eof() && parse_expression(expr, length))
 				offsets.push_back(token_offset(length));
@@ -620,26 +594,18 @@ namespace lx
 				}
 			}
 
-			if (!statement_ends(0))
-			{
-				// TODO parser error: unexpected token
-				return false;
-			}
-
-			append_to_context(std::make_unique<HighlightStatement>(clear, *expr, color));
-			_tree.add(std::move(expr));
+			assert_statement_ends(0);
+			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color));
 			advance(TokenOffset::offset(offsets) + 1);
 			return true;
 		}
 
-		bool parse_expression(std::unique_ptr<Expression>& expr, size_t& length)
+		bool parse_expression(Expression*& expr, size_t& length)
 		{
 			expr = nullptr;
 			length = 0;
 
-			// TODO some expressions move tokens from the stream - but if expression is ultimately not added, they need to be returned to the stream. Otherwise, make expression nodes use token copies
-
-			// TODO
+			// TODO use add_pending_node for expressions
 			return false;
 		}
 	};

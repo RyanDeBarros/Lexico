@@ -30,17 +30,10 @@ namespace lx
 		ASTRoot _root;
 		std::vector<std::unique_ptr<ASTNode>> _nodes;
 
-		ASTNode& impl_add(std::unique_ptr<ASTNode>&& node);
-
 	public:
+		ASTNode& add(std::unique_ptr<ASTNode>&& node);
 		const ASTRoot& root() const;
 		ASTRoot& root();
-
-		template<typename T>
-		T& add(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
-		{
-			return static_cast<T&>(impl_add(std::move(node)));
-		}
 	};
 
 	class Expression : public ASTNode
@@ -57,7 +50,7 @@ namespace lx
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
 		
 		bool is_global() const;
-		const std::string& variable_name() const;
+		std::string_view variable_name() const;
 	};
 
 	class VariableAssignment : public ASTNode
@@ -66,7 +59,7 @@ namespace lx
 		Expression* _expression;
 
 	public:
-		VariableAssignment(Token&& identifier, Expression& expression);
+		VariableAssignment(const Token& identifier, Expression& expression);
 
 		const std::string& variable_name() const;
 	};
@@ -76,7 +69,7 @@ namespace lx
 		Token _literal;
 
 	public:
-		LiteralExpression(Token&& literal);
+		LiteralExpression(const Token& literal);
 	};
 
 	class BinaryExpression : public Expression
@@ -86,7 +79,7 @@ namespace lx
 		Expression* _right;
 
 	public:
-		BinaryExpression(Token&& op, Expression& left, Expression& right);
+		BinaryExpression(const Token& op, Expression& left, Expression& right);
 	};
 
 	class VariableExpression : public Expression
@@ -94,7 +87,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		VariableExpression(Token&& identifier);
+		VariableExpression(const Token& identifier);
 	};
 
 	class BuiltinSymbolExpression : public Expression
@@ -111,7 +104,7 @@ namespace lx
 		std::vector<Expression*> _args;
 
 	public:
-		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args);
+		FunctionCallExpression(const Token& identifier, std::vector<Expression*>&& args);
 	};
 
 	class FunctionDefinition : public Block
@@ -192,7 +185,7 @@ namespace lx
 		BuiltinSymbol _color;
 
 	public:
-		HighlightStatement(bool clear, Expression& highlightable, BuiltinSymbol color);
+		HighlightStatement(bool clear, Expression* highlightable, BuiltinSymbol color);
 	};
 
 	class DeletePattern : public ASTNode
@@ -220,7 +213,7 @@ namespace lx
 		Token _literal;
 
 	public:
-		PatternLiteral(Token&& literal);
+		PatternLiteral(const Token& literal);
 	};
 
 	class PatternIdentifier : public PatternExpression
@@ -228,7 +221,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		PatternIdentifier(Token&& identifier);
+		PatternIdentifier(const Token& identifier);
 	};
 
 	class PatternBuiltin : public PatternExpression
@@ -245,7 +238,7 @@ namespace lx
 		Token _type;
 
 	public:
-		PatternAs(PatternExpression& expression, Token&& type);
+		PatternAs(PatternExpression& expression, const Token& type);
 	};
 
 	class PatternRepeat : public PatternExpression
@@ -263,7 +256,7 @@ namespace lx
 		Token _op;
 
 	public:
-		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
+		PatternSimpleRepeat(PatternExpression& expression, const Token& op);
 	};
 
 	class PatternPrefixOperation : public PatternExpression
@@ -272,7 +265,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternPrefixOperation(Token&& op, PatternExpression& expression);
+		PatternPrefixOperation(const Token& op, PatternExpression& expression);
 	};
 
 	class PatternBackRef : public PatternExpression
@@ -280,7 +273,7 @@ namespace lx
 		Token _identifier;
 
 	public:
-		PatternBackRef(Token&& identifier);
+		PatternBackRef(const Token& identifier);
 	};
 
 	class PatternBinaryOperation : public PatternExpression
@@ -290,7 +283,7 @@ namespace lx
 		PatternExpression* _right;
 
 	public:
-		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
+		PatternBinaryOperation(const Token& op, PatternExpression& left, PatternExpression& right);
 	};
 
 	class PatternLazy : public PatternExpression
@@ -307,7 +300,7 @@ namespace lx
 		PatternExpression* _expression;
 
 	public:
-		PatternCapture(Token&& identifier, PatternExpression& expression);
+		PatternCapture(const Token& identifier, PatternExpression& expression);
 	};
 
 	class AppendStatement : public ASTNode
