@@ -53,6 +53,15 @@ namespace lx
 			return false;
 		}
 	}
+	
+	std::string Token::line_number_prefix() const
+	{
+		std::string line_number = std::to_string(start_line) + ".";
+		const unsigned int digit_count = line_number.length();
+		for (unsigned int i = 0; i < 1 + (digit_count + 3) % 4; ++i)
+			line_number += " ";
+		return line_number;
+	}
 
 	void TokenStream::load(std::vector<Token>&& tokens)
 	{

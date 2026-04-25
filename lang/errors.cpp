@@ -15,7 +15,7 @@ namespace lx
 
 		while (tabs > 0)
 		{
-			ss << '\t';
+			ss << "    ";
 			--tabs;
 		}
 		for (unsigned int i = 1; i < token.start_column; ++i)

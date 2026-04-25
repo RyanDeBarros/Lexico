@@ -144,6 +144,7 @@ namespace lx
 				++_column;
 			}
 
+			_last_line = _line;
 			_index += n;
 		}
 
@@ -298,7 +299,7 @@ namespace lx
 					tokenize_char('/', TokenType::Slash) ||
 					tokenize_char('*', TokenType::Asterisk) ||
 					tokenize_char_combo('-', '>', i, TokenType::Minus, TokenType::Arrow) ||
-					tokenize_char_combo('=', '=', i, TokenType::EqualTo, TokenType::Assign) ||
+					tokenize_char_combo('=', '=', i, TokenType::Assign, TokenType::EqualTo) ||
 					tokenize_char_combo('<', '=', i, TokenType::LessThan, TokenType::LessThanOrEqualTo) ||
 					tokenize_char_combo('>', '=', i, TokenType::GreaterThan, TokenType::GreaterThanOrEqualTo) ||
 					tokenize_double_char('!', '=', i, TokenType::NotEqualTo);
@@ -382,10 +383,10 @@ namespace lx
 			if (_token.type == TokenType::EndOfFile)
 				return;
 
-			_token.type = resolve_identifier(_token);
+			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
 			_token.end_line = _ptr.last_line();
 			_token.end_column = _ptr.last_column();
-			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
+			_token.type = resolve_identifier(_token);
 			_tokens.push_back(std::move(_token));
 			_token = {};
 			_str_offset = _ptr.index();
@@ -494,6 +495,24 @@ namespace lx
 		std::vector<Token> tokens;
 		Tokenizer tokenizer(script, tokens);
 		_stream.load(std::move(tokens));
+
+		size_t off = 0;
+		for (size_t i = 0; i < script.size(); ++i)
+		{
+			const char c = script[i];
+			if (c == '\n')
+			{
+				_script_lines.push_back(script.substr(off, i - off));
+				off = i + 1;
+			}
+			else if (c == '\r')
+			{
+				_script_lines.push_back(script.substr(off, i - off));
+				if (i + 1 < script.size() && script[i + 1] == '\n')
+					++i;
+				off = i + 1;
+			}
+		}
 	}
 
 	const TokenStream& Lexer::stream() const

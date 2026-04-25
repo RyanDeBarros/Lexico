@@ -121,6 +121,7 @@ namespace lx
 
 		std::string resolved() const;
 		bool is_datatype() const;
+		std::string line_number_prefix() const;
 	};
 
 	class TokenStream

@@ -185,22 +185,25 @@ namespace lx
 			ss << "[Parser Error] " << cause;
 			if (!eof())
 			{
-				ss << ":\n\t";
-				if (peek_offset >= tokens_left())
+				ss << ":\n";
+				// TODO line numbers are off by one
+				if (peek_offset >= tokens_left() || peek(peek_offset).start_line >= _script_lines.size())
 				{
-					ss << _script_lines.back();
-					ss << '\n';
 					Token token = peek(tokens_left() - 1);
 					token.start_column = token.end_column;
 					++token.end_column;
 					token.start_line = token.end_line;
-					ss << SyntaxError::underline(token);
+					
+					std::string line_number = token.line_number_prefix();
+					unsigned int tabs = 1 + line_number.size() / 4;
+					ss << "    " << line_number << _script_lines.back() << '\n' << SyntaxError::underline(token, tabs);
 				}
 				else
 				{
-					ss << _script_lines[peek(peek_offset).start_line];
-					ss << '\n';
-					ss << SyntaxError::underline(peek(peek_offset));
+					const Token& token = peek(peek_offset);
+					std::string line_number = token.line_number_prefix();
+					unsigned int tabs = 1 + line_number.size() / 4;
+					ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << SyntaxError::underline(token, tabs);
 				}
 			}
 			throw SyntaxError(ss.str());
