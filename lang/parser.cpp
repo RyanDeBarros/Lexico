@@ -1,5 +1,7 @@
 #include "parser.h"
 
+#include "util.h"
+
 #include <stack>
 #include <stdexcept>
 #include <sstream>
@@ -186,25 +188,19 @@ namespace lx
 			if (!eof())
 			{
 				ss << ":\n";
-				// TODO line numbers are off by one
-				if (peek_offset >= tokens_left() || peek(peek_offset).start_line >= _script_lines.size())
-				{
-					Token token = peek(tokens_left() - 1);
-					token.start_column = token.end_column;
-					++token.end_column;
-					token.start_line = token.end_line;
-					
-					std::string line_number = token.line_number_prefix();
-					unsigned int tabs = 1 + line_number.size() / 4;
-					ss << "    " << line_number << _script_lines.back() << '\n' << SyntaxError::underline(token, tabs);
-				}
+				
+				Token token;
+				if (peek_offset < tokens_left() && peek(peek_offset).start_line < _script_lines.size())
+					token = peek(peek_offset);
 				else
 				{
-					const Token& token = peek(peek_offset);
-					std::string line_number = token.line_number_prefix();
-					unsigned int tabs = 1 + line_number.size() / 4;
-					ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << SyntaxError::underline(token, tabs);
+					token = peek(tokens_left() - 1);
+					++token.start_column;
 				}
+
+				std::string line_number = token.line_number_prefix();
+				unsigned int tabs = 1 + line_number.size() / 4;
+				ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << SyntaxError::underline(token, tabs);
 			}
 			throw SyntaxError(ss.str());
 		}
