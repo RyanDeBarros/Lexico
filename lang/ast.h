@@ -10,6 +10,8 @@ namespace lx
 	class ASTNode
 	{
 	public:
+		ASTNode() = default;
+		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
 	};
 
