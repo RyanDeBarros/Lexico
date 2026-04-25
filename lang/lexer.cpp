@@ -63,6 +63,8 @@ namespace lx
 			return TokenType::Find;
 		else if (token.lexeme == "fn")
 			return TokenType::Fn;
+		else if (token.lexeme == "for")
+			return TokenType::For;
 		else if (token.lexeme == "highlight")
 			return TokenType::Highlight;
 		else if (token.lexeme == "if")

@@ -92,12 +92,12 @@ namespace lx
 	{
 	}
 	
-	WhileLoopStatement::WhileLoopStatement(Expression& condition)
+	WhileLoop::WhileLoop(Expression& condition)
 		: _condition(&condition)
 	{
 	}
 	
-	ForLoopStatement::ForLoopStatement(Token&& iterator, Expression& iterable)
+	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
 		: _iterator(std::move(iterator)), _iterable(&iterable)
 	{
 	}

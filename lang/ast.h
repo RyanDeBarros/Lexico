@@ -145,21 +145,21 @@ namespace lx
 	{
 	};
 
-	class WhileLoopStatement : public Block
+	class WhileLoop : public Block
 	{
 		Expression* _condition;
 
 	public:
-		WhileLoopStatement(Expression& condition);
+		WhileLoop(Expression& condition);
 	};
 
-	class ForLoopStatement : public Block
+	class ForLoop : public Block
 	{
 		Token _iterator;
 		Expression* _iterable;
 
 	public:
-		ForLoopStatement(Token&& iterator, Expression& iterable);
+		ForLoop(Token&& iterator, Expression& iterable);
 	};
 
 	class BreakStatement : public ASTNode

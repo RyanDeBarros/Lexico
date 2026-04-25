@@ -9,6 +9,7 @@ namespace lx
 	namespace errors
 	{
 		constexpr const char* UNRECOGNIZED_TOKEN = "unrecognized token";
+		constexpr const char* UNRECOGNIZED_DECLARER = "unrecognized declarer (should be 'var' or 'let')";
 		constexpr const char* EXPECTED_OPERAND = "expected operand";
 		constexpr const char* UNRECOGNIZED_OPERAND = "unrecognized operand";
 		constexpr const char* EXPECTED_STATEMENT_END = "unexpected token - expected statement end";
@@ -17,10 +18,15 @@ namespace lx
 		constexpr const char* EXPECTED_IDENTIFIER = "expected identifier";
 		constexpr const char* EXPECTED_SYMBOL = "expected $ symbol";
 		constexpr const char* EXPECTED_PREDICATE = "expected predicate";
+		constexpr const char* EXPECTED_DATATYPE = "expected data type";
 		constexpr const char* EXPECTED_WITH_CLAUSE = "expected 'with' clause";
+		constexpr const char* EXPECTED_IN_CLAUSE = "expected 'in' clause";
 		constexpr const char* EXPECTED_COLOR_CLAUSE = "expected color symbol";
 		constexpr const char* UNRECOGNIZED_COLOR_CLAUSE = "unrecognized color symbol";
-		constexpr const char* EXPECTED_ASSIGN_OPERATOR = "expected '='";
+		constexpr const char* EXPECTED_ASSIGN = "expected '='";
+		constexpr const char* EXPECTED_LPAREN = "expected '('";
+		constexpr const char* EXPECTED_RPAREN = "expected ')'";
+		constexpr const char* EXPECTED_ARROW = "expected '->'";
 	};
 
 	class ASTBuilder
@@ -60,48 +66,48 @@ namespace lx
 	private:
 		class TokenOffset
 		{
-			size_t& _full_offset;
+			ASTBuilder& _builder;
 			size_t _local_offset;
-			bool alive = true;
 
 		public:
-			TokenOffset(size_t& full_offset, size_t local_offset)
-				: _full_offset(full_offset), _local_offset(local_offset)
+			TokenOffset(ASTBuilder& builder, size_t local_offset)
+				: _builder(builder), _local_offset(local_offset)
 			{
-				_full_offset += _local_offset;
+				_builder._token_offset += _local_offset;
 			}
 
 			TokenOffset(const TokenOffset&) = delete;
-
-			TokenOffset(TokenOffset&& other) noexcept
-				: alive(other.alive), _full_offset(other._full_offset), _local_offset(other._local_offset)
-			{
-				other.alive = false;
-			}
+			TokenOffset(TokenOffset&& other) noexcept = delete;
 
 			~TokenOffset()
 			{
-				if (alive)
-					_full_offset -= _local_offset;
+				_builder._token_offset -= _local_offset;
 			}
 
-			size_t offset() const
+			size_t length() const
 			{
 				return _local_offset;
 			}
-			
-			static size_t offset(const std::vector<TokenOffset>& offsets)
+
+			void submit()
 			{
-				size_t off = 0;
-				for (const TokenOffset& offset : offsets)
-					off += offset.offset();
-				return off;
+				_builder.assert_statement_ends();
+				_builder.advance(1);
+
+				_builder._token_offset -= _local_offset;
+				_local_offset = 0;
+			}
+
+			void add(size_t offset)
+			{
+				_local_offset += offset;
+				_builder._token_offset += offset;
 			}
 		};
 
-		TokenOffset token_offset(size_t offset)
+		TokenOffset token_offset(size_t offset = 0)
 		{
-			return TokenOffset(_token_offset, offset);
+			return TokenOffset(*this, offset);
 		}
 
 		size_t tokens_left()
@@ -122,7 +128,7 @@ namespace lx
 
 		void advance(size_t n)
 		{
-			_stream.advance(n);
+			_stream.advance(n + _token_offset);
 		}
 
 		bool eof() const
@@ -130,10 +136,10 @@ namespace lx
 			return _stream.eof();
 		}
 
-		void assert_statement_ends(size_t n)
+		void assert_statement_ends()
 		{
-			if (tokens_left() > n && peek(n).type != TokenType::Newline && peek(n).type != TokenType::EndOfFile)
-				throw_error(errors::EXPECTED_STATEMENT_END, n);
+			if (!eof() && peek(0).type != TokenType::Newline && peek(0).type != TokenType::EndOfFile)
+				throw_error(errors::EXPECTED_STATEMENT_END, 0);
 		}
 
 		Block& context()
@@ -158,9 +164,12 @@ namespace lx
 			_context_stack.pop();
 		}
 
-		void append_to_context(std::unique_ptr<ASTNode>&& node)
+		template<typename T>
+		T& append_to_context(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
 		{
+			T* n = node.get();
 			context().append(_tree.add(std::move(node)));
+			return *n;
 		}
 
 		[[noreturn]] void throw_error(const char* cause, size_t peek_offset)
@@ -221,9 +230,9 @@ namespace lx
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
-			assert_statement_ends(2);
-			append_to_context(std::make_unique<PatternDeclaration>(std::move(ref(1))));
-			advance(3);
+			auto& identifier = ref(1);
+			token_offset(2).submit();
+			append_to_context(std::make_unique<PatternDeclaration>(std::move(identifier)));
 			return true;
 		}
 
@@ -235,9 +244,9 @@ namespace lx
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
-			assert_statement_ends(2);
-			append_to_context(std::make_unique<DeletePattern>(std::move(ref(1))));
-			advance(3);
+			auto& identifier = ref(1);
+			token_offset(2).submit();
+			append_to_context(std::make_unique<DeletePattern>(std::move(identifier)));
 			return true;
 		}
 
@@ -251,11 +260,9 @@ namespace lx
 
 			auto offset = token_offset(1);
 			Expression* expr;
-			size_t length = parse_expression(expr);
-
-			assert_statement_ends(offset.offset() + length);
+			offset.add(parse_expression(expr));
+			offset.submit();
 			append_to_context(std::make_unique<AppendStatement>(*expr));
-			advance(offset.offset() + length);
 			return true;
 		}
 
@@ -266,17 +273,18 @@ namespace lx
 
 			if (tokens_left() < 2 || peek(1).type != TokenType::BuiltinSymbol)
 				throw_error(errors::EXPECTED_SYMBOL, 1);
-			
+
+			auto& identifier = ref(1);
+
 			if (tokens_left() < 3)
 				throw_error(errors::EXPECTED_EXPRESSION, 2);
 
 			auto offset = token_offset(2);
 			Expression* expr;
-			size_t length = parse_expression(expr);
+			offset.add(parse_expression(expr));
 
-			assert_statement_ends(offset.offset() + length);
-			append_to_context(std::make_unique<ScopeStatement>(std::move(ref(1)), *expr));
-			advance(offset.offset() + length);
+			offset.submit();
+			append_to_context(std::make_unique<ScopeStatement>(std::move(identifier), *expr));
 			return true;
 		}
 
@@ -288,9 +296,9 @@ namespace lx
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
-			assert_statement_ends(2);
-			append_to_context(std::make_unique<FindStatement>(std::move(ref(1))));
-			advance(3);
+			auto& identifier = ref(1);
+			token_offset(2).submit();
+			append_to_context(std::make_unique<FindStatement>(std::move(identifier)));
 			return true;
 		}
 
@@ -302,9 +310,9 @@ namespace lx
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_PREDICATE, 1);
 
-			assert_statement_ends(2);
-			append_to_context(std::make_unique<FilterStatement>(std::move(ref(1))));
-			advance(3);
+			auto& identifier = ref(1);
+			token_offset(2).submit();
+			append_to_context(std::make_unique<FilterStatement>(std::move(identifier)));
 			return true;
 		}
 
@@ -313,22 +321,19 @@ namespace lx
 			if (eof() || peek(0).type != TokenType::Filter)
 				return false;
 
-			auto match_offset = token_offset(1);
+			auto offset = token_offset(1);
 			Expression* match_expr;
-			size_t match_length = parse_expression(match_expr);
-
-			auto with_offset = token_offset(match_length);
+			offset.add(parse_expression(match_expr));
 
 			if (eof() || peek(0).type != TokenType::With)
 				throw_error(errors::EXPECTED_WITH_CLAUSE, 0);
 
-			auto string_offset = token_offset(1);
+			offset.add(1);
 			Expression* string_expr;
-			size_t string_length = parse_expression(string_expr);
+			offset.add(parse_expression(string_expr));
 
-			assert_statement_ends(string_length);
+			offset.submit();
 			append_to_context(std::make_unique<ReplaceStatement>(*match_expr, *string_expr));
-			advance(match_offset.offset() + with_offset.offset() + string_offset.offset() + string_length + 1);
 			return true;
 		}
 
@@ -340,9 +345,10 @@ namespace lx
 			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
-			assert_statement_ends(2);
-			append_to_context(std::make_unique<ApplyStatement>(std::move(ref(1))));
-			advance(3);
+			auto& identifier = ref(1);
+
+			token_offset(2).submit();;
+			append_to_context(std::make_unique<ApplyStatement>(std::move(identifier)));
 			return true;
 		}
 
@@ -361,25 +367,22 @@ namespace lx
 
 				auto offset = token_offset(2);
 				Expression* page;
-				size_t length = parse_expression(page);
+				offset.add(parse_expression(page));
 
-				assert_statement_ends(length);
+				offset.submit();
 				append_to_context(std::make_unique<PagePush>(*page));
-				advance(offset.offset() + length + 1);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Pop)
 			{
-				assert_statement_ends(2);
+				token_offset(2).submit();
 				append_to_context(std::make_unique<PagePop>());
-				advance(3);
 				return true;
 			}
 			else if (peek(1).type == TokenType::Delete)
 			{
-				assert_statement_ends(2);
+				token_offset(2).submit();
 				append_to_context(std::make_unique<PageClearStack>());
-				advance(3);
 				return true;
 			}
 			else
@@ -388,8 +391,68 @@ namespace lx
 
 		bool parse_function_definition()
 		{
-			// TODO
-			return false;
+			if (eof() || peek(0).type != TokenType::Fn)
+				return false;
+
+			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
+
+			auto& identifier = ref(1);
+
+			if (tokens_left() < 3 || peek(2).type != TokenType::LParen)
+				throw_error(errors::EXPECTED_LPAREN, 1);
+
+			auto offset = token_offset(3);
+
+			std::vector<std::pair<Token, Token>> arglist;
+			bool comma_ended = false;
+
+			while (!eof() && peek(0).type != TokenType::RParen)
+			{
+				if (!peek(0).is_datatype())
+					throw_error(errors::EXPECTED_DATATYPE, 0);
+
+				if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
+					throw_error(errors::EXPECTED_IDENTIFIER, 1);
+
+				arglist.push_back(std::make_pair(std::move(ref(0)), std::move(ref(1))));
+				offset.add(2);
+
+				comma_ended = false;
+				if (!eof() && peek(0).type != TokenType::Comma)
+					break;
+				else
+					comma_ended = true;
+			}
+
+			if (comma_ended)
+				throw_error(errors::EXPECTED_DATATYPE, 0);
+
+			if (eof() || peek(0).type != TokenType::RParen)
+				throw_error(errors::EXPECTED_RPAREN, 0);
+
+			if (tokens_left() < 2 || peek(1).type != TokenType::Arrow)
+				throw_error(errors::EXPECTED_ARROW, 1);
+
+			if (tokens_left() < 3 || !peek(2).is_datatype())
+				throw_error(errors::EXPECTED_DATATYPE, 2);
+
+			auto& return_type = ref(2);
+			offset.add(3);
+			offset.submit();
+
+			enter_context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist), std::move(return_type))));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
 		}
 
 		bool parse_variable_declaration()
@@ -397,21 +460,24 @@ namespace lx
 			if (tokens_left() < 4 || (peek(0).type != TokenType::Var && peek(0).type != TokenType::Let))
 				return false;
 
+			bool global = peek(0).type == TokenType::Var;
+			if (!global && peek(0).type != TokenType::Let)
+				throw_error(errors::UNRECOGNIZED_DECLARER, 0);
+
 			if (peek(1).type != TokenType::Identifier)
 				throw_error(errors::EXPECTED_IDENTIFIER, 1);
 
+			auto& identifier = ref(1);
+
 			if (peek(2).type != TokenType::Assign)
-				throw_error(errors::EXPECTED_ASSIGN_OPERATOR, 2);
+				throw_error(errors::EXPECTED_ASSIGN, 2);
 
 			auto offset = token_offset(3);
 			Expression* expr;
-			size_t length = parse_expression(expr);
+			offset.add(parse_expression(expr));
 
-			bool global = peek(0).type == TokenType::Var;
-
-			assert_statement_ends(length);
-			append_to_context(std::make_unique<VariableDeclaration>(global, std::move(ref(1)), *expr));
-			advance(offset.offset() + length + 1);
+			offset.submit();
+			append_to_context(std::make_unique<VariableDeclaration>(global, std::move(identifier), *expr));
 			return true;
 		}
 
@@ -421,22 +487,182 @@ namespace lx
 				return false;
 
 			if (peek(1).type != TokenType::Assign)
-				throw_error(errors::EXPECTED_ASSIGN_OPERATOR, 1);
+				throw_error(errors::EXPECTED_ASSIGN, 1);
+
+			auto& identifier = ref(0);
 
 			auto offset = token_offset(2);
 			Expression* expr;
-			size_t length = parse_expression(expr);
+			offset.add(parse_expression(expr));
 
-			assert_statement_ends(length);
-			append_to_context(std::make_unique<VariableAssignment>(std::move(ref(0)), *expr));
-			advance(offset.offset() + length + 1);
+			offset.submit();
+			append_to_context(std::make_unique<VariableAssignment>(std::move(identifier), *expr));
 			return true;
 		}
 
 		bool parse_control_statement()
 		{
-			// TODO
-			return false;
+			return parse_break_statement()
+				|| parse_continue_statement()
+				|| parse_if_statement()
+				|| parse_elif_statement()
+				|| parse_else_statement()
+				|| parse_while_loop()
+				|| parse_for_loop();
+		}
+
+		bool parse_break_statement()
+		{
+			if (eof() || peek(0).type != TokenType::Break)
+				return false;
+
+			token_offset(1).submit();
+			append_to_context(std::make_unique<BreakStatement>());
+			return true;
+		}
+
+		bool parse_continue_statement()
+		{
+			if (eof() || peek(0).type != TokenType::Continue)
+				return false;
+
+			token_offset(1).submit();
+			append_to_context(std::make_unique<ContinueStatement>());
+			return true;
+		}
+
+		bool parse_if_statement()
+		{
+			if (eof() || peek(0).type != TokenType::If)
+				return false;
+
+			auto offset = token_offset(1);
+			Expression* expr;
+			offset.add(parse_expression(expr));
+
+			offset.submit();
+			enter_context(append_to_context(std::make_unique<IfStatement>(*expr)));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
+
+			return true;
+		}
+
+		bool parse_elif_statement()
+		{
+			if (eof() || peek(0).type != TokenType::Elif)
+				return false;
+
+			auto offset = token_offset(1);
+			Expression* expr;
+			offset.add(parse_expression(expr));
+
+			offset.submit();
+			enter_context(append_to_context(std::make_unique<ElifStatement>(*expr)));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
+
+			return true;
+		}
+
+		bool parse_else_statement()
+		{
+			if (eof() || peek(0).type != TokenType::Else)
+				return false;
+
+			token_offset(1).submit();
+			enter_context(append_to_context(std::make_unique<ElseStatement>()));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
+
+			return true;
+		}
+
+		bool parse_while_loop()
+		{
+			if (eof() || peek(0).type != TokenType::While)
+				return false;
+
+			auto offset = token_offset(1);
+			Expression* expr;
+			offset.add(parse_expression(expr));
+
+			offset.submit();
+			enter_context(append_to_context(std::make_unique<WhileLoop>(*expr)));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
+
+			return true;
+		}
+
+		bool parse_for_loop()
+		{
+			if (eof() || peek(0).type != TokenType::For)
+				return false;
+
+			if (tokens_left() < 2 || peek(1).type != TokenType::Identifier)
+				throw_error(errors::EXPECTED_IDENTIFIER, 1);
+
+			if (tokens_left() < 3 || peek(2).type != TokenType::In)
+				throw_error(errors::EXPECTED_IN_CLAUSE, 2);
+
+			auto& identifier = ref(1);
+
+			auto offset = token_offset(3);
+			Expression* expr;
+			offset.add(parse_expression(expr));
+
+			offset.submit();
+			enter_context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), *expr)));
+			try
+			{
+				// TODO
+
+				exit_context();
+			}
+			catch (const SyntaxError&)
+			{
+				exit_context();
+				throw;
+			}
+
+			return true;
 		}
 
 		bool parse_log_statement()
@@ -450,19 +676,17 @@ namespace lx
 			auto offset = token_offset(1);
 
 			std::vector<Expression*> args;
-			std::vector<TokenOffset> offsets;
 
 			while (!eof() && peek(0).type != TokenType::Newline && peek(0).type != TokenType::EndOfFile)
 			{
 				Expression* expr;
-				size_t length = parse_expression(expr);
+				offset.add(parse_expression(expr));
 				args.push_back(expr);
-				offsets.push_back(token_offset(length));
 
 				if (eof() || peek(0).type == TokenType::Newline || peek(0).type == TokenType::EndOfFile)
 					break;
 				else if (peek(0).type == TokenType::Comma)
-					offsets.push_back(token_offset(1));
+					offset.add(1);
 				else
 					throw_error(errors::EXPECTED_EXPRESSION, 0);
 			}
@@ -470,9 +694,8 @@ namespace lx
 			if (args.empty())
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
-			assert_statement_ends(0);
+			offset.submit();
 			append_to_context(std::make_unique<LogStatement>(std::move(args)));
-			advance(offset.offset() + TokenOffset::offset(offsets) + 1);
 			return true;
 		}
 
@@ -481,13 +704,13 @@ namespace lx
 			if (eof() || peek(0).type != TokenType::Highlight)
 				return false;
 
-			std::vector<TokenOffset> offsets;
-			offsets.push_back(token_offset(1));
+			auto offset = token_offset();
+			offset.add(1);
 
 			bool clear = false;
 			if (!eof() && peek(0).type == TokenType::Delete)
 			{
-				offsets.push_back(token_offset(1));
+				offset.add(1);
 				clear = true;
 			}
 
@@ -495,29 +718,25 @@ namespace lx
 			Expression* expr = nullptr;
 
 			if (!eof() && peek(0).type != TokenType::Color)
-			{
-				size_t length = parse_expression(expr);
-				offsets.push_back(token_offset(length));
-			}
+				offset.add(parse_expression(expr));
 
 			if (!eof() && peek(0).type == TokenType::Color)
 			{
-				offsets.push_back(token_offset(1));
+				offset.add(1);
 				if (eof() || peek(0).type != TokenType::BuiltinSymbol)
 					throw_error(errors::EXPECTED_COLOR_CLAUSE, 0);
 
 				if (auto c = parse_builtin_symbol(peek(0).lexeme))
 				{
 					color = *c;
-					offsets.push_back(token_offset(1));
+					offset.add(1);
 				}
 				else
 					throw_error(errors::UNRECOGNIZED_COLOR_CLAUSE, 0);
 			}
 
-			assert_statement_ends(0);
+			offset.submit();
 			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color));
-			advance(TokenOffset::offset(offsets) + 1);
 			return true;
 		}
 
@@ -537,11 +756,6 @@ namespace lx
 			// TODO
 			throw_error(errors::UNRECOGNIZED_TOKEN, 0);
 			return 0;
-		}
-
-		void parse_block()
-		{
-			// TODO
 		}
 	};
 

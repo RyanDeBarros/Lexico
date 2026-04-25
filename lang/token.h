@@ -51,6 +51,7 @@ namespace lx
 		End,
 		Filter,
 		Find,
+		For,
 		Fn,
 		Highlight,
 		If,
@@ -119,6 +120,7 @@ namespace lx
 		unsigned int end_column = 0;
 
 		std::string resolved() const;
+		bool is_datatype() const;
 	};
 
 	class TokenStream

@@ -31,6 +31,29 @@ namespace lx
 		return str;
 	}
 
+	bool Token::is_datatype() const
+	{
+		switch (type)
+		{
+		case TokenType::IntType:
+		case TokenType::FloatType:
+		case TokenType::BoolType:
+		case TokenType::StringType:
+		case TokenType::VoidType:
+		case TokenType::PatternType:
+		case TokenType::MatchType:
+		case TokenType::MatchesType:
+		case TokenType::CapIdType:
+		case TokenType::CapType:
+		case TokenType::IRangeType:
+		case TokenType::SRangeType:
+		case TokenType::ListType:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	void TokenStream::load(std::vector<Token>&& tokens)
 	{
 		_tokens = std::move(tokens);
