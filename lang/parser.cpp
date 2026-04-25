@@ -27,6 +27,14 @@ namespace lx
 		constexpr const char* EXPECTED_LPAREN = "expected '('";
 		constexpr const char* EXPECTED_RPAREN = "expected ')'";
 		constexpr const char* EXPECTED_ARROW = "expected '->'";
+		constexpr const char* EXPECTED_IF_END = "expected 'end if' statement";
+		constexpr const char* EXPECTED_IF = "expected 'if'";
+		constexpr const char* EXPECTED_FN_END = "expected 'end fn' statement";
+		constexpr const char* EXPECTED_FN = "expected 'fn'";
+		constexpr const char* EXPECTED_WHILE_END = "expected 'end while' statement";
+		constexpr const char* EXPECTED_WHILE = "expected 'while'";
+		constexpr const char* EXPECTED_FOR_END = "expected 'end for' statement";
+		constexpr const char* EXPECTED_FOR = "expected 'for'";
 	};
 
 	class ASTBuilder
@@ -42,9 +50,7 @@ namespace lx
 		ASTBuilder(TokenStream& stream, std::vector<SyntaxError>& errors, const std::vector<std::string_view>& script_lines, AbstractSyntaxTree& tree)
 			: _stream(stream), _errors(errors), _script_lines(script_lines), _tree(tree)
 		{
-			stream.seek();
-			size_t tokens_left = SIZE_MAX;
-			while (!_stream.eof() && _stream.tokens_left() < tokens_left)
+			while (!eof())
 			{
 				try
 				{
@@ -52,14 +58,8 @@ namespace lx
 				}
 				catch (const SyntaxError& e)
 				{
-					_errors.push_back(e);
-					while (!_stream.eof() && _stream.peek(0).type != TokenType::Newline && _stream.peek(0).type != TokenType::EndOfFile)
-						_stream.advance();
-					if (!_stream.eof())
-						_stream.advance();
+					catch_error(e);
 				}
-
-				tokens_left = _stream.tokens_left();
 			}
 		}
 
@@ -147,21 +147,36 @@ namespace lx
 			return _context_stack.empty() ? _tree.root() : *_context_stack.top();
 		}
 
-		void enter_context(Block& block)
+		class Context
 		{
-			_context_stack.push(&block);
-		}
+			ASTBuilder& _builder;
 
-		void exit_context()
-		{
-			if (_context_stack.empty())
+		public:
+			Context(ASTBuilder& builder, Block& block)
+				: _builder(builder)
 			{
-				std::stringstream ss;
-				ss << __FUNCTION__ << ": context stack is empty";
-				throw std::runtime_error(ss.str());
+				_builder._context_stack.push(&block);
 			}
 
-			_context_stack.pop();
+			Context(const Context&) = delete;
+			Context(Context&&) = delete;
+
+			~Context()
+			{
+				if (_builder._context_stack.empty())
+				{
+					std::stringstream ss;
+					ss << __FUNCTION__ << ": context stack is empty";
+					throw std::runtime_error(ss.str());
+				}
+
+				_builder._context_stack.pop();
+			}
+		};
+
+		Context context(Block& block)
+		{
+			return Context(*this, block);
 		}
 
 		template<typename T>
@@ -197,6 +212,15 @@ namespace lx
 				}
 			}
 			throw SyntaxError(ss.str());
+		}
+
+		void catch_error(const SyntaxError& e)
+		{
+			_errors.push_back(e);
+			while (!_stream.eof() && _stream.peek(0).type != TokenType::Newline && _stream.peek(0).type != TokenType::EndOfFile)
+				_stream.advance();
+			if (!_stream.eof())
+				_stream.advance();
 		}
 
 		void parse_statement()
@@ -439,20 +463,11 @@ namespace lx
 
 			auto& return_type = ref(2);
 			offset.add(3);
+
 			offset.submit();
-
-			enter_context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist), std::move(return_type))));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
+			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist), std::move(return_type))));
+			parse_simple_block(TokenType::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
+			return true;
 		}
 
 		bool parse_variable_declaration()
@@ -541,19 +556,8 @@ namespace lx
 			offset.add(parse_expression(expr));
 
 			offset.submit();
-			enter_context(append_to_context(std::make_unique<IfStatement>(*expr)));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
-
+			auto ctx = context(append_to_context(std::make_unique<IfStatement>(*expr)));
+			parse_if_block();
 			return true;
 		}
 
@@ -567,19 +571,8 @@ namespace lx
 			offset.add(parse_expression(expr));
 
 			offset.submit();
-			enter_context(append_to_context(std::make_unique<ElifStatement>(*expr)));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
-
+			auto ctx = context(append_to_context(std::make_unique<ElifStatement>(*expr)));
+			parse_if_block();
 			return true;
 		}
 
@@ -589,19 +582,8 @@ namespace lx
 				return false;
 
 			token_offset(1).submit();
-			enter_context(append_to_context(std::make_unique<ElseStatement>()));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
-
+			auto ctx = context(append_to_context(std::make_unique<ElseStatement>()));
+			parse_simple_block(TokenType::If, errors::EXPECTED_IF_END, errors::EXPECTED_IF);
 			return true;
 		}
 
@@ -615,19 +597,8 @@ namespace lx
 			offset.add(parse_expression(expr));
 
 			offset.submit();
-			enter_context(append_to_context(std::make_unique<WhileLoop>(*expr)));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
-
+			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(*expr)));
+			parse_simple_block(TokenType::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
 			return true;
 		}
 
@@ -649,19 +620,8 @@ namespace lx
 			offset.add(parse_expression(expr));
 
 			offset.submit();
-			enter_context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), *expr)));
-			try
-			{
-				// TODO
-
-				exit_context();
-			}
-			catch (const SyntaxError&)
-			{
-				exit_context();
-				throw;
-			}
-
+			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), *expr)));
+			parse_simple_block(TokenType::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
 			return true;
 		}
 
@@ -738,6 +698,47 @@ namespace lx
 			offset.submit();
 			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color));
 			return true;
+		}
+
+		void parse_simple_block(TokenType end, const char* missing_end_err, const char* missing_end_kw_err)
+		{
+			while (!eof())
+			{
+				if (peek(0).type == TokenType::End)
+				{
+					if (tokens_left() < 2 || peek(1).type != end)
+						throw_error(missing_end_kw_err, 1);
+
+					token_offset(2).submit();
+					return;
+				}
+
+				parse_statement();
+			}
+
+			throw_error(missing_end_err, 0);
+		}
+
+		void parse_if_block()
+		{
+			while (!eof())
+			{
+				if (peek(0).type == TokenType::End)
+				{
+					if (tokens_left() < 2 || peek(1).type != TokenType::If)
+						throw_error(errors::EXPECTED_IF, 1);
+
+					token_offset(2).submit();
+					return;
+				}
+
+				if (peek(0).type == TokenType::Elif || peek(0).type == TokenType::Else)
+					return;  // break
+
+				parse_statement();
+			}
+
+			throw_error(errors::EXPECTED_IF_END, 0);
 		}
 
 		size_t parse_expression(Expression*& expr)
