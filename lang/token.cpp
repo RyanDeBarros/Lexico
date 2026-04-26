@@ -25,9 +25,18 @@ namespace lx
 			if (escaping)
 			{
 				escaping = false;
-				if (c != '\\' && c != '"')
-					str += '\\';
-				str += c;
+				if (c == 'n')
+					str += '\n';
+				else if (c == 'r')
+					str += '\r';
+				else if (c == 't')
+					str += '\t';
+				else
+				{
+					if (c != '\\' && c != '"')
+						str += '\\';
+					str += c;
+				}
 			}
 			else if (c == '\\')
 				escaping = true;

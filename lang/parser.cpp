@@ -26,6 +26,7 @@ namespace lx
 		constexpr const char* EXPECTED_ASSIGN = "expected '='";
 		constexpr const char* EXPECTED_LPAREN = "expected '('";
 		constexpr const char* EXPECTED_RPAREN = "expected ')'";
+		constexpr const char* EXPECTED_RBRACKET = "expected ']'";
 		constexpr const char* EXPECTED_ARROW = "expected '->'";
 		constexpr const char* EXPECTED_IF_END = "expected 'end if' statement";
 		constexpr const char* EXPECTED_IF = "expected 'if'";
@@ -452,10 +453,10 @@ namespace lx
 
 		bool parse_assignment()
 		{
-			if (!peek_token_is(0, TokenType::Identifier))
+			if (!peek_token_is(0, TokenType::Identifier) && !peek_token_is(0, TokenType::Percent))
 				return false;
 
-			auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+			auto& identifier = ref(0);
 			parse_token(1, TokenType::Assign, errors::EXPECTED_ASSIGN);
 
 			auto offset = token_offset(2);
@@ -796,6 +797,16 @@ namespace lx
 			return expr;
 		}
 
+		Expression& parse_subscript_expression(Expression& lhs, TokenOffset& offset)
+		{
+			offset.add(1);  // '['
+			Expression& expr = parse_expression(offset, Precedence::Lowest);
+			if (!peek_token_is(0, TokenType::RBracket))
+				throw_error(errors::EXPECTED_RBRACKET, 0);
+			offset.add(1);  // ']'
+			return expr;
+		}
+
 		Expression& parse_prefix_expression(TokenOffset& offset)
 		{
 			auto& op = ref(0);
@@ -806,8 +817,14 @@ namespace lx
 
 		void parse_binary_expressions(Expression*& lhs, TokenOffset& offset, Precedence min_precedence)
 		{
-			while (continue_statement() && peek(0).is_binary_operator())
+			while (continue_statement() && (peek(0).is_binary_operator() || peek_token_is(0, TokenType::LBracket)))
 			{
+				if (peek_token_is(0, TokenType::LBracket))
+				{
+					lhs = &parse_subscript_expression(*lhs, offset);
+					continue;
+				}
+
 				Precedence precedence = peek(0).precedence();
 				if (precedence < min_precedence)
 					break;

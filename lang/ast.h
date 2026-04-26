@@ -111,7 +111,14 @@ namespace lx
 		AsExpression(Expression& expr, Token&& type);
 	};
 
-	// TODO [] subscript expression
+	class SubscriptExpression : public Expression
+	{
+		Expression& _container;
+		Expression& _subscript;
+
+	public:
+		SubscriptExpression(Expression& container, Expression& subscript);
+	};
 
 	class VariableExpression : public Expression
 	{

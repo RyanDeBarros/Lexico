@@ -388,6 +388,7 @@ namespace lx
 		{
 			_token.end_line = _ptr.last_line();
 			_token.end_column = _ptr.last_column();
+
 			if (_token.type == TokenType::String)
 			{
 				--_token.start_column;
@@ -408,8 +409,8 @@ namespace lx
 			{
 				add_token();  // add ongoing token
 				start_token(type);
-				add_token();
 				_ptr.move_right();
+				add_token();
 				return true;
 			}
 			else
@@ -425,17 +426,17 @@ namespace lx
 				if (i + 1 < _script.size() && _script[i + 1] == chr2)
 				{
 					start_token(combo);
+					_ptr.move_right(2);
 					add_token();
 					++i;
-					_ptr.move_right();
 				}
 				else
 				{
 					start_token(single);
+					_ptr.move_right();
 					add_token();
 				}
 
-				_ptr.move_right();
 				return true;
 			}
 			else

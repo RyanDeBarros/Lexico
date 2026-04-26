@@ -67,6 +67,11 @@ namespace lx
 	{
 	}
 
+	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
+		: _container(container), _subscript(subscript)
+	{
+	}
+
 	VariableExpression::VariableExpression(Token&& identifier)
 		: _identifier(std::move(identifier))
 	{
