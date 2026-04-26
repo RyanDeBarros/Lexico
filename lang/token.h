@@ -41,9 +41,7 @@ namespace lx
 		ListType,
 
 		// Keywords
-		And,
 		Apply,
-		As,
 		Break,
 		Color,
 		Continue,
@@ -95,6 +93,8 @@ namespace lx
 		RBracket,
 
 		// Operators
+		And,
+		As,
 		Asterisk,
 		Dot,
 		EqualTo,
@@ -108,6 +108,28 @@ namespace lx
 		Plus,
 		Slash,
 	};
+
+	enum class Precedence
+	{
+		None = -1,
+		Lowest,
+		Comma,
+		Or,
+		And,
+		Equality,
+		Compare,
+		NormalTo,
+		Except,
+		Sum,
+		Mult,
+		Prefix,
+		Repeat,
+		PatternTo,
+		Dot,
+	};
+
+	extern Precedence operator+(Precedence a, Precedence b);
+	extern Precedence operator+(Precedence a, int b);
 
 	struct Token
 	{
@@ -124,11 +146,19 @@ namespace lx
 
 		bool is_datatype() const;
 		bool is_literal() const;
+
 		bool is_binary_operator() const;
 		bool is_prefix_operator() const;
 
-		int precedence() const;
+		Precedence precedence() const;
 		bool is_right_associative() const;
+
+		bool is_binary_pattern_operator() const;
+		bool is_postfix_pattern_operator() const;
+		bool is_prefix_pattern_operator() const;
+
+		Precedence pattern_precedence() const;
+		bool is_pattern_right_associative() const;
 	};
 
 	class TokenStream

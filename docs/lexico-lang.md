@@ -327,12 +327,13 @@ Otherwise a full breakdown is listed below (with equivalent precedence executed 
 
 | Precedence | Operation | Type |
 | - | - | - |
-| 1 | `as`<br>`+`<br>`*`<br>`repeat` | Postfix |
-| 2 | `not`<br>`optional`<br>`ahead`<br>`not ahead`<br>`behind`<br>`not behind`<br>`ref` | Prefix |
-| 3 | `except` | Binary |
-| 4 | `or` | Binary |
-| 5 | `,` | Binary |
-| 6 | `lazy`<br>`capture` | Wrapper |
+| 1 | `as`<br>`+`<br>`*` | Postfix |
+| 2 | `repeat` | Binary |
+| 3 | `not`<br>`optional`<br>`ahead`<br>`not ahead`<br>`behind`<br>`not behind`<br>`ref` | Prefix |
+| 4 | `except` | Binary |
+| 5 | `or` | Binary |
+| 6 | `,` | Binary |
+| 7 | `lazy`<br>`capture` | Wrapper |
 
 ## Match querying
 

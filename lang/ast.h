@@ -47,7 +47,6 @@ namespace lx
 		}
 	};
 
-	// TODO Expression should inherit from PatternExpression? Or rename to StandardExpression to make it clearer when inheriting form PatternExpression
 	class Expression : public ASTNode
 	{
 	};
@@ -112,7 +111,7 @@ namespace lx
 		AsExpression(Expression& expr, Token&& type);
 	};
 
-	// TODO [] index expression
+	// TODO [] subscript expression
 
 	class VariableExpression : public Expression
 	{
