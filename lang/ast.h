@@ -32,12 +32,22 @@ namespace lx
 		ASTRoot _root;
 		std::vector<std::unique_ptr<ASTNode>> _nodes;
 
+		ASTNode& add_impl(std::unique_ptr<ASTNode>&& node);
+
 	public:
-		ASTNode& add(std::unique_ptr<ASTNode>&& node);
 		const ASTRoot& root() const;
 		ASTRoot& root();
+
+		template<typename T>
+		T& add(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
+		{
+			T* n = node.get();
+			add_impl(std::move(node));
+			return *n;
+		}
 	};
 
+	// TODO Expression should inherit from PatternExpression? Or rename to StandardExpression to make it clearer when inheriting form PatternExpression
 	class Expression : public ASTNode
 	{
 	};
@@ -46,7 +56,7 @@ namespace lx
 	{
 		bool _global;
 		Token _identifier;
-		Expression* _expression;
+		Expression& _expression;
 
 	public:
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
@@ -58,7 +68,7 @@ namespace lx
 	class VariableAssignment : public ASTNode
 	{
 		Token _identifier;
-		Expression* _expression;
+		Expression& _expression;
 
 	public:
 		VariableAssignment(Token&& identifier, Expression& expression);
@@ -77,12 +87,32 @@ namespace lx
 	class BinaryExpression : public Expression
 	{
 		Token _op;
-		Expression* _left;
-		Expression* _right;
+		Expression& _left;
+		Expression& _right;
 
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
 	};
+
+	class PrefixExpression : public Expression
+	{
+		Token _op;
+		Expression& _expr;
+
+	public:
+		PrefixExpression(Token&& op, Expression& expr);
+	};
+
+	class AsExpression : public Expression
+	{
+		Expression& _expr;
+		Token _type;
+
+	public:
+		AsExpression(Expression& expr, Token&& type);
+	};
+
+	// TODO [] index expression
 
 	class VariableExpression : public Expression
 	{
@@ -124,12 +154,12 @@ namespace lx
 		Expression* _expression;
 
 	public:
-		ReturnStatement(Expression& expression);
+		ReturnStatement(Expression* expression);
 	};
 
 	class IfStatement : public Block
 	{
-		Expression* _condition;
+		Expression& _condition;
 
 	public:
 		IfStatement(Expression& condition);
@@ -137,7 +167,7 @@ namespace lx
 
 	class ElifStatement : public Block
 	{
-		Expression* _condition;
+		Expression& _condition;
 
 	public:
 		ElifStatement(Expression& condition);
@@ -149,7 +179,7 @@ namespace lx
 
 	class WhileLoop : public Block
 	{
-		Expression* _condition;
+		Expression& _condition;
 
 	public:
 		WhileLoop(Expression& condition);
@@ -158,7 +188,7 @@ namespace lx
 	class ForLoop : public Block
 	{
 		Token _iterator;
-		Expression* _iterable;
+		Expression& _iterable;
 
 	public:
 		ForLoop(Token&& iterator, Expression& iterable);
@@ -210,6 +240,14 @@ namespace lx
 	{
 	};
 
+	class PatternSubexpression : public PatternExpression
+	{
+		Expression& _expr;
+
+	public:
+		PatternSubexpression(Expression& expr);
+	};
+
 	class PatternLiteral : public PatternExpression
 	{
 		Token _literal;
@@ -236,7 +274,7 @@ namespace lx
 
 	class PatternAs : public PatternExpression
 	{
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 		Token _type;
 
 	public:
@@ -245,8 +283,8 @@ namespace lx
 
 	class PatternRepeat : public PatternExpression
 	{
-		PatternExpression* _expression;
-		Expression* _range;
+		PatternExpression& _expression;
+		Expression& _range;
 
 	public:
 		PatternRepeat(PatternExpression& expression, Expression& range);
@@ -254,7 +292,7 @@ namespace lx
 
 	class PatternSimpleRepeat : public PatternExpression
 	{
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 		Token _op;
 
 	public:
@@ -264,7 +302,7 @@ namespace lx
 	class PatternPrefixOperation : public PatternExpression
 	{
 		Token _op;
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 
 	public:
 		PatternPrefixOperation(Token&& op, PatternExpression& expression);
@@ -281,8 +319,8 @@ namespace lx
 	class PatternBinaryOperation : public PatternExpression
 	{
 		Token _op;
-		PatternExpression* _left;
-		PatternExpression* _right;
+		PatternExpression& _left;
+		PatternExpression& _right;
 
 	public:
 		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
@@ -290,7 +328,7 @@ namespace lx
 
 	class PatternLazy : public PatternExpression
 	{
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 
 	public:
 		PatternLazy(PatternExpression& expression);
@@ -299,7 +337,7 @@ namespace lx
 	class PatternCapture : public PatternExpression
 	{
 		Token _identifier;
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 
 	public:
 		PatternCapture(Token&& identifier, PatternExpression& expression);
@@ -307,7 +345,7 @@ namespace lx
 
 	class AppendStatement : public ASTNode
 	{
-		PatternExpression* _expression;
+		PatternExpression& _expression;
 
 	public:
 		AppendStatement(PatternExpression& expression);
@@ -331,8 +369,8 @@ namespace lx
 
 	class ReplaceStatement : public ASTNode
 	{
-		Expression* _match;
-		Expression* _string;
+		Expression& _match;
+		Expression& _string;
 
 	public:
 		ReplaceStatement(Expression& match, Expression& string);
@@ -349,7 +387,7 @@ namespace lx
 	class ScopeStatement : public ASTNode
 	{
 		Token _specifier;
-		Expression* _range;
+		Expression& _range;
 
 	public:
 		ScopeStatement(Token&& specifier, Expression& range);
@@ -357,7 +395,7 @@ namespace lx
 
 	class PagePush : public ASTNode
 	{ 
-		Expression* _page;
+		Expression& _page;
 
 	public:
 		PagePush(Expression& page);

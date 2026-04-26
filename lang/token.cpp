@@ -31,6 +31,15 @@ namespace lx
 		return str;
 	}
 
+	std::string Token::line_number_prefix() const
+	{
+		std::string line_number = std::to_string(start_line) + ".";
+		const unsigned int digit_count = line_number.length();
+		for (unsigned int i = 0; i < 4 - digit_count % 4; ++i)
+			line_number += " ";
+		return line_number;
+	}
+
 	bool Token::is_datatype() const
 	{
 		switch (type)
@@ -54,13 +63,106 @@ namespace lx
 		}
 	}
 
-	std::string Token::line_number_prefix() const
+	bool Token::is_literal() const
 	{
-		std::string line_number = std::to_string(start_line) + ".";
-		const unsigned int digit_count = line_number.length();
-		for (unsigned int i = 0; i < 4 - digit_count % 4; ++i)
-			line_number += " ";
-		return line_number;
+		switch (type)
+		{
+		case TokenType::Integer:
+		case TokenType::Float:
+		case TokenType::String:
+		case TokenType::Bool:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool Token::is_binary_operator() const
+	{
+		switch (type)
+		{
+		case TokenType::And:
+		case TokenType::Asterisk:
+		case TokenType::Dot:
+		case TokenType::EqualTo:
+		case TokenType::GreaterThan:
+		case TokenType::GreaterThanOrEqualTo:
+		case TokenType::LessThan:
+		case TokenType::LessThanOrEqualTo:
+		case TokenType::Minus:
+		case TokenType::Mod:
+		case TokenType::NotEqualTo:
+		case TokenType::Or:
+		case TokenType::Plus:
+		case TokenType::Slash:
+		case TokenType::To:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool Token::is_prefix_operator() const
+	{
+		switch (type)
+		{
+		case TokenType::Max:
+		case TokenType::Min:
+		case TokenType::Minus:
+		case TokenType::Not:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	int Token::precedence() const
+	{
+		switch (type)
+		{
+		case TokenType::Dot:
+			return 8;
+
+		case TokenType::Asterisk:
+		case TokenType::Slash:
+		case TokenType::Mod:
+			return 7;
+
+		case TokenType::Plus:
+		case TokenType::Minus:
+			return 6;
+
+		case TokenType::To:
+			return 5;
+
+		case TokenType::LessThan:
+		case TokenType::LessThanOrEqualTo:
+		case TokenType::GreaterThan:
+		case TokenType::GreaterThanOrEqualTo:
+			return 4;
+
+		case TokenType::EqualTo:
+		case TokenType::NotEqualTo:
+			return 3;
+
+		case TokenType::And:
+			return 2;
+
+		case TokenType::Or:
+			return 1;
+
+		default:
+			return -1;
+		}
+	}
+
+	bool Token::is_right_associative() const
+	{
+		switch (type)
+		{
+		default:
+			return false;
+		}
 	}
 
 	void TokenStream::load(std::vector<Token>&& tokens)

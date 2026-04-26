@@ -5,7 +5,7 @@
 
 namespace lx
 {
-	ASTNode& AbstractSyntaxTree::add(std::unique_ptr<ASTNode>&& node)
+	ASTNode& AbstractSyntaxTree::add_impl(std::unique_ptr<ASTNode>&& node)
 	{
 		ASTNode* ref = node.get();
 		_nodes.push_back(std::move(node));
@@ -28,7 +28,7 @@ namespace lx
 	}
 
 	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, Expression& expression)
-		: _global(global), _identifier(std::move(identifier)), _expression(&expression)
+		: _global(global), _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
@@ -43,7 +43,7 @@ namespace lx
 	}
 
 	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
-		: _identifier(std::move(identifier)), _expression(&expression)
+		: _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
@@ -53,7 +53,17 @@ namespace lx
 	}
 
 	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
-		: _op(std::move(op)), _left(&left), _right(&right)
+		: _op(std::move(op)), _left(left), _right(right)
+	{
+	}
+
+	PrefixExpression::PrefixExpression(Token&& op, Expression& expr)
+		: _op(std::move(op)), _expr(expr)
+	{
+	}
+
+	AsExpression::AsExpression(Expression& expr, Token&& type)
+		: _expr(expr), _type(std::move(type))
 	{
 	}
 
@@ -77,28 +87,28 @@ namespace lx
 	{
 	}
 
-	ReturnStatement::ReturnStatement(Expression& expression)
-		: _expression(&expression)
+	ReturnStatement::ReturnStatement(Expression* expression)
+		: _expression(expression)
 	{
 	}
 	
 	IfStatement::IfStatement(Expression& condition)
-		: _condition(&condition)
+		: _condition(condition)
 	{
 	}
 	
 	ElifStatement::ElifStatement(Expression& condition)
-		: _condition(&condition)
+		: _condition(condition)
 	{
 	}
 	
 	WhileLoop::WhileLoop(Expression& condition)
-		: _condition(&condition)
+		: _condition(condition)
 	{
 	}
 	
 	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
-		: _iterator(std::move(iterator)), _iterable(&iterable)
+		: _iterator(std::move(iterator)), _iterable(iterable)
 	{
 	}
 	
@@ -122,6 +132,11 @@ namespace lx
 	{
 	}
 
+	PatternSubexpression::PatternSubexpression(Expression& expr)
+		: _expr(expr)
+	{
+	}
+
 	PatternLiteral::PatternLiteral(Token&& literal)
 		: _literal(std::move(literal))
 	{
@@ -138,22 +153,22 @@ namespace lx
 	}
 	
 	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
-		: _expression(&expression), _type(std::move(type))
+		: _expression(expression), _type(std::move(type))
 	{
 	}
 	
 	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
-		: _expression(&expression), _range(&range)
+		: _expression(expression), _range(range)
 	{
 	}
 	
 	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
-		: _expression(&expression), _op(std::move(op))
+		: _expression(expression), _op(std::move(op))
 	{
 	}
 	
 	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
-		: _op(std::move(op)), _expression(&expression)
+		: _op(std::move(op)), _expression(expression)
 	{
 	}
 	
@@ -163,22 +178,22 @@ namespace lx
 	}
 	
 	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
-		: _op(std::move(op)), _left(&left), _right(&right)
+		: _op(std::move(op)), _left(left), _right(right)
 	{
 	}
 	
 	PatternLazy::PatternLazy(PatternExpression& expression)
-		: _expression(&expression)
+		: _expression(expression)
 	{
 	}
 	
 	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
-		: _identifier(std::move(identifier)), _expression(&expression)
+		: _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
 	AppendStatement::AppendStatement(PatternExpression& expression)
-		: _expression(&expression)
+		: _expression(expression)
 	{
 	}
 
@@ -193,7 +208,7 @@ namespace lx
 	}
 	
 	ReplaceStatement::ReplaceStatement(Expression& match, Expression& string)
-		: _match(&match), _string(&string)
+		: _match(match), _string(string)
 	{
 	}
 	
@@ -203,12 +218,12 @@ namespace lx
 	}
 	
 	ScopeStatement::ScopeStatement(Token&& specifier, Expression& range)
-		: _specifier(std::move(specifier)), _range(&range)
+		: _specifier(std::move(specifier)), _range(range)
 	{
 	}
 	
 	PagePush::PagePush(Expression& page)
-		: _page(&page)
+		: _page(page)
 	{
 	}
 }

@@ -16,6 +16,8 @@ namespace lx
 		Runoff,
 		EndOfFile,
 		Comma,
+		Arrow,
+		Assign,
 
 		// Literals
 		Integer,
@@ -93,8 +95,6 @@ namespace lx
 		RBracket,
 
 		// Operators
-		Arrow,
-		Assign,
 		Asterisk,
 		Dot,
 		EqualTo,
@@ -120,8 +120,15 @@ namespace lx
 		unsigned int end_column = 0;
 
 		std::string resolved() const;
-		bool is_datatype() const;
 		std::string line_number_prefix() const;
+
+		bool is_datatype() const;
+		bool is_literal() const;
+		bool is_binary_operator() const;
+		bool is_prefix_operator() const;
+
+		int precedence() const;
+		bool is_right_associative() const;
 	};
 
 	class TokenStream
