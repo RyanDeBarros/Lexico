@@ -2,6 +2,8 @@ set(LANG_SOURCES
 	lang.cpp
 	lexer.cpp
 	parser.cpp
+	semantics.cpp
+	executor.cpp
 	errors.cpp
 	token.cpp
 	ast.cpp

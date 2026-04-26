@@ -1,6 +1,6 @@
 #pragma once
 
-#include "token.h"
+#include "lexer.h"
 #include "ast.h"
 #include "errors.h"
 
@@ -12,7 +12,7 @@ namespace lx
 		std::vector<SyntaxError> _errors;
 
 	public:
-		void parse(TokenStream& stream, const std::vector<std::string_view>& script_lines);
+		void parse(Lexer& lexer);
 
 		const AbstractSyntaxTree& tree() const;
 		const std::vector<SyntaxError>& errors() const;

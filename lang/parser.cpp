@@ -181,6 +181,8 @@ namespace lx
 			return *n;
 		}
 
+		// TODO some errors look weird (some "expected ...") if token(0) is first token on newline -> bring positioning back to end of previous line
+
 		[[noreturn]] void throw_error(const char* cause, size_t peek_offset) const
 		{
 			std::stringstream ss;
@@ -957,9 +959,9 @@ namespace lx
 		}
 	};
 
-	void Parser::parse(TokenStream& stream, const std::vector<std::string_view>& script_lines)
+	void Parser::parse(Lexer& lexer)
 	{
-		ASTBuilder builder(stream, _errors, script_lines, _tree);
+		ASTBuilder builder(lexer.stream(), _errors, lexer.script_lines(), _tree);
 	}
 
 	const AbstractSyntaxTree& Parser::tree() const

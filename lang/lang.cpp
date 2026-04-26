@@ -2,6 +2,8 @@
 
 #include "lexer.h"
 #include "parser.h"
+#include "semantics.h"
+#include "executor.h"
 
 #include <sstream>
 
@@ -13,7 +15,7 @@ namespace lx
 		lexer.tokenize(script);
 
 		Parser parser;
-		parser.parse(lexer.stream(), lexer.script_lines());
+		parser.parse(lexer);
 
 		if (!parser.errors().empty())
 		{
@@ -25,7 +27,14 @@ namespace lx
 			return false;
 		}
 
-		output = input;
+		SemanticAnalyser analyser;
+		analyser.analyse(parser);
+
+		Executor executor;
+		executor.execute(analyser, input);
+
+		output = executor.output().str();
+		log = executor.log().str();
 		return true;
 	}
 }
