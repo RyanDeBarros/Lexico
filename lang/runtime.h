@@ -1,8 +1,10 @@
 #pragma once
 
 #include "token.h"
+#include "errors.h"
 
 #include <unordered_map>
+#include <optional>
 
 namespace lx
 {
@@ -25,11 +27,13 @@ namespace lx
 
 	struct VariableSignature
 	{
+		unsigned int decl_line_number = 0;
 		DataType type = DataType::Void;
 	};
 
 	struct FunctionSignature
 	{
+		unsigned int decl_line_number = 0;
 		DataType return_type = DataType::Void;
 		std::vector<DataType> arg_types;
 	};
@@ -65,14 +69,16 @@ namespace lx
 		std::unordered_map<std::string, FunctionSignature, TransparentHash, TransparentEqual> _function_table;
 
 	public:
-		bool variable_is_registered(const std::string_view identifier) const;
-		bool variable_has_type(const std::string_view identifier, DataType type) const;
-		void register_variable(const std::string_view identifier, DataType type);
+		std::optional<unsigned int> identifier_is_registered(const std::string_view identifier) const;
 
-		bool function_is_registered(const std::string_view identifier) const;
+		std::optional<VariableSignature> variable_is_registered(const std::string_view identifier) const;
+		bool variable_has_type(const std::string_view identifier, DataType type) const;
+		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number);
+
+		std::optional<FunctionSignature> function_is_registered(const std::string_view identifier) const;
 		bool function_has_return_type(const std::string_view identifier, DataType type) const;
 		bool function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types) const;
-		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types);
+		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 	};
 
 	struct ScopeContext
@@ -85,6 +91,7 @@ namespace lx
 	{
 		Global,
 		Local,
+		Isolated,
 		Unknown
 	};
 
@@ -92,18 +99,27 @@ namespace lx
 	{
 		SymbolTable _global_table;
 		std::vector<ScopeContext> _scope_stack;
+		mutable std::vector<LxError> _errors;
+		const std::vector<std::string_view>& _script_lines;
 
 	public:
+		RuntimeEnvironment(const std::vector<std::string_view>& script_lines);
+
+		std::vector<LxError>& errors() const;
+		const std::vector<std::string_view>& script_lines() const;
+
 		void push_local_scope(bool isolated);
 		void pop_local_scope();
 
-		bool variable_is_registered(const std::string_view identifier, Namespace ns) const;
-		bool variable_has_type(const std::string_view identifier, DataType type, Namespace ns) const;
-		void register_variable(const std::string_view identifier, DataType type, Namespace ns);
+		std::optional<unsigned int> identifier_is_registered(const std::string_view identifier, Namespace ns) const;
 
-		bool function_is_registered(const std::string_view identifier, Namespace ns) const;
+		std::optional<VariableSignature> variable_is_registered(const std::string_view identifier, Namespace ns) const;
+		bool variable_has_type(const std::string_view identifier, DataType type, Namespace ns) const;
+		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns);
+
+		std::optional<FunctionSignature> function_is_registered(const std::string_view identifier, Namespace ns) const;
 		bool function_has_return_type(const std::string_view identifier, DataType type, Namespace ns) const;
 		bool function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types, Namespace ns) const;
-		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, Namespace ns);
+		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns);
 	};
 }

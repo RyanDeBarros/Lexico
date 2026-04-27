@@ -13,7 +13,7 @@ namespace lx
 		case lx::ErrorType::Semantic:
 			return "[Semantic Error] ";
 		case lx::ErrorType::Internal:
-			return "[Internak Error] ";
+			return "[Internal Error] ";
 		default:
 			return "";
 		}
@@ -42,5 +42,16 @@ namespace lx
 				ss << '~';
 		}
 		return ss.str();
+	}
+
+	LxError LxError::token_error(const Token& token, const std::vector<std::string_view>& script_lines, ErrorType type, const std::string_view cause)
+	{
+		std::stringstream ss;
+		ss << cause;
+		ss << ":\n";
+		std::string line_number = token.line_number_prefix();
+		unsigned int tabs = 1 + line_number.size() / 4;
+		ss << "    " << line_number << script_lines[token.start_line - 1] << '\n' << LxError::underline(token, tabs);
+		return LxError(type, ss.str());
 	}
 }

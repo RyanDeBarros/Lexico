@@ -12,7 +12,7 @@ namespace lx
 		std::vector<LxError> _errors;
 
 	public:
-		void parse(Lexer& lexer);
+		void parse(Lexer& lexer, const std::vector<std::string_view>& script_lines);
 
 		const AbstractSyntaxTree& tree() const;
 		const std::vector<LxError>& errors() const;

@@ -26,24 +26,32 @@ namespace lx
 
 	bool execute(const std::string_view script, const std::string_view input, std::string& output, std::string& log)
 	{
-		Lexer lexer;
-		lexer.tokenize(script);
+		try
+		{
+			Lexer lexer;
+			lexer.tokenize(script);
 
-		Parser parser;
-		parser.parse(lexer);
-		if (log_errors(parser.errors(), log))
+			Parser parser;
+			parser.parse(lexer, lexer.script_lines());
+			if (log_errors(parser.errors(), log))
+				return false;
+
+			SemanticAnalyser analyser;
+			analyser.analyse(parser, lexer.script_lines());
+			if (log_errors(analyser.errors(), log))
+				return false;
+
+			Executor executor;
+			executor.execute(analyser, input);
+
+			output = executor.output().str();
+			log = executor.log().str();
+			return true;
+		}
+		catch (const LxError& e)
+		{
+			log = e.what();
 			return false;
-
-		SemanticAnalyser analyser;
-		analyser.analyse(parser);
-		if (log_errors(analyser.errors(), log))
-			return false;
-
-		Executor executor;
-		executor.execute(analyser, input);
-
-		output = executor.output().str();
-		log = executor.log().str();
-		return true;
+		}
 	}
 }

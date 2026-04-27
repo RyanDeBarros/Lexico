@@ -10,7 +10,7 @@ namespace lx
 		std::vector<LxError> _errors;
 
 	public:
-		void analyse(Parser& parser);
+		void analyse(Parser& parser, const std::vector<std::string_view>& script_lines);
 
 		const std::vector<LxError>& errors() const;
 	};

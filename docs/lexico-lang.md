@@ -7,6 +7,8 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
+TODO match word, match case, built-in functions for changing case, etc.
+
 TODO aggregation / SQL constructs
 
 TODO recursion built into patterns (see parentheses balancing example)
@@ -539,7 +541,8 @@ scope $lines <range>  # match must fit in line range
 scope $page           # match exists in whole page
 ```
 
-Note that `scope $line` is equivalent to `scope $lines 1`.
+Note that `scope $line` is equivalent to `scope $lines 1`. Also note that Scopes only apply to patterns that have anchors (`$start`/`$end`),
+as those are what are actually restricted by the scope statement.
 
 ## Computation
 

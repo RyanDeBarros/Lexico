@@ -185,12 +185,10 @@ namespace lx
 
 		[[noreturn]] void throw_error(const char* cause, size_t peek_offset) const
 		{
-			std::stringstream ss;
-			ss << cause;
-			if (!eof())
+			if (eof())
+				throw LxError(ErrorType::Syntax, cause);
+			else
 			{
-				ss << ":\n";
-				
 				Token token;
 				if (peek_offset < tokens_left() && peek(peek_offset).start_line < _script_lines.size())
 					token = peek(peek_offset);
@@ -200,11 +198,8 @@ namespace lx
 					++token.start_column;
 				}
 
-				std::string line_number = token.line_number_prefix();
-				unsigned int tabs = 1 + line_number.size() / 4;
-				ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << LxError::underline(token, tabs);
+				throw LxError::token_error(token, _script_lines, ErrorType::Syntax, cause);
 			}
-			throw LxError(ErrorType::Syntax, ss.str());
 		}
 
 		void catch_error(const LxError& e)
@@ -601,7 +596,7 @@ namespace lx
 
 			auto offset = token_offset(1);
 
-			std::vector<Expression*> args;
+			std::vector<const Expression*> args;
 			bool comma_ended = false;
 
 			while (continue_statement())
@@ -762,7 +757,7 @@ namespace lx
 		{
 			offset.add(1);  // '('
 
-			std::vector<Expression*> args;
+			std::vector<const Expression*> args;
 			bool comma_ended = false;
 
 			while (continue_statement() && peek_token_is_not(0, TokenType::RParen))
@@ -977,9 +972,9 @@ namespace lx
 		}
 	};
 
-	void Parser::parse(Lexer& lexer)
+	void Parser::parse(Lexer& lexer, const std::vector<std::string_view>& script_lines)
 	{
-		ASTBuilder builder(lexer.stream(), _errors, lexer.script_lines(), _tree);
+		ASTBuilder builder(lexer.stream(), _errors, script_lines, _tree);
 	}
 
 	const AbstractSyntaxTree& Parser::tree() const
