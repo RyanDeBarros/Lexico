@@ -7,7 +7,9 @@ namespace lx
 {
 	void ASTNode::accept(ASTVisitor& visitor) const
 	{
-		visitor.visit(*this);
+		visitor.pre_visit(*this);
+		traverse(visitor);
+		visitor.post_visit(*this);
 	}
 
 	ASTNode& AbstractSyntaxTree::add_impl(std::unique_ptr<ASTNode>&& node)
@@ -27,16 +29,31 @@ namespace lx
 		return _root;
 	}
 
+	void Block::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		env.push_local_scope(isolated());
+	}
+
+	void Block::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		env.pop_local_scope();
+	}
+
+	void Block::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		for (const ASTNode* node : _children)
+			node->traverse(visitor);
+	}
+
 	void Block::append(ASTNode& child)
 	{
 		_children.push_back(&child);
 	}
 
-	void Block::accept(ASTVisitor& visitor) const
+	bool ASTRoot::isolated() const
 	{
-		ASTNode::accept(visitor);
-		for (const ASTNode* node : _children)
-			node->accept(visitor);
+		return true;
 	}
 
 	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, Expression& expression)
@@ -44,15 +61,20 @@ namespace lx
 	{
 	}
 
-	void VariableDeclaration::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void VariableDeclaration::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void VariableDeclaration::accept(ASTVisitor& visitor) const
+	void VariableDeclaration::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void VariableDeclaration::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 
 	bool VariableDeclaration::is_global() const
@@ -70,15 +92,20 @@ namespace lx
 	{
 	}
 
-	void VariableAssignment::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void VariableAssignment::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void VariableAssignment::accept(ASTVisitor& visitor) const
+	void VariableAssignment::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void VariableAssignment::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 
 	LiteralExpression::LiteralExpression(Token&& literal)
@@ -86,7 +113,12 @@ namespace lx
 	{
 	}
 
-	void LiteralExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void LiteralExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void LiteralExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -96,16 +128,21 @@ namespace lx
 	{
 	}
 
-	void BinaryExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void BinaryExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void BinaryExpression::accept(ASTVisitor& visitor) const
+	void BinaryExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_left.accept(visitor);
-		_right.accept(visitor);
+		// TODO
+	}
+
+	void BinaryExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_left.traverse(visitor);
+		_right.traverse(visitor);
 	}
 
 	PrefixExpression::PrefixExpression(Token&& op, Expression& expr)
@@ -113,15 +150,20 @@ namespace lx
 	{
 	}
 
-	void PrefixExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PrefixExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PrefixExpression::accept(ASTVisitor& visitor) const
+	void PrefixExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expr.accept(visitor);
+		// TODO
+	}
+
+	void PrefixExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expr.traverse(visitor);
 	}
 
 	AsExpression::AsExpression(Expression& expr, Token&& type)
@@ -129,15 +171,20 @@ namespace lx
 	{
 	}
 
-	void AsExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void AsExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void AsExpression::accept(ASTVisitor& visitor) const
+	void AsExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expr.accept(visitor);
+		// TODO
+	}
+
+	void AsExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expr.traverse(visitor);
 	}
 
 	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
@@ -145,16 +192,21 @@ namespace lx
 	{
 	}
 
-	void SubscriptExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void SubscriptExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void SubscriptExpression::accept(ASTVisitor& visitor) const
+	void SubscriptExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_container.accept(visitor);
-		_subscript.accept(visitor);
+		// TODO
+	}
+
+	void SubscriptExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_container.traverse(visitor);
+		_subscript.traverse(visitor);
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -162,7 +214,12 @@ namespace lx
 	{
 	}
 
-	void VariableExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void VariableExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void VariableExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -172,7 +229,12 @@ namespace lx
 	{
 	}
 
-	void BuiltinSymbolExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void BuiltinSymbolExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void BuiltinSymbolExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -182,16 +244,21 @@ namespace lx
 	{
 	}
 
-	void FunctionCallExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void FunctionCallExpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void FunctionCallExpression::accept(ASTVisitor& visitor) const
+	void FunctionCallExpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
+		// TODO
+	}
+
+	void FunctionCallExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
 		for (const Expression* arg : _args)
-			arg->accept(visitor);
+			arg->traverse(visitor);
 	}
 
 	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, Token&& return_type)
@@ -199,9 +266,19 @@ namespace lx
 	{
 	}
 
-	void FunctionDefinition::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void FunctionDefinition::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
+	}
+
+	void FunctionDefinition::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	bool FunctionDefinition::isolated() const
+	{
+		return true;
 	}
 
 	ReturnStatement::ReturnStatement(Expression* expression)
@@ -209,16 +286,21 @@ namespace lx
 	{
 	}
 
-	void ReturnStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ReturnStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
-	
-	void ReturnStatement::accept(ASTVisitor& visitor) const
+
+	void ReturnStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
+		// TODO
+	}
+
+	void ReturnStatement::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
 		if (_expression)
-			_expression->accept(visitor);
+			_expression->traverse(visitor);
 	}
 	
 	IfStatement::IfStatement(Expression& condition)
@@ -226,15 +308,29 @@ namespace lx
 	{
 	}
 
-	void IfStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void IfStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
+		Block::pre_analyse(env, errors);
+
 		// TODO
 	}
 
-	void IfStatement::accept(ASTVisitor& visitor) const
+	void IfStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		_condition.accept(visitor);
-		Block::accept(visitor);
+		// TODO
+
+		Block::post_analyse(env, errors);
+	}
+
+	void IfStatement::traverse(ASTVisitor& visitor) const
+	{
+		_condition.traverse(visitor);
+		Block::traverse(visitor);
+	}
+
+	bool IfStatement::isolated() const
+	{
+		return false;
 	}
 	
 	ElifStatement::ElifStatement(Expression& condition)
@@ -242,15 +338,34 @@ namespace lx
 	{
 	}
 
-	void ElifStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ElifStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
+		Block::pre_analyse(env, errors);
+
 		// TODO
 	}
 
-	void ElifStatement::accept(ASTVisitor& visitor) const
+	void ElifStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		_condition.accept(visitor);
-		Block::accept(visitor);
+		// TODO
+
+		Block::post_analyse(env, errors);
+	}
+
+	void ElifStatement::traverse(ASTVisitor& visitor) const
+	{
+		_condition.traverse(visitor);
+		Block::traverse(visitor);
+	}
+
+	bool ElifStatement::isolated() const
+	{
+		return false;
+	}
+
+	bool ElseStatement::isolated() const
+	{
+		return false;
 	}
 	
 	WhileLoop::WhileLoop(Expression& condition)
@@ -258,15 +373,29 @@ namespace lx
 	{
 	}
 
-	void WhileLoop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void WhileLoop::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
+		Block::pre_analyse(env, errors);
+
 		// TODO
 	}
 
-	void WhileLoop::accept(ASTVisitor& visitor) const
+	void WhileLoop::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		_condition.accept(visitor);
-		Block::accept(visitor);
+		// TODO
+
+		Block::post_analyse(env, errors);
+	}
+
+	void WhileLoop::traverse(ASTVisitor& visitor) const
+	{
+		_condition.traverse(visitor);
+		Block::traverse(visitor);
+	}
+
+	bool WhileLoop::isolated() const
+	{
+		return false;
 	}
 
 	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
@@ -274,15 +403,29 @@ namespace lx
 	{
 	}
 
-	void ForLoop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ForLoop::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
+		Block::pre_analyse(env, errors);
+
 		// TODO
 	}
 
-	void ForLoop::accept(ASTVisitor& visitor) const
+	void ForLoop::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		_iterable.accept(visitor);
-		Block::accept(visitor);
+		// TODO
+
+		Block::post_analyse(env, errors);
+	}
+
+	void ForLoop::traverse(ASTVisitor& visitor) const
+	{
+		_iterable.traverse(visitor);
+		Block::traverse(visitor);
+	}
+
+	bool ForLoop::isolated() const
+	{
+		return false;
 	}
 
 	LogStatement::LogStatement(std::vector<Expression*>&& args)
@@ -295,16 +438,21 @@ namespace lx
 	{
 	}
 
-	void HighlightStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void HighlightStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void HighlightStatement::accept(ASTVisitor& visitor) const
+	void HighlightStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
+		// TODO
+	}
+
+	void HighlightStatement::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
 		if (_highlightable)
-			_highlightable->accept(visitor);
+			_highlightable->traverse(visitor);
 	}
 
 	DeletePattern::DeletePattern(Token&& identifier)
@@ -312,7 +460,12 @@ namespace lx
 	{
 	}
 
-	void DeletePattern::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void DeletePattern::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void DeletePattern::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -322,7 +475,12 @@ namespace lx
 	{
 	}
 
-	void PatternDeclaration::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternDeclaration::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PatternDeclaration::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -332,15 +490,20 @@ namespace lx
 	{
 	}
 
-	void PatternSubexpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternSubexpression::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternSubexpression::accept(ASTVisitor& visitor) const
+	void PatternSubexpression::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expr.accept(visitor);
+		// TODO
+	}
+
+	void PatternSubexpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expr.traverse(visitor);
 	}
 
 	PatternLiteral::PatternLiteral(Token&& literal)
@@ -348,7 +511,12 @@ namespace lx
 	{
 	}
 
-	void PatternLiteral::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternLiteral::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PatternLiteral::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -358,7 +526,12 @@ namespace lx
 	{
 	}
 
-	void PatternIdentifier::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternIdentifier::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PatternIdentifier::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -368,25 +541,35 @@ namespace lx
 	{
 	}
 
-	void PatternBuiltin::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternBuiltin::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
-	
+
+	void PatternBuiltin::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
 		: _expression(expression), _type(std::move(type))
 	{
 	}
 
-	void PatternAs::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternAs::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternAs::accept(ASTVisitor& visitor) const
+	void PatternAs::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void PatternAs::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 
 	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
@@ -394,16 +577,21 @@ namespace lx
 	{
 	}
 
-	void PatternRepeat::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternRepeat::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternRepeat::accept(ASTVisitor& visitor) const
+	void PatternRepeat::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
-		_range.accept(visitor);
+		// TODO
+	}
+
+	void PatternRepeat::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
+		_range.traverse(visitor);
 	}
 	
 	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
@@ -411,15 +599,20 @@ namespace lx
 	{
 	}
 
-	void PatternSimpleRepeat::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternSimpleRepeat::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternSimpleRepeat::accept(ASTVisitor& visitor) const
+	void PatternSimpleRepeat::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void PatternSimpleRepeat::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 	
 	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
@@ -427,15 +620,20 @@ namespace lx
 	{
 	}
 
-	void PatternPrefixOperation::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternPrefixOperation::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternPrefixOperation::accept(ASTVisitor& visitor) const
+	void PatternPrefixOperation::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void PatternPrefixOperation::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 	
 	PatternBackRef::PatternBackRef(Token&& identifier)
@@ -443,26 +641,36 @@ namespace lx
 	{
 	}
 
-	void PatternBackRef::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternBackRef::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
-	
+
+	void PatternBackRef::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
 	}
 
-	void PatternBinaryOperation::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternBinaryOperation::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternBinaryOperation::accept(ASTVisitor& visitor) const
+	void PatternBinaryOperation::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_left.accept(visitor);
-		_right.accept(visitor);
+		// TODO
+	}
+
+	void PatternBinaryOperation::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_left.traverse(visitor);
+		_right.traverse(visitor);
 	}
 	
 	PatternLazy::PatternLazy(PatternExpression& expression)
@@ -470,15 +678,20 @@ namespace lx
 	{
 	}
 
-	void PatternLazy::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternLazy::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternLazy::accept(ASTVisitor& visitor) const
+	void PatternLazy::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void PatternLazy::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 	
 	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
@@ -486,15 +699,20 @@ namespace lx
 	{
 	}
 
-	void PatternCapture::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PatternCapture::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PatternCapture::accept(ASTVisitor& visitor) const
+	void PatternCapture::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void PatternCapture::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 
 	AppendStatement::AppendStatement(PatternExpression& expression)
@@ -502,15 +720,20 @@ namespace lx
 	{
 	}
 
-	void AppendStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void AppendStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void AppendStatement::accept(ASTVisitor& visitor) const
+	void AppendStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_expression.accept(visitor);
+		// TODO
+	}
+
+	void AppendStatement::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_expression.traverse(visitor);
 	}
 
 	FindStatement::FindStatement(Token&& identifier)
@@ -518,17 +741,27 @@ namespace lx
 	{
 	}
 
-	void FindStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void FindStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
-	
+
+	void FindStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	FilterStatement::FilterStatement(Token&& identifier)
 		: _identifier(std::move(identifier))
 	{
 	}
 
-	void FilterStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void FilterStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void FilterStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
@@ -538,16 +771,21 @@ namespace lx
 	{
 	}
 
-	void ReplaceStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ReplaceStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void ReplaceStatement::accept(ASTVisitor& visitor) const
+	void ReplaceStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_match.accept(visitor);
-		_string.accept(visitor);
+		// TODO
+	}
+
+	void ReplaceStatement::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_match.traverse(visitor);
+		_string.traverse(visitor);
 	}
 	
 	ApplyStatement::ApplyStatement(Token&& identifier)
@@ -555,25 +793,35 @@ namespace lx
 	{
 	}
 
-	void ApplyStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ApplyStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
-	
+
+	void ApplyStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	ScopeStatement::ScopeStatement(Token&& specifier, Expression& range)
 		: _specifier(std::move(specifier)), _range(range)
 	{
 	}
 
-	void ScopeStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void ScopeStatement::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void ScopeStatement::accept(ASTVisitor& visitor) const
+	void ScopeStatement::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_range.accept(visitor);
+		// TODO
+	}
+
+	void ScopeStatement::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_range.traverse(visitor);
 	}
 	
 	PagePush::PagePush(Expression& page)
@@ -581,18 +829,38 @@ namespace lx
 	{
 	}
 
-	void PagePush::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PagePush::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}
 
-	void PagePush::accept(ASTVisitor& visitor) const
+	void PagePush::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
-		ASTNode::accept(visitor);
-		_page.accept(visitor);
+		// TODO
 	}
 
-	void PagePop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	void PagePush::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_page.traverse(visitor);
+	}
+
+	void PagePop::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PagePop::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PageClearStack::pre_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
+	void PageClearStack::post_analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
 	{
 		// TODO
 	}

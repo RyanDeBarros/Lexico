@@ -10,11 +10,12 @@ namespace lx
 	{
 		Syntax,
 		Semantic,
+		Internal,
 	};
 
 	struct LxError : std::runtime_error
 	{
-		LxError(ErrorType type, std::string&& message);
+		LxError(ErrorType type, std::string&& message = "");
 
 		static std::string underline(const Token& token, unsigned int tabs = 1);
 	};

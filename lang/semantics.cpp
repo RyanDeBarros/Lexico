@@ -13,21 +13,22 @@ namespace lx
 		{
 		}
 
-		void visit(const ASTNode& node) override
+		void pre_visit(const ASTNode& node) override
 		{
-			node.analyse(_env, _errors);
+			node.pre_analyse(_env, _errors);
+		}
+
+		void post_visit(const ASTNode& node) override
+		{
+			node.post_analyse(_env, _errors);
 		}
 	};
 
 	void SemanticAnalyser::analyse(Parser& parser)
 	{
-		AnalysisVisitor visitor(_env, _errors);
+		RuntimeEnvironment dry;
+		AnalysisVisitor visitor(dry, _errors);
 		parser.tree().root().accept(visitor);
-	}
-
-	const RuntimeEnvironment& SemanticAnalyser::env() const
-	{
-		return _env;
 	}
 
 	const std::vector<LxError>& SemanticAnalyser::errors() const

@@ -729,6 +729,8 @@ namespace lx
 			return *lhs;
 		}
 
+		// TODO in parse_primary_expression/parse_primary_pattern_expression, check for [...] list constructor
+
 		Expression& parse_primary_expression(TokenOffset& offset)
 		{
 			if (peek_token_is(0, TokenType::Identifier))

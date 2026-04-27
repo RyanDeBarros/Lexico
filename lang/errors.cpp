@@ -12,6 +12,8 @@ namespace lx
 			return "[Syntax Error] ";
 		case lx::ErrorType::Semantic:
 			return "[Semantic Error] ";
+		case lx::ErrorType::Internal:
+			return "[Internak Error] ";
 		default:
 			return "";
 		}
