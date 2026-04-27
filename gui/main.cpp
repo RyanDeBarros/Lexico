@@ -116,7 +116,7 @@ static void draw_input_buffer(std::string& buffer)
         buffer.data(),
         buffer.capacity() + 1,
         ImVec2(-FLT_MIN, -FLT_MIN),
-        ImGuiInputTextFlags_CallbackResize,
+        ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_WordWrap,
         resize_buffer_callback,
         &buffer
     );
@@ -124,7 +124,9 @@ static void draw_input_buffer(std::string& buffer)
 
 static void draw_output_buffer(std::string& buffer)
 {
+    ImGui::PushTextWrapPos();
     ImGui::TextUnformatted(buffer.data());
+    ImGui::PopTextWrapPos();
 }
 
 static void draw_input_window()
