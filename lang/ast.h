@@ -24,7 +24,7 @@ namespace lx
 		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
 		
-		virtual void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const {}
+		virtual void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const = 0;
 		virtual void accept(ASTVisitor& visitor) const;
 	};
 
@@ -34,6 +34,7 @@ namespace lx
 
 	public:
 		void append(ASTNode& child);
+		virtual void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override {}
 		virtual void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -73,6 +74,7 @@ namespace lx
 
 	public:
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 		
 	public:
@@ -87,6 +89,7 @@ namespace lx
 
 	public:
 		VariableAssignment(Token&& identifier, Expression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 
 	public:
@@ -99,6 +102,7 @@ namespace lx
 
 	public:
 		LiteralExpression(Token&& literal);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class BinaryExpression : public Expression
@@ -109,6 +113,7 @@ namespace lx
 
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -119,6 +124,7 @@ namespace lx
 
 	public:
 		PrefixExpression(Token&& op, Expression& expr);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -129,6 +135,7 @@ namespace lx
 
 	public:
 		AsExpression(Expression& expr, Token&& type);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -139,6 +146,7 @@ namespace lx
 
 	public:
 		SubscriptExpression(Expression& container, Expression& subscript);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -148,6 +156,7 @@ namespace lx
 
 	public:
 		VariableExpression(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class BuiltinSymbolExpression : public Expression
@@ -156,6 +165,7 @@ namespace lx
 
 	public:
 		BuiltinSymbolExpression(BuiltinSymbol builtin_symbol);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class FunctionCallExpression : public Expression
@@ -165,6 +175,7 @@ namespace lx
 
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -176,6 +187,7 @@ namespace lx
 
 	public:
 		FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, Token&& return_type);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class ReturnStatement : public ASTNode
@@ -184,6 +196,7 @@ namespace lx
 
 	public:
 		ReturnStatement(Expression* expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -193,6 +206,7 @@ namespace lx
 
 	public:
 		IfStatement(Expression& condition);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -202,6 +216,7 @@ namespace lx
 
 	public:
 		ElifStatement(Expression& condition);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -215,6 +230,7 @@ namespace lx
 
 	public:
 		WhileLoop(Expression& condition);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -225,15 +241,20 @@ namespace lx
 
 	public:
 		ForLoop(Token&& iterator, Expression& iterable);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class BreakStatement : public ASTNode
 	{
+	public:
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override {}
 	};
 
 	class ContinueStatement : public ASTNode
 	{
+	public:
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override {}
 	};
 
 	class LogStatement : public ASTNode
@@ -242,6 +263,7 @@ namespace lx
 
 	public:
 		LogStatement(std::vector<Expression*>&& args);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override {}
 	};
 
 	class HighlightStatement : public ASTNode
@@ -252,6 +274,7 @@ namespace lx
 
 	public:
 		HighlightStatement(bool clear, Expression* highlightable, BuiltinSymbol color);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -261,6 +284,7 @@ namespace lx
 
 	public:
 		DeletePattern(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternDeclaration : public ASTNode
@@ -269,6 +293,7 @@ namespace lx
 
 	public:
 		PatternDeclaration(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternExpression : public ASTNode
@@ -281,6 +306,7 @@ namespace lx
 
 	public:
 		PatternSubexpression(Expression& expr);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -290,6 +316,7 @@ namespace lx
 
 	public:
 		PatternLiteral(Token&& literal);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternIdentifier : public PatternExpression
@@ -298,6 +325,7 @@ namespace lx
 
 	public:
 		PatternIdentifier(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternBuiltin : public PatternExpression
@@ -306,6 +334,7 @@ namespace lx
 
 	public:
 		PatternBuiltin(BuiltinSymbol builtin_symbol);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternAs : public PatternExpression
@@ -315,6 +344,7 @@ namespace lx
 
 	public:
 		PatternAs(PatternExpression& expression, Token&& type);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -325,6 +355,7 @@ namespace lx
 
 	public:
 		PatternRepeat(PatternExpression& expression, Expression& range);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -335,6 +366,7 @@ namespace lx
 
 	public:
 		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -345,6 +377,7 @@ namespace lx
 
 	public:
 		PatternPrefixOperation(Token&& op, PatternExpression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -354,6 +387,7 @@ namespace lx
 
 	public:
 		PatternBackRef(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PatternBinaryOperation : public PatternExpression
@@ -364,6 +398,7 @@ namespace lx
 
 	public:
 		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -373,6 +408,7 @@ namespace lx
 
 	public:
 		PatternLazy(PatternExpression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -383,6 +419,7 @@ namespace lx
 
 	public:
 		PatternCapture(Token&& identifier, PatternExpression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -392,6 +429,7 @@ namespace lx
 
 	public:
 		AppendStatement(PatternExpression& expression);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -401,6 +439,7 @@ namespace lx
 
 	public:
 		FindStatement(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class FilterStatement : public ASTNode
@@ -409,6 +448,7 @@ namespace lx
 
 	public:
 		FilterStatement(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class ReplaceStatement : public ASTNode
@@ -418,6 +458,7 @@ namespace lx
 
 	public:
 		ReplaceStatement(Expression& match, Expression& string);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -427,6 +468,7 @@ namespace lx
 
 	public:
 		ApplyStatement(Token&& identifier);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class ScopeStatement : public ASTNode
@@ -436,6 +478,7 @@ namespace lx
 
 	public:
 		ScopeStatement(Token&& specifier, Expression& range);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
@@ -445,14 +488,19 @@ namespace lx
 
 	public:
 		PagePush(Expression& page);
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PagePop : public ASTNode
 	{
+	public:
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override;
 	};
 
 	class PageClearStack : public ASTNode
 	{
+	public:
+		void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const override {}
 	};
 }

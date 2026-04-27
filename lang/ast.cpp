@@ -44,6 +44,11 @@ namespace lx
 	{
 	}
 
+	void VariableDeclaration::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void VariableDeclaration::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -65,6 +70,11 @@ namespace lx
 	{
 	}
 
+	void VariableAssignment::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void VariableAssignment::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -76,9 +86,19 @@ namespace lx
 	{
 	}
 
+	void LiteralExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
+	}
+
+	void BinaryExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void BinaryExpression::accept(ASTVisitor& visitor) const
@@ -93,6 +113,11 @@ namespace lx
 	{
 	}
 
+	void PrefixExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void PrefixExpression::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -104,6 +129,11 @@ namespace lx
 	{
 	}
 
+	void AsExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void AsExpression::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -113,6 +143,11 @@ namespace lx
 	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
 		: _container(container), _subscript(subscript)
 	{
+	}
+
+	void SubscriptExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void SubscriptExpression::accept(ASTVisitor& visitor) const
@@ -127,14 +162,29 @@ namespace lx
 	{
 	}
 
+	void VariableExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	BuiltinSymbolExpression::BuiltinSymbolExpression(BuiltinSymbol builtin_symbol)
 		: _builtin_symbol(builtin_symbol)
 	{
 	}
 
+	void BuiltinSymbolExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args)
 		: _identifier(std::move(identifier)), _args(std::move(args))
 	{
+	}
+
+	void FunctionCallExpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void FunctionCallExpression::accept(ASTVisitor& visitor) const
@@ -149,9 +199,19 @@ namespace lx
 	{
 	}
 
+	void FunctionDefinition::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	ReturnStatement::ReturnStatement(Expression* expression)
 		: _expression(expression)
 	{
+	}
+
+	void ReturnStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 	
 	void ReturnStatement::accept(ASTVisitor& visitor) const
@@ -166,6 +226,11 @@ namespace lx
 	{
 	}
 
+	void IfStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void IfStatement::accept(ASTVisitor& visitor) const
 	{
 		_condition.accept(visitor);
@@ -175,6 +240,11 @@ namespace lx
 	ElifStatement::ElifStatement(Expression& condition)
 		: _condition(condition)
 	{
+	}
+
+	void ElifStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void ElifStatement::accept(ASTVisitor& visitor) const
@@ -188,6 +258,11 @@ namespace lx
 	{
 	}
 
+	void WhileLoop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void WhileLoop::accept(ASTVisitor& visitor) const
 	{
 		_condition.accept(visitor);
@@ -197,6 +272,11 @@ namespace lx
 	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
 		: _iterator(std::move(iterator)), _iterable(iterable)
 	{
+	}
+
+	void ForLoop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void ForLoop::accept(ASTVisitor& visitor) const
@@ -215,6 +295,11 @@ namespace lx
 	{
 	}
 
+	void HighlightStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void HighlightStatement::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -227,14 +312,29 @@ namespace lx
 	{
 	}
 
+	void DeletePattern::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	PatternDeclaration::PatternDeclaration(Token&& identifier)
 		: _identifier(std::move(identifier))
 	{
 	}
 
+	void PatternDeclaration::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	PatternSubexpression::PatternSubexpression(Expression& expr)
 		: _expr(expr)
 	{
+	}
+
+	void PatternSubexpression::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternSubexpression::accept(ASTVisitor& visitor) const
@@ -248,19 +348,39 @@ namespace lx
 	{
 	}
 
+	void PatternLiteral::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	PatternIdentifier::PatternIdentifier(Token&& identifier)
 		: _identifier(std::move(identifier))
 	{
+	}
+
+	void PatternIdentifier::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	PatternBuiltin::PatternBuiltin(BuiltinSymbol builtin_symbol)
 		: _builtin_symbol(builtin_symbol)
 	{
 	}
+
+	void PatternBuiltin::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
 	
 	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
 		: _expression(expression), _type(std::move(type))
 	{
+	}
+
+	void PatternAs::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternAs::accept(ASTVisitor& visitor) const
@@ -272,6 +392,11 @@ namespace lx
 	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
 		: _expression(expression), _range(range)
 	{
+	}
+
+	void PatternRepeat::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternRepeat::accept(ASTVisitor& visitor) const
@@ -286,6 +411,11 @@ namespace lx
 	{
 	}
 
+	void PatternSimpleRepeat::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void PatternSimpleRepeat::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -295,6 +425,11 @@ namespace lx
 	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
 		: _op(std::move(op)), _expression(expression)
 	{
+	}
+
+	void PatternPrefixOperation::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternPrefixOperation::accept(ASTVisitor& visitor) const
@@ -307,10 +442,20 @@ namespace lx
 		: _identifier(std::move(identifier))
 	{
 	}
+
+	void PatternBackRef::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
 	
 	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
+	}
+
+	void PatternBinaryOperation::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternBinaryOperation::accept(ASTVisitor& visitor) const
@@ -325,6 +470,11 @@ namespace lx
 	{
 	}
 
+	void PatternLazy::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void PatternLazy::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -334,6 +484,11 @@ namespace lx
 	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
 		: _identifier(std::move(identifier)), _expression(expression)
 	{
+	}
+
+	void PatternCapture::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void PatternCapture::accept(ASTVisitor& visitor) const
@@ -347,6 +502,11 @@ namespace lx
 	{
 	}
 
+	void AppendStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void AppendStatement::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
@@ -357,15 +517,30 @@ namespace lx
 		: _identifier(std::move(identifier))
 	{
 	}
+
+	void FindStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
 	
 	FilterStatement::FilterStatement(Token&& identifier)
 		: _identifier(std::move(identifier))
 	{
 	}
-	
+
+	void FilterStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	ReplaceStatement::ReplaceStatement(Expression& match, Expression& string)
 		: _match(match), _string(string)
 	{
+	}
+
+	void ReplaceStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void ReplaceStatement::accept(ASTVisitor& visitor) const
@@ -379,10 +554,20 @@ namespace lx
 		: _identifier(std::move(identifier))
 	{
 	}
+
+	void ApplyStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
 	
 	ScopeStatement::ScopeStatement(Token&& specifier, Expression& range)
 		: _specifier(std::move(specifier)), _range(range)
 	{
+	}
+
+	void ScopeStatement::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 
 	void ScopeStatement::accept(ASTVisitor& visitor) const
@@ -396,9 +581,19 @@ namespace lx
 	{
 	}
 
+	void PagePush::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
+	}
+
 	void PagePush::accept(ASTVisitor& visitor) const
 	{
 		ASTNode::accept(visitor);
 		_page.accept(visitor);
+	}
+
+	void PagePop::analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const
+	{
+		// TODO
 	}
 }

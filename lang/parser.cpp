@@ -486,8 +486,6 @@ namespace lx
 				|| parse_continue_statement()
 				|| parse_return_statement()
 				|| parse_if_statement()
-				|| parse_elif_statement()
-				|| parse_else_statement()
 				|| parse_while_loop()
 				|| parse_for_loop();
 		}
@@ -691,7 +689,13 @@ namespace lx
 		{
 			while (!eof())
 			{
-				if (parse_end_statement(TokenType::If, errors::EXPECTED_IF) || peek_token_is(0, TokenType::Elif) || peek_token_is(0, TokenType::Else))
+				if (parse_end_statement(TokenType::If, errors::EXPECTED_IF))
+					return;
+
+				if (peek_token_is(0, TokenType::Elif) && parse_elif_statement())
+					return;
+
+				if (peek_token_is(0, TokenType::Else) && parse_else_statement())
 					return;
 
 				parse_statement();
