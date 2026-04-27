@@ -1,4 +1,4 @@
-#include "builtin_symbols.h"
+#include "symbols.h"
 
 namespace lx
 {

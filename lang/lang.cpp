@@ -9,6 +9,21 @@
 
 namespace lx
 {
+	static bool log_errors(const std::vector<LxError>& errors, std::string& log)
+	{
+		if (!errors.empty())
+		{
+			std::stringstream out;
+			for (const auto& e : errors)
+				out << e.what() << "\n\n";
+
+			log = out.str();
+			return true;
+		}
+		else
+			return false;
+	}
+
 	bool execute(const std::string_view script, const std::string_view input, std::string& output, std::string& log)
 	{
 		Lexer lexer;
@@ -16,19 +31,13 @@ namespace lx
 
 		Parser parser;
 		parser.parse(lexer);
-
-		if (!parser.errors().empty())
-		{
-			std::stringstream out;
-			for (const auto& e : parser.errors())
-				out << e.what() << "\n\n";
-
-			log = out.str();
+		if (log_errors(parser.errors(), log))
 			return false;
-		}
 
 		SemanticAnalyser analyser;
 		analyser.analyse(parser);
+		if (log_errors(analyser.errors(), log))
+			return false;
 
 		Executor executor;
 		executor.execute(analyser, input);

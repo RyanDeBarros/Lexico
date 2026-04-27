@@ -4,12 +4,25 @@
 
 namespace lx
 {
-	SyntaxError::SyntaxError(std::string&& message)
-		: std::runtime_error(std::move(message))
+	static std::string error_prefix(ErrorType type)
+	{
+		switch (type)
+		{
+		case lx::ErrorType::Syntax:
+			return "[Syntax Error] ";
+		case lx::ErrorType::Semantic:
+			return "[Semantic Error] ";
+		default:
+			return "";
+		}
+	}
+
+	LxError::LxError(ErrorType type, std::string&& message)
+		: std::runtime_error(error_prefix(type) + std::move(message))
 	{
 	}
 
-	std::string SyntaxError::underline(const Token& token, unsigned int tabs)
+	std::string LxError::underline(const Token& token, unsigned int tabs)
 	{
 		std::stringstream ss;
 

@@ -41,14 +41,14 @@ namespace lx
 	class ASTBuilder
 	{
 		TokenStream& _stream;
-		std::vector<SyntaxError>& _errors;
+		std::vector<LxError>& _errors;
 		const std::vector<std::string_view>& _script_lines;
 		size_t _token_offset = 0;
 		AbstractSyntaxTree& _tree;
 		std::stack<Block*> _context_stack;
 
 	public:
-		ASTBuilder(TokenStream& stream, std::vector<SyntaxError>& errors, const std::vector<std::string_view>& script_lines, AbstractSyntaxTree& tree)
+		ASTBuilder(TokenStream& stream, std::vector<LxError>& errors, const std::vector<std::string_view>& script_lines, AbstractSyntaxTree& tree)
 			: _stream(stream), _errors(errors), _script_lines(script_lines), _tree(tree)
 		{
 			while (!eof())
@@ -57,7 +57,7 @@ namespace lx
 				{
 					parse_statement();
 				}
-				catch (const SyntaxError& e)
+				catch (const LxError& e)
 				{
 					catch_error(e);
 				}
@@ -186,7 +186,7 @@ namespace lx
 		[[noreturn]] void throw_error(const char* cause, size_t peek_offset) const
 		{
 			std::stringstream ss;
-			ss << "[Parser Error] " << cause;
+			ss << cause;
 			if (!eof())
 			{
 				ss << ":\n";
@@ -202,12 +202,12 @@ namespace lx
 
 				std::string line_number = token.line_number_prefix();
 				unsigned int tabs = 1 + line_number.size() / 4;
-				ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << SyntaxError::underline(token, tabs);
+				ss << "    " << line_number << _script_lines[token.start_line - 1] << '\n' << LxError::underline(token, tabs);
 			}
-			throw SyntaxError(ss.str());
+			throw LxError(ErrorType::Syntax, ss.str());
 		}
 
-		void catch_error(const SyntaxError& e)
+		void catch_error(const LxError& e)
 		{
 			_errors.push_back(e);
 			while (continue_statement())
@@ -981,7 +981,7 @@ namespace lx
 		return _tree;
 	}
 
-	const std::vector<SyntaxError>& Parser::errors() const
+	const std::vector<LxError>& Parser::errors() const
 	{
 		return _errors;
 	}

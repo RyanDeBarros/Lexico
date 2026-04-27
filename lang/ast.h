@@ -3,16 +3,29 @@
 #include <memory>
 
 #include "token.h"
-#include "builtin_symbols.h"
+#include "symbols.h"
+#include "errors.h"
+#include "runtime.h"
 
 namespace lx
 {
+	class ASTNode;
+
+	struct ASTVisitor
+	{
+		virtual ~ASTVisitor() = default;
+		virtual void visit(const ASTNode& node) = 0;
+	};
+
 	class ASTNode
 	{
 	public:
 		ASTNode() = default;
 		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
+		
+		virtual void analyse(RuntimeEnvironment& env, std::vector<LxError>& errors) const {}
+		virtual void accept(ASTVisitor& visitor) const;
 	};
 
 	class Block : public ASTNode
@@ -21,6 +34,7 @@ namespace lx
 
 	public:
 		void append(ASTNode& child);
+		virtual void accept(ASTVisitor& visitor) const override;
 	};
 
 	class ASTRoot : public Block
@@ -59,7 +73,9 @@ namespace lx
 
 	public:
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
+		void accept(ASTVisitor& visitor) const override;
 		
+	public:
 		bool is_global() const;
 		std::string_view variable_name() const;
 	};
@@ -71,7 +87,9 @@ namespace lx
 
 	public:
 		VariableAssignment(Token&& identifier, Expression& expression);
+		void accept(ASTVisitor& visitor) const override;
 
+	public:
 		const std::string& variable_name() const;
 	};
 
@@ -91,6 +109,7 @@ namespace lx
 
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PrefixExpression : public Expression
@@ -100,6 +119,7 @@ namespace lx
 
 	public:
 		PrefixExpression(Token&& op, Expression& expr);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class AsExpression : public Expression
@@ -109,6 +129,7 @@ namespace lx
 
 	public:
 		AsExpression(Expression& expr, Token&& type);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class SubscriptExpression : public Expression
@@ -118,6 +139,7 @@ namespace lx
 
 	public:
 		SubscriptExpression(Expression& container, Expression& subscript);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class VariableExpression : public Expression
@@ -143,6 +165,7 @@ namespace lx
 
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class FunctionDefinition : public Block
@@ -161,6 +184,7 @@ namespace lx
 
 	public:
 		ReturnStatement(Expression* expression);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class IfStatement : public Block
@@ -169,6 +193,7 @@ namespace lx
 
 	public:
 		IfStatement(Expression& condition);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class ElifStatement : public Block
@@ -177,6 +202,7 @@ namespace lx
 
 	public:
 		ElifStatement(Expression& condition);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class ElseStatement : public Block
@@ -189,6 +215,7 @@ namespace lx
 
 	public:
 		WhileLoop(Expression& condition);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class ForLoop : public Block
@@ -198,6 +225,7 @@ namespace lx
 
 	public:
 		ForLoop(Token&& iterator, Expression& iterable);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class BreakStatement : public ASTNode
@@ -224,6 +252,7 @@ namespace lx
 
 	public:
 		HighlightStatement(bool clear, Expression* highlightable, BuiltinSymbol color);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class DeletePattern : public ASTNode
@@ -252,6 +281,7 @@ namespace lx
 
 	public:
 		PatternSubexpression(Expression& expr);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternLiteral : public PatternExpression
@@ -285,6 +315,7 @@ namespace lx
 
 	public:
 		PatternAs(PatternExpression& expression, Token&& type);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternRepeat : public PatternExpression
@@ -294,6 +325,7 @@ namespace lx
 
 	public:
 		PatternRepeat(PatternExpression& expression, Expression& range);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternSimpleRepeat : public PatternExpression
@@ -303,6 +335,7 @@ namespace lx
 
 	public:
 		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternPrefixOperation : public PatternExpression
@@ -312,6 +345,7 @@ namespace lx
 
 	public:
 		PatternPrefixOperation(Token&& op, PatternExpression& expression);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternBackRef : public PatternExpression
@@ -330,6 +364,7 @@ namespace lx
 
 	public:
 		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternLazy : public PatternExpression
@@ -338,6 +373,7 @@ namespace lx
 
 	public:
 		PatternLazy(PatternExpression& expression);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PatternCapture : public PatternExpression
@@ -347,6 +383,7 @@ namespace lx
 
 	public:
 		PatternCapture(Token&& identifier, PatternExpression& expression);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class AppendStatement : public ASTNode
@@ -355,6 +392,7 @@ namespace lx
 
 	public:
 		AppendStatement(PatternExpression& expression);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class FindStatement : public ASTNode
@@ -380,6 +418,7 @@ namespace lx
 
 	public:
 		ReplaceStatement(Expression& match, Expression& string);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class ApplyStatement : public ASTNode
@@ -397,6 +436,7 @@ namespace lx
 
 	public:
 		ScopeStatement(Token&& specifier, Expression& range);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PagePush : public ASTNode
@@ -405,6 +445,7 @@ namespace lx
 
 	public:
 		PagePush(Expression& page);
+		void accept(ASTVisitor& visitor) const override;
 	};
 
 	class PagePop : public ASTNode

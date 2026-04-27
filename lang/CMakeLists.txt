@@ -4,10 +4,11 @@ set(LANG_SOURCES
 	parser.cpp
 	semantics.cpp
 	executor.cpp
+	runtime.cpp
 	errors.cpp
 	token.cpp
 	ast.cpp
-	builtin_symbols.cpp
+	symbols.cpp
 )
 
 add_library(lexico-lang ${LANG_SOURCES} "lang.h")

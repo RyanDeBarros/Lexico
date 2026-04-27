@@ -6,9 +6,15 @@
 
 namespace lx
 {
-	struct SyntaxError : std::runtime_error
+	enum class ErrorType
 	{
-		SyntaxError(std::string&& message);
+		Syntax,
+		Semantic,
+	};
+
+	struct LxError : std::runtime_error
+	{
+		LxError(ErrorType type, std::string&& message);
 
 		static std::string underline(const Token& token, unsigned int tabs = 1);
 	};
