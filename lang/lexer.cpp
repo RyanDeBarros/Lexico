@@ -204,8 +204,8 @@ namespace lx
 				{
 					if (_c == '"')
 					{
-						add_token();
 						_ptr.move_right();
+						add_token();
 						continue;
 					}
 
@@ -243,8 +243,8 @@ namespace lx
 				if (_c == '"')
 				{
 					add_token();  // add ongoing token
-					_ptr.move_right();
 					start_token(TokenType::String);
+					_ptr.move_right();
 					continue;
 				}
 
@@ -388,12 +388,6 @@ namespace lx
 		{
 			_token.end_line = _ptr.last_line();
 			_token.end_column = _ptr.last_column();
-
-			if (_token.type == TokenType::String)
-			{
-				--_token.start_column;
-				++_token.end_column;
-			}
 
 			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
 			_token.type = resolve_identifier(_token);

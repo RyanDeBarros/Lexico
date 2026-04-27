@@ -17,10 +17,13 @@ namespace lx
 
 	std::string Token::resolved() const
 	{
+		if (type != TokenType::String)
+			return std::string(lexeme);
+
 		std::string str;
 		bool escaping = false;
 
-		for (char c : lexeme)
+		for (char c : lexeme.substr(1, lexeme.size() - 2))  // exclude ""s
 		{
 			if (escaping)
 			{

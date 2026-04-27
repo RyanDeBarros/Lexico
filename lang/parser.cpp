@@ -273,6 +273,7 @@ namespace lx
 				parse_function_definition() ||
 				parse_variable_declaration() ||
 				parse_assignment() ||
+				parse_function_call() ||
 				parse_control_statement() ||
 				parse_log_statement() ||
 				parse_highlight_statement();
@@ -465,6 +466,17 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 			offset.submit();
 			append_to_context(std::make_unique<VariableAssignment>(std::move(identifier), expr));
+			return true;
+		}
+
+		bool parse_function_call()
+		{
+			if (!peek_token_is(0, TokenType::Identifier) || !peek_token_is(1, TokenType::LParen))
+				return false;
+
+			auto& identifier = ref(0);
+			auto offset = token_offset(1);
+			context().append(parse_function_call_expression(std::move(identifier), offset));
 			return true;
 		}
 
