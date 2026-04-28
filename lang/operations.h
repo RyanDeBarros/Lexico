@@ -26,6 +26,9 @@ namespace lx
 	extern DataType data_type(TokenType type);
 	extern std::string friendly_name(DataType type);
 
+	extern bool can_cast(DataType from, DataType to);
+	extern bool is_iterable(DataType type);
+
 	enum class StandardBinaryOperator
 	{
 		And,
@@ -93,6 +96,4 @@ namespace lx
 	};
 
 	extern PatternBinaryOperator pattern_binary_operator(TokenType type);
-
-	extern bool can_cast(DataType from, DataType to);
 }

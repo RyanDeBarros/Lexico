@@ -132,9 +132,6 @@ namespace lx
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
-
-	public:
-		const std::string& variable_name() const;
 	};
 
 	class LiteralExpression : public Expression
@@ -349,10 +346,11 @@ namespace lx
 
 	class IfStatement : public IfConditional
 	{
+		Token _if_token;
 		const Expression& _condition;
 
 	public:
-		IfStatement(const Expression& condition);
+		IfStatement(Token&& if_token, const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -364,10 +362,11 @@ namespace lx
 
 	class ElifStatement : public IfConditional, public IfFallbackBlock
 	{
+		Token _elif_token;
 		const Expression& _condition;
 
 	public:
-		ElifStatement(const Expression& condition);
+		ElifStatement(Token&& elif_token, const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -385,10 +384,11 @@ namespace lx
 
 	class WhileLoop : public Block
 	{
+		Token _while_token;
 		const Expression& _condition;
 
 	public:
-		WhileLoop(const Expression& condition);
+		WhileLoop(Token&& while_token, const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -399,11 +399,12 @@ namespace lx
 
 	class ForLoop : public Block
 	{
+		Token _for_token;
 		Token _iterator;
 		const Expression& _iterable;
 
 	public:
-		ForLoop(Token&& iterator, const Expression& iterable);
+		ForLoop(Token&& for_token, Token&& iterator, const Expression& iterable);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;

@@ -622,6 +622,7 @@ end for
 * `matches`: iterate over match objects
 * `match`: iterate over capture objects
 * `list`: iterate over elements
+* `string`: iterate over characters
 * `irange`: iterate over inclusive integer range
 * `srange`: iterate over inclusive character range
 

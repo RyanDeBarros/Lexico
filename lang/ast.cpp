@@ -613,12 +613,10 @@ namespace lx
 
 	void ReturnStatement::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
 	}
 
 	void ReturnStatement::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
 	}
 
 	void ReturnStatement::traverse(ASTVisitor& visitor) const
@@ -669,22 +667,21 @@ namespace lx
 		return info;
 	}
 
-	IfStatement::IfStatement(const Expression& condition)
-		: _condition(condition)
+	IfStatement::IfStatement(Token&& if_token, const Expression& condition)
+		: _if_token(std::move(if_token)), _condition(condition)
 	{
 	}
 
 	void IfStatement::pre_analyse(RuntimeEnvironment& env) const
 	{
 		Block::pre_analyse(env);
-
-		// TODO
+		_validated = true;
 	}
 
 	void IfStatement::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
+		if (_condition.evaltype(env) != DataType::Bool)
+			env.add_semantic_error(_if_token, "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -706,22 +703,21 @@ namespace lx
 		return false;
 	}
 
-	ElifStatement::ElifStatement(const Expression& condition)
-		: _condition(condition)
+	ElifStatement::ElifStatement(Token&& elif_token, const Expression& condition)
+		: _elif_token(std::move(elif_token)), _condition(condition)
 	{
 	}
 
 	void ElifStatement::pre_analyse(RuntimeEnvironment& env) const
 	{
 		Block::pre_analyse(env);
-
-		// TODO
+		_validated = true;
 	}
 
 	void ElifStatement::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
+		if (_condition.evaltype(env) != DataType::Bool)
+			env.add_semantic_error(_elif_token, "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -748,22 +744,21 @@ namespace lx
 		return false;
 	}
 	
-	WhileLoop::WhileLoop(const Expression& condition)
-		: _condition(condition)
+	WhileLoop::WhileLoop(Token&& while_token, const Expression& condition)
+		: _while_token(std::move(while_token)), _condition(condition)
 	{
 	}
 
 	void WhileLoop::pre_analyse(RuntimeEnvironment& env) const
 	{
 		Block::pre_analyse(env);
-
-		// TODO
+		_validated = true;
 	}
 
 	void WhileLoop::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
+		if (_condition.evaltype(env) != DataType::Bool)
+			env.add_semantic_error(_while_token, "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -778,22 +773,26 @@ namespace lx
 		return false;
 	}
 
-	ForLoop::ForLoop(Token&& iterator, const Expression& iterable)
-		: _iterator(std::move(iterator)), _iterable(iterable)
+	ForLoop::ForLoop(Token&& for_token, Token&& iterator, const Expression& iterable)
+		: _for_token(std::move(for_token)), _iterator(std::move(iterator)), _iterable(iterable)
 	{
 	}
 
 	void ForLoop::pre_analyse(RuntimeEnvironment& env) const
 	{
 		Block::pre_analyse(env);
-
-		// TODO
+		env.registered_variable(_iterator.lexeme, Namespace::Local);
+		_validated = true;
 	}
 
 	void ForLoop::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
+		if (!is_iterable(_iterable.evaltype(env)))
+		{
+			std::stringstream ss;
+			ss << "'" << friendly_name(_iterable.evaltype(env)) << "' is not iterable";
+			env.add_semantic_error(_for_token, ss.str());
+		}
 		Block::post_analyse(env);
 	}
 

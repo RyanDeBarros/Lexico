@@ -80,6 +80,59 @@ namespace lx
 		}
 	}
 
+	bool can_cast(DataType from, DataType to)
+	{
+		if (to == DataType::Void)
+			return true;
+
+		switch (from)
+		{
+		case DataType::Int:
+		case DataType::Float:
+		case DataType::Bool:
+		case DataType::String:
+			return to == DataType::Int || to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern;
+
+		case DataType::Pattern:
+			return to == DataType::String || to == DataType::Pattern;
+
+		case DataType::Void:
+		case DataType::Match:
+		case DataType::Matches:
+		case DataType::CapId:
+		case DataType::Cap:
+		case DataType::IRange:
+		case DataType::SRange:
+		case DataType::List:
+		default:
+			return false;
+		}
+	}
+
+	bool is_iterable(DataType type)
+	{
+		switch (type)
+		{
+		case DataType::String:
+		case DataType::Matches:
+		case DataType::Match:
+		case DataType::IRange:
+		case DataType::SRange:
+		case DataType::List:
+			return true;
+
+		case DataType::Int:
+		case DataType::Float:
+		case DataType::Bool:
+		case DataType::Pattern:
+		case DataType::Void:
+		case DataType::CapId:
+		case DataType::Cap:
+		default:
+			return false;
+		}
+	}
+
 	StandardBinaryOperator standard_binary_operator(TokenType type)
 	{
 		switch (type)
@@ -282,35 +335,6 @@ namespace lx
 			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
 			throw LxError(ErrorType::Internal, ss.str());
 		}
-		}
-	}
-
-	bool can_cast(DataType from, DataType to)
-	{
-		if (to == DataType::Void)
-			return true;
-
-		switch (from)
-		{
-			case DataType::Int:
-			case DataType::Float:
-			case DataType::Bool:
-			case DataType::String:
-				return to == DataType::Int || to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern;
-			
-			case DataType::Pattern:
-				return to == DataType::String || to == DataType::Pattern;
-			
-			case DataType::Void:
-			case DataType::Match:
-			case DataType::Matches:
-			case DataType::CapId:
-			case DataType::Cap:
-			case DataType::IRange:
-			case DataType::SRange:
-			case DataType::List:
-			default:
-				return false;
 		}
 	}
 }

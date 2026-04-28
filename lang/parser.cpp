@@ -181,8 +181,6 @@ namespace lx
 			return *n;
 		}
 
-		// TODO some errors look weird (some "expected ...") if token(0) is first token on newline -> bring positioning back to end of previous line
-
 		[[noreturn]] void throw_error(const char* cause, size_t peek_offset) const
 		{
 			if (eof())
@@ -190,7 +188,7 @@ namespace lx
 			else
 			{
 				Token token;
-				if (peek_offset < tokens_left() && peek(peek_offset).start_line < _script_lines.size())
+				if (peek_offset < tokens_left())
 					token = peek(peek_offset);
 				else
 				{
@@ -540,11 +538,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::If))
 				return false;
 
+			auto& if_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = append_to_context(std::make_unique<IfStatement>(expr));
+			auto& stmt = append_to_context(std::make_unique<IfStatement>(std::move(if_token), expr));
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
 			return true;
@@ -555,11 +554,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Elif))
 				return false;
 
+			auto& elif_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = _tree.add(std::make_unique<ElifStatement>(expr));
+			auto& stmt = _tree.add(std::make_unique<ElifStatement>(std::move(elif_token), expr));
 			cond.set_fallback(&stmt);
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
@@ -584,11 +584,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::While))
 				return false;
 
+			auto& while_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(expr)));
+			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(std::move(while_token), expr)));
 			parse_simple_block(TokenType::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
 			return true;
 		}
@@ -598,6 +599,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::For))
 				return false;
 
+			auto& for_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 			parse_token(2, TokenType::In, errors::EXPECTED_IN_CLAUSE);
 
@@ -605,7 +607,7 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), expr)));
+			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(for_token), std::move(identifier), expr)));
 			parse_simple_block(TokenType::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
 			return true;
 		}
