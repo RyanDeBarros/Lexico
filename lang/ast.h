@@ -11,6 +11,8 @@
 namespace lx
 {
 	class ASTNode;
+	class Block;
+	class ReturnStatement;
 
 	struct ASTVisitor
 	{
@@ -19,10 +21,17 @@ namespace lx
 		virtual void post_visit(const ASTNode& node) = 0;
 	};
 
+	struct UpflowInfo
+	{
+		bool all_return = false;
+		std::vector<const ReturnStatement*> returns;
+	};
+
 	class ASTNode
 	{
 	protected:
 		mutable bool _validated = false;
+		mutable std::optional<UpflowInfo> _upflow;
 
 	public:
 		ASTNode() = default;
@@ -35,6 +44,10 @@ namespace lx
 		virtual void post_analyse(RuntimeEnvironment& env) const = 0;
 		void accept(ASTVisitor& visitor) const;
 		virtual void traverse(ASTVisitor& visitor) const {}
+		UpflowInfo upflow() const;
+
+	protected:
+		virtual UpflowInfo impl_upflow() const;
 	};
 
 	class Block : public ASTNode
@@ -47,12 +60,13 @@ namespace lx
 		virtual void traverse(ASTVisitor& visitor) const override;
 
 	protected:
+		virtual UpflowInfo impl_upflow() const override;
+
+	protected:
 		virtual bool isolated() const = 0;
 
 	public:
 		void append(ASTNode& child);
-
-	protected:
 	};
 
 	class ASTRoot : public Block
@@ -66,7 +80,7 @@ namespace lx
 		ASTRoot _root;
 		std::vector<std::unique_ptr<ASTNode>> _nodes;
 
-		ASTNode& add_impl(std::unique_ptr<ASTNode>&& node);
+		ASTNode& impl_add(std::unique_ptr<ASTNode>&& node);
 
 	public:
 		const ASTRoot& root() const;
@@ -76,7 +90,7 @@ namespace lx
 		T& add(std::unique_ptr<T>&& node) requires (std::is_base_of_v<ASTNode, T>)
 		{
 			T* n = node.get();
-			add_impl(std::move(node));
+			impl_add(std::move(node));
 			return *n;
 		}
 	};
@@ -286,28 +300,52 @@ namespace lx
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 
+	protected:
+		UpflowInfo impl_upflow() const override;
+		bool isolated() const override;
+
+	public:
 		std::vector<DataType> arg_types() const;
 		std::vector<std::string_view> arg_identifiers() const;
 		DataType return_type() const;
-
-	protected:
-		bool isolated() const override;
 	};
 
 	class ReturnStatement : public ASTNode
 	{
+		Token _return_token;
 		const Expression* _expression;
 
 	public:
-		ReturnStatement(const Expression* expression);
+		ReturnStatement(Token&& return_token, const Expression* expression);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
+
+	protected:
+		UpflowInfo impl_upflow() const override;
 		
+	public:
 		DataType evaltype(const RuntimeEnvironment& env) const;
+		const Token& return_token() const;
 	};
 
-	class IfStatement : public Block
+	class IfFallbackBlock : public virtual Block
+	{
+	};
+	
+	class IfConditional : public virtual Block
+	{
+	protected:
+		const IfFallbackBlock* _fallback = nullptr;
+
+	public:
+		void set_fallback(const IfFallbackBlock* fallback);
+
+	protected:
+		UpflowInfo impl_upflow() const override;
+	};
+
+	class IfStatement : public IfConditional
 	{
 		const Expression& _condition;
 
@@ -318,10 +356,11 @@ namespace lx
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
+		UpflowInfo impl_upflow() const override;
 		bool isolated() const override;
 	};
 
-	class ElifStatement : public Block
+	class ElifStatement : public IfConditional, public IfFallbackBlock
 	{
 		const Expression& _condition;
 
@@ -332,10 +371,11 @@ namespace lx
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
+		UpflowInfo impl_upflow() const override;
 		bool isolated() const override;
 	};
 
-	class ElseStatement : public Block
+	class ElseStatement : public IfFallbackBlock
 	{
 	protected:
 		bool isolated() const override;

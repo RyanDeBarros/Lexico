@@ -520,50 +520,59 @@ namespace lx
 		{
 			if (!peek_token_is(0, TokenType::Return))
 				return false;
-
+			
+			auto& return_token = ref(0);
 			auto offset = token_offset(1);
 
 			Expression* expr = nullptr;
 			if (continue_statement())
-				parse_expression(offset);
+				expr = &parse_expression(offset);
 
 			offset.submit();
-			append_to_context(std::make_unique<ReturnStatement>(expr));
+			append_to_context(std::make_unique<ReturnStatement>(std::move(return_token), expr));
 			return true;
 		}
 
-		template<typename Node>
-		bool parse_if_control_block(TokenType type)
+		bool parse_if_statement()
 		{
-			if (!peek_token_is(0, type))
+			if (!peek_token_is(0, TokenType::If))
 				return false;
 
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<Node>(expr)));
-			parse_if_block();
+			auto& stmt = append_to_context(std::make_unique<IfStatement>(expr));
+			auto ctx = context(stmt);
+			parse_if_block(stmt);
 			return true;
 		}
 
-		bool parse_if_statement()
+		bool parse_elif_statement(IfConditional& cond)
 		{
-			return parse_if_control_block<IfStatement>(TokenType::If);
+			if (!peek_token_is(0, TokenType::Elif))
+				return false;
+
+			auto offset = token_offset(1);
+			Expression& expr = parse_expression(offset);
+
+			offset.submit();
+			auto& stmt = _tree.add(std::make_unique<ElifStatement>(expr));
+			cond.set_fallback(&stmt);
+			auto ctx = context(stmt);
+			parse_if_block(stmt);
+			return true;
 		}
 
-		bool parse_elif_statement()
-		{
-			return parse_if_control_block<ElifStatement>(TokenType::Elif);
-		}
-
-		bool parse_else_statement()
+		bool parse_else_statement(IfConditional& cond)
 		{
 			if (!peek_token_is(0, TokenType::Else))
 				return false;
 
 			token_offset(1).submit();
-			auto ctx = context(append_to_context(std::make_unique<ElseStatement>()));
+			auto& stmt = _tree.add(std::make_unique<ElseStatement>());
+			cond.set_fallback(&stmt);
+			auto ctx = context(stmt);
 			parse_simple_block(TokenType::If, errors::EXPECTED_IF_END, errors::EXPECTED_IF);
 			return true;
 		}
@@ -692,17 +701,17 @@ namespace lx
 			throw_error(missing_end_err, 0);
 		}
 
-		void parse_if_block()
+		void parse_if_block(IfConditional& cond)
 		{
 			while (!eof())
 			{
 				if (parse_end_statement(TokenType::If, errors::EXPECTED_IF))
 					return;
 
-				if (peek_token_is(0, TokenType::Elif) && parse_elif_statement())
+				if (peek_token_is(0, TokenType::Elif) && parse_elif_statement(cond))
 					return;
 
-				if (peek_token_is(0, TokenType::Else) && parse_else_statement())
+				if (peek_token_is(0, TokenType::Else) && parse_else_statement(cond))
 					return;
 
 				parse_statement();

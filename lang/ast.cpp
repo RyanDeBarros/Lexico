@@ -17,7 +17,19 @@ namespace lx
 		visitor.post_visit(*this);
 	}
 
-	ASTNode& AbstractSyntaxTree::add_impl(std::unique_ptr<ASTNode>&& node)
+	UpflowInfo ASTNode::upflow() const
+	{
+		if (!_upflow)
+			_upflow = impl_upflow();
+		return *_upflow;
+	}
+
+	UpflowInfo ASTNode::impl_upflow() const
+	{
+		return {};
+	}
+
+	ASTNode& AbstractSyntaxTree::impl_add(std::unique_ptr<ASTNode>&& node)
 	{
 		ASTNode* ref = node.get();
 		_nodes.push_back(std::move(node));
@@ -49,6 +61,23 @@ namespace lx
 		ASTNode::traverse(visitor);
 		for (const ASTNode* node : _children)
 			node->accept(visitor);
+	}
+
+	UpflowInfo Block::impl_upflow() const
+	{
+		UpflowInfo info;
+
+		for (const ASTNode* node : _children)
+		{
+			auto subinfo = node->upflow();
+			if (subinfo.all_return)
+			{
+				info.all_return = true;
+				info.returns.insert(info.returns.end(), subinfo.returns.begin(), subinfo.returns.end());
+			}
+		}
+
+		return info;
 	}
 
 	void Block::append(ASTNode& child)
@@ -501,9 +530,27 @@ namespace lx
 
 	void FunctionDefinition::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO if non-void return type, check that there is a return statement -> validate that evaltype() of returned expression matches the function return type
+		auto flow = Block::impl_upflow();
+
+		if (return_type() != DataType::Void && !flow.all_return)
+			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic, "not all control paths return a value"));
+
+		for (const ReturnStatement* r : flow.returns)
+		{
+			if (r->evaltype(env) != return_type())
+			{
+				std::stringstream ss;
+				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(env)) << "'";
+				env.errors().push_back(LxError::token_error(r->return_token(), env.script_lines(), ErrorType::Semantic, ss.str()));
+			}
+		}
 
 		Block::post_analyse(env);
+	}
+
+	UpflowInfo FunctionDefinition::impl_upflow() const
+	{
+		return {};
 	}
 
 	bool FunctionDefinition::isolated() const
@@ -532,8 +579,8 @@ namespace lx
 		return _return_type ? data_type(_return_type->type) : DataType::Void;
 	}
 
-	ReturnStatement::ReturnStatement(const Expression* expression)
-		: _expression(expression)
+	ReturnStatement::ReturnStatement(Token&& return_token, const Expression* expression)
+		: _return_token(std::move(return_token)), _expression(expression)
 	{
 	}
 
@@ -554,11 +601,47 @@ namespace lx
 			_expression->accept(visitor);
 	}
 
+	UpflowInfo ReturnStatement::impl_upflow() const
+	{
+		return { .all_return = true, .returns = { this } };
+	}
+
 	DataType ReturnStatement::evaltype(const RuntimeEnvironment& env) const
 	{
 		return _expression ? _expression->evaltype(env) : DataType::Void;
 	}
-	
+
+	const Token& ReturnStatement::return_token() const
+	{
+		return _return_token;
+	}
+
+	void IfConditional::set_fallback(const IfFallbackBlock* fallback)
+	{
+		if (_fallback)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": fallback already set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			_fallback = fallback;
+	}
+
+	UpflowInfo IfConditional::impl_upflow() const
+	{
+		auto info = Block::impl_upflow();
+		if (_fallback)
+		{
+			auto fallback_info = _fallback->upflow();
+			if (!fallback_info.all_return)
+				info.all_return = false;
+
+			info.returns.insert(info.returns.end(), fallback_info.returns.begin(), fallback_info.returns.end());
+		}
+		return info;
+	}
+
 	IfStatement::IfStatement(const Expression& condition)
 		: _condition(condition)
 	{
@@ -582,13 +665,20 @@ namespace lx
 	{
 		_condition.accept(visitor);
 		Block::traverse(visitor);
+		if (_fallback)
+			_fallback->accept(visitor);
+	}
+
+	UpflowInfo IfStatement::impl_upflow() const
+	{
+		return IfConditional::impl_upflow();
 	}
 
 	bool IfStatement::isolated() const
 	{
 		return false;
 	}
-	
+
 	ElifStatement::ElifStatement(const Expression& condition)
 		: _condition(condition)
 	{
@@ -612,6 +702,13 @@ namespace lx
 	{
 		_condition.accept(visitor);
 		Block::traverse(visitor);
+		if (_fallback)
+			_fallback->accept(visitor);
+	}
+
+	UpflowInfo ElifStatement::impl_upflow() const
+	{
+		return IfConditional::impl_upflow();
 	}
 
 	bool ElifStatement::isolated() const
