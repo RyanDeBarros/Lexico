@@ -58,6 +58,8 @@ namespace lx
 
 	extern StandardPrefixOperator standard_prefix_operator(TokenType type);
 
+	extern std::optional<DataType> evaltype(StandardPrefixOperator op, DataType type);
+
 	enum class PatternSimpleRepeatOperator
 	{
 		Asterisk,
@@ -91,4 +93,6 @@ namespace lx
 	};
 
 	extern PatternBinaryOperator pattern_binary_operator(TokenType type);
+
+	extern bool can_cast(DataType from, DataType to);
 }

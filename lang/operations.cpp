@@ -50,31 +50,31 @@ namespace lx
 		switch (type)
 		{
 		case DataType::Int:
-			return "Int";
+			return "int";
 		case DataType::Float:
-			return "Float";
+			return "float";
 		case DataType::Bool:
-			return "Bool";
+			return "bool";
 		case DataType::String:
-			return "String";
+			return "string";
 		case DataType::Void:
-			return "Void";
+			return "void";
 		case DataType::Pattern:
-			return "Pattern";
+			return "pattern";
 		case DataType::Match:
-			return "Match";
+			return "match";
 		case DataType::Matches:
-			return "Matches";
+			return "matches";
 		case DataType::CapId:
-			return "CapId";
+			return "capid";
 		case DataType::Cap:
-			return "Cap";
+			return "cap";
 		case DataType::IRange:
-			return "IRange";
+			return "irange";
 		case DataType::SRange:
-			return "SRange";
+			return "srange";
 		case DataType::List:
-			return "List";
+			return "list";
 		default:
 			return "";
 		}
@@ -188,6 +188,32 @@ namespace lx
 		}
 	}
 
+	std::optional<DataType> evaltype(StandardPrefixOperator op, DataType type)
+	{
+		switch (op)
+		{
+		case StandardPrefixOperator::Max:
+		case StandardPrefixOperator::Min:
+			if (type == DataType::Int)
+				return DataType::IRange;
+			else if (type == DataType::String)
+				return DataType::SRange;
+			break;
+
+		case StandardPrefixOperator::Minus:
+			if (type == DataType::Int || type == DataType::Float)
+				return type;
+			break;
+
+		case StandardPrefixOperator::Not:
+			if (type == DataType::Bool)
+				return type;
+			break;
+		}
+
+		return std::nullopt;
+	}
+
 	PatternSimpleRepeatOperator pattern_simple_repeat_operator(TokenType type)
 	{
 		switch (type)
@@ -256,6 +282,35 @@ namespace lx
 			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
 			throw LxError(ErrorType::Internal, ss.str());
 		}
+		}
+	}
+
+	bool can_cast(DataType from, DataType to)
+	{
+		if (to == DataType::Void)
+			return true;
+
+		switch (from)
+		{
+			case DataType::Int:
+			case DataType::Float:
+			case DataType::Bool:
+			case DataType::String:
+				return to == DataType::Int || to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern;
+			
+			case DataType::Pattern:
+				return to == DataType::String || to == DataType::Pattern;
+			
+			case DataType::Void:
+			case DataType::Match:
+			case DataType::Matches:
+			case DataType::CapId:
+			case DataType::Cap:
+			case DataType::IRange:
+			case DataType::SRange:
+			case DataType::List:
+			default:
+				return false;
 		}
 	}
 }

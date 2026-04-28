@@ -229,7 +229,7 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << ": operand not defined for types '" << friendly_name(_left.evaltype(env)) << "' and '" << friendly_name(_right.evaltype(env)) << "'";
+			ss << ": operator not defined for types '" << friendly_name(_left.evaltype(env)) << "' and '" << friendly_name(_right.evaltype(env)) << "'";
 			env.errors().push_back(LxError::token_error(_op, env.script_lines(), ErrorType::Semantic, ss.str()));
 			return DataType::Void;
 		}
@@ -276,13 +276,11 @@ namespace lx
 
 	void PrefixExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PrefixExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
 		evaltype(env);
 	}
 
@@ -294,8 +292,15 @@ namespace lx
 
 	DataType PrefixExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO switch over operator and _expr.evaltype()
-		return DataType::Void;
+		if (auto type = lx::evaltype(op(), _expr.evaltype(env)))
+			return *type;
+		else
+		{
+			std::stringstream ss;
+			ss << ": operator not defined for type '" << friendly_name(_expr.evaltype(env)) << "'";
+			env.errors().push_back(LxError::token_error(_op, env.script_lines(), ErrorType::Semantic, ss.str()));
+			return DataType::Void;
+		}
 	}
 
 	StandardPrefixOperator PrefixExpression::op() const
@@ -310,13 +315,11 @@ namespace lx
 
 	void AsExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void AsExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
 		evaltype(env);
 	}
 
@@ -328,7 +331,16 @@ namespace lx
 
 	DataType AsExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		return data_type(_type.type);
+		DataType return_type = data_type(_type.type);
+		if (can_cast(_expr.evaltype(env), return_type))
+			return return_type;
+		else
+		{
+			std::stringstream ss;
+			ss << ": cannot convert from '" << friendly_name(_expr.evaltype(env)) << "' to '" << friendly_name(return_type) << "'";
+			env.errors().push_back(LxError::token_error(_type, env.script_lines(), ErrorType::Semantic, ss.str()));
+			return DataType::Void;
+		}
 	}
 
 	SubscriptExpression::SubscriptExpression(const Expression& container, const Expression& subscript)
