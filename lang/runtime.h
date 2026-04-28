@@ -1,6 +1,6 @@
 #pragma once
 
-#include "token.h"
+#include "operations.h"
 #include "errors.h"
 
 #include <unordered_map>
@@ -9,23 +9,6 @@
 
 namespace lx
 {
-	enum class DataType
-	{
-		Int = TokenType::IntType,
-		Float = TokenType::FloatType,
-		Bool = TokenType::BoolType,
-		String = TokenType::StringType,
-		Void = TokenType::VoidType,
-		Pattern = TokenType::PatternType,
-		Match = TokenType::MatchType,
-		Matches = TokenType::MatchesType,
-		CapId = TokenType::CapIdType,
-		Cap = TokenType::CapType,
-		IRange = TokenType::IRangeType,
-		SRange = TokenType::SRangeType,
-		List = TokenType::ListType,
-	};
-
 	struct VariableSignature
 	{
 		unsigned int decl_line_number = 0;
@@ -41,7 +24,6 @@ namespace lx
 
 	struct FunctionCallSignature
 	{
-		unsigned int decl_line_number;
 		std::string identifier;
 		std::vector<DataType> arg_types;
 	};
@@ -98,7 +80,6 @@ namespace lx
 	{
 		Global,
 		Local,
-		Isolated,
 		Unknown
 	};
 
@@ -119,7 +100,6 @@ namespace lx
 		void pop_local_scope();
 
 		unsigned int scope_depth() const;
-		unsigned int scope_isolation_depth() const;
 
 		std::optional<unsigned int> identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const;
 

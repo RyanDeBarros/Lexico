@@ -5,6 +5,7 @@
 #include "token.h"
 #include "symbols.h"
 #include "errors.h"
+#include "operations.h"
 #include "runtime.h"
 
 namespace lx
@@ -21,13 +22,15 @@ namespace lx
 	class ASTNode
 	{
 	protected:
-		mutable bool validated = false;
+		mutable bool _validated = false;
 
 	public:
 		ASTNode() = default;
 		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
 		
+		bool validated() const;
+
 		virtual void pre_analyse(RuntimeEnvironment& env) const = 0;
 		virtual void post_analyse(RuntimeEnvironment& env) const = 0;
 		void accept(ASTVisitor& visitor) const;
@@ -136,7 +139,7 @@ namespace lx
 
 	class BinaryExpression : public Expression
 	{
-		Token _op;  // TODO use enum
+		Token _op;
 		const Expression& _left;
 		const Expression& _right;
 
@@ -148,11 +151,29 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+
+	public:
+		StandardBinaryOperator op() const;
+	};
+
+	class MemberAccessExpression : public Expression
+	{
+		const Expression& _object;
+		Token _member;
+
+	public:
+		MemberAccessExpression(const Expression& object, Token&& member);
+		void pre_analyse(RuntimeEnvironment& env) const override;
+		void post_analyse(RuntimeEnvironment& env) const override;
+		void traverse(ASTVisitor& visitor) const override;
+
+	protected:
+		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
 	};
 
 	class PrefixExpression : public Expression
 	{
-		Token _op;  // TODO use enum
+		Token _op;
 		const Expression& _expr;
 
 	public:
@@ -163,6 +184,9 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+
+	public:
+		StandardPrefixOperator op() const;
 	};
 
 	class AsExpression : public Expression
@@ -228,6 +252,21 @@ namespace lx
 
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args);
+		void pre_analyse(RuntimeEnvironment& env) const override;
+		void post_analyse(RuntimeEnvironment& env) const override;
+		void traverse(ASTVisitor& visitor) const override;
+
+	protected:
+		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+	};
+
+	class MethodCallExpression : public Expression
+	{
+		const Expression& _object;
+		std::vector<const Expression*> _args;
+
+	public:
+		MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -460,18 +499,20 @@ namespace lx
 	class PatternSimpleRepeat : public PatternExpression
 	{
 		const PatternExpression& _expression;
-		Token _op;  // TODO use enum
+		Token _op;
 
 	public:
 		PatternSimpleRepeat(const PatternExpression& expression, Token&& op);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
+
+		PatternSimpleRepeatOperator op() const;
 	};
 
 	class PatternPrefixOperation : public PatternExpression
 	{
-		Token _op;  // TODO use enum
+		Token _op;
 		const PatternExpression& _expression;
 
 	public:
@@ -479,6 +520,8 @@ namespace lx
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
+
+		PatternPrefixOperator op() const;
 	};
 
 	class PatternBackRef : public PatternExpression
@@ -493,7 +536,7 @@ namespace lx
 
 	class PatternBinaryOperation : public PatternExpression
 	{
-		Token _op;  // TODO use enum
+		Token _op;
 		const PatternExpression& _left;
 		const PatternExpression& _right;
 
@@ -502,6 +545,8 @@ namespace lx
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
+
+		PatternBinaryOperator op() const;
 	};
 
 	class PatternLazy : public PatternExpression

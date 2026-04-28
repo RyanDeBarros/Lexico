@@ -8,7 +8,7 @@ namespace lx
 {
 	enum class TokenType
 	{
-		// Basic
+		// General
 		Identifier,
 		BuiltinSymbol,
 		Percent,
@@ -18,6 +18,7 @@ namespace lx
 		Comma,
 		Arrow,
 		Assign,
+		Dot,
 
 		// Literals
 		Integer,
@@ -96,7 +97,6 @@ namespace lx
 		And,
 		As,
 		Asterisk,
-		Dot,
 		EqualTo,
 		GreaterThan,
 		GreaterThanOrEqualTo,

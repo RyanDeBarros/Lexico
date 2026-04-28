@@ -8,6 +8,7 @@ set(LANG_SOURCES
 	errors.cpp
 	token.cpp
 	ast.cpp
+	operations.cpp
 	symbols.cpp
 )
 

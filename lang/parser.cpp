@@ -767,6 +767,16 @@ namespace lx
 
 		Expression& parse_function_call_expression(Token&& identifier, TokenOffset& offset)
 		{
+			return _tree.add(std::make_unique<FunctionCallExpression>(std::move(identifier), parse_call_arglist(offset)));
+		}
+
+		Expression& parse_method_call_expression(Expression& object, TokenOffset& offset)
+		{
+			return _tree.add(std::make_unique<MethodCallExpression>(object, parse_call_arglist(offset)));
+		}
+
+		std::vector<const Expression*> parse_call_arglist(TokenOffset& offset)
+		{
 			offset.add(1);  // '('
 
 			std::vector<const Expression*> args;
@@ -793,7 +803,7 @@ namespace lx
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
 			offset.add(1);  // ')'
-			return _tree.add(std::make_unique<FunctionCallExpression>(std::move(identifier), std::move(args)));
+			return args;
 		}
 
 		template<typename T>
@@ -844,24 +854,32 @@ namespace lx
 
 		void parse_binary_expressions(Expression*& lhs, TokenOffset& offset, Precedence min_precedence)
 		{
-			while (continue_statement() && (peek(0).is_binary_operator() || peek_token_is(0, TokenType::LBracket)))
+			while (continue_statement() && (peek(0).is_binary_operator() || peek_token_is(0, TokenType::Dot)
+				|| peek_token_is(0, TokenType::LParen) || peek_token_is(0, TokenType::LBracket)))
 			{
 				if (peek_token_is(0, TokenType::LBracket))
-				{
 					lhs = &parse_subscript_expression(*lhs, offset);
-					continue;
+				else if (peek_token_is(0, TokenType::Dot))
+				{
+					offset.add(1);
+					auto& member = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+					lhs = &_tree.add(std::make_unique<MemberAccessExpression>(*lhs, std::move(member)));
 				}
+				else if (peek_token_is(0, TokenType::LParen))
+					lhs = &parse_method_call_expression(*lhs, offset);
+				else
+				{
+					Precedence precedence = peek(0).precedence();
+					if (precedence < min_precedence)
+						break;
 
-				Precedence precedence = peek(0).precedence();
-				if (precedence < min_precedence)
-					break;
+					auto& op = ref(0);
+					offset.add(1);
 
-				auto& op = ref(0);
-				offset.add(1);
-
-				Precedence next_min_precedence = precedence + (op.is_right_associative() ? 0 : 1);
-				Expression& rhs = parse_expression(offset, next_min_precedence);
-				lhs = &_tree.add(std::make_unique<BinaryExpression>(std::move(op), *lhs, rhs));
+					Precedence next_min_precedence = precedence + (op.is_right_associative() ? 0 : 1);
+					Expression& rhs = parse_expression(offset, next_min_precedence);
+					lhs = &_tree.add(std::make_unique<BinaryExpression>(std::move(op), *lhs, rhs));
+				}
 			}
 		}
 

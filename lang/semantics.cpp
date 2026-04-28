@@ -14,12 +14,14 @@ namespace lx
 
 		void pre_visit(const ASTNode& node) override
 		{
-			node.pre_analyse(_env);
+			if (!node.validated())
+				node.pre_analyse(_env);
 		}
 
 		void post_visit(const ASTNode& node) override
 		{
-			node.post_analyse(_env);
+			if (node.validated())
+				node.post_analyse(_env);
 		}
 	};
 

@@ -10,7 +10,7 @@ namespace lx
 	{
 		size_t h = std::hash<std::string>{}(fc.identifier);
 		for (size_t i = 0; i < fc.arg_types.size(); ++i)
-			h ^= std::hash<DataType>{}(fc.arg_types[i]) << (i + 1);
+			h ^= std::hash<DataType>{}(fc.arg_types[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
 		return h;
 	}
 
@@ -57,15 +57,11 @@ namespace lx
 
 	std::optional<FunctionSignature> SymbolTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		auto it1 = _function_lut.find(identifier);
-		if (it1 != _function_lut.end())
-		{
-			auto it2 = _function_table.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
-			if (it2 != _function_table.end())
-				return it2->second;
-		}
-
-		return std::nullopt;
+		auto it = _function_table.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
+		if (it != _function_table.end())
+			return it->second;
+		else
+			return std::nullopt;
 	}
 
 	FunctionCallSet SymbolTable::registered_function_calls(const std::string_view identifier) const
@@ -83,7 +79,7 @@ namespace lx
 			_function_lut[std::string(identifier)] = {};
 
 		auto& registered_args = _function_lut.find(identifier)->second;
-		FunctionCallSignature fc{ .decl_line_number = line_number, .identifier = std::string(identifier), .arg_types = arg_types };
+		FunctionCallSignature fc{ .identifier = std::string(identifier), .arg_types = arg_types };
 		if (registered_args.count(fc))
 		{
 			std::stringstream ss;
@@ -117,21 +113,18 @@ namespace lx
 
 	void RuntimeEnvironment::pop_local_scope()
 	{
+		if (_scope_stack.empty())
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": scope stack is empty";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 		_scope_stack.pop_back();
 	}
 
 	unsigned int RuntimeEnvironment::scope_depth() const
 	{
 		return _scope_stack.size();
-	}
-
-	unsigned int RuntimeEnvironment::scope_isolation_depth() const
-	{
-		unsigned int depth = 0;
-		for (const auto& scope : _scope_stack)
-			if (scope.isolated)
-				++depth;
-		return depth;
 	}
 
 	static std::optional<unsigned int> first_line_number(const SymbolTable& table, const std::string_view identifier)
@@ -148,7 +141,7 @@ namespace lx
 				first_line_number = std::numeric_limits<unsigned int>::max();
 
 			for (const auto& call : calls)
-				first_line_number = std::min(*first_line_number, call.decl_line_number);
+				first_line_number = std::min(*first_line_number, table.registered_function(call.identifier, call.arg_types)->decl_line_number);
 		}
 
 		return first_line_number;
@@ -160,17 +153,10 @@ namespace lx
 		{
 			if (ns == Namespace::Global)
 				return first_line_number(_global_table, identifier);
-			else if (ns == Namespace::Isolated)
-			{
-				if (!_scope_stack.empty())
-					return first_line_number(_scope_stack.back().table, identifier);
-				else
-					return std::nullopt;
-			}
 
 			std::optional<unsigned int> line_number = std::nullopt;
 
-			if (ns == Namespace::Unknown)
+			if (ns == Namespace::Unknown || scope_depth() == 0)
 				line_number = first_line_number(_global_table, identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
@@ -203,17 +189,8 @@ namespace lx
 		{
 			if (ns == Namespace::Global)
 				return _global_table.registered_variable(identifier);
-			else if (ns == Namespace::Isolated)
-			{
-				if (!_scope_stack.empty())
-				{
-					if (auto sig = _scope_stack.back().table.registered_variable(identifier))
-						return sig;
-				}
-
-				return std::nullopt;
-			}
-			else if (ns == Namespace::Unknown)
+			
+			if (ns == Namespace::Unknown || scope_depth() == 0)
 			{
 				if (auto sig = _global_table.registered_variable(identifier))
 					return sig;
@@ -265,18 +242,8 @@ namespace lx
 		{
 			if (ns == Namespace::Global)
 				return _global_table.registered_function(identifier, arg_types);
-			else if (ns == Namespace::Isolated)
-			{
-				if (!_scope_stack.empty())
-				{
-					if (auto sig = _scope_stack.back().table.registered_function(identifier, arg_types))
-						return sig;
-				}
-
-				return std::nullopt;
-			}
 			
-			if (ns == Namespace::Unknown)
+			if (ns == Namespace::Unknown || scope_depth() == 0)
 			{
 				if (auto ln = _global_table.registered_function(identifier, arg_types))
 					return ln;
@@ -304,17 +271,10 @@ namespace lx
 		{
 			if (ns == Namespace::Global)
 				return _global_table.registered_function_calls(identifier);
-			else if (ns == Namespace::Isolated)
-			{
-				if (!_scope_stack.empty())
-					return _scope_stack.back().table.registered_function_calls(identifier);
-				else
-					return {};
-			}
 
 			FunctionCallSet callset;
 
-			if (ns == Namespace::Unknown)
+			if (ns == Namespace::Unknown || scope_depth() == 0)
 				callset = _global_table.registered_function_calls(identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
@@ -326,6 +286,8 @@ namespace lx
 				if (it->isolated)
 					break;
 			}
+
+			return callset;
 		}
 		catch (const LxError& error)
 		{

@@ -5,6 +5,11 @@
 
 namespace lx
 {
+	bool ASTNode::validated() const
+	{
+		return _validated;
+	}
+
 	void ASTNode::accept(ASTVisitor& visitor) const
 	{
 		visitor.pre_visit(*this);
@@ -58,10 +63,10 @@ namespace lx
 
 	DataType Expression::evaltype(const RuntimeEnvironment& env) const
 	{
-		if (!validated)
+		if (!_validated)
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": node is not validated";
+			ss << __FUNCTION__ << ": node is not _validated";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		if (!_evaltype)
@@ -76,21 +81,20 @@ namespace lx
 
 	void VariableDeclaration::pre_analyse(RuntimeEnvironment& env) const
 	{
-		if (auto ln = env.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Isolated))
+		_validated = false;
+		if (_global && env.scope_depth() > 0)
+			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic, "cannot declare global variable inside a scope"));
+		else if (auto ln = env.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
 		{
-			validated = false;
 			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
 				"identifier already declared on line " + std::to_string(*ln)));
 		}
 		else
-			validated = true;
+			_validated = true;
 	}
 
 	void VariableDeclaration::post_analyse(RuntimeEnvironment& env) const
 	{
-		if (!validated)
-			return;
-
 		env.register_variable(_identifier.lexeme, _expression.evaltype(env), _identifier.start_line, _global ? Namespace::Global : Namespace::Local);
 	}
 
@@ -138,11 +142,12 @@ namespace lx
 
 	void LiteralExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		validated = true;
+		_validated = true;
 	}
 
 	void LiteralExpression::post_analyse(RuntimeEnvironment& env) const
 	{
+		evaltype(env);
 	}
 
 	DataType LiteralExpression::impl_evaltype(const RuntimeEnvironment& env) const
@@ -173,12 +178,12 @@ namespace lx
 
 	void BinaryExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void BinaryExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		evaltype(env);
 	}
 
 	void BinaryExpression::traverse(ASTVisitor& visitor) const
@@ -190,7 +195,48 @@ namespace lx
 
 	DataType BinaryExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO switch over operator and combo of _left.evaltype() and _right.evaltype()
+		if (auto type = lx::evaltype(op(), _left.evaltype(env), _right.evaltype(env)))
+			return *type;
+		else
+		{
+			std::stringstream ss;
+			ss << ": operand not defined for types '" << friendly_name(_left.evaltype(env)) << "' and '" << friendly_name(_right.evaltype(env)) << "'";
+			env.errors().push_back(LxError::token_error(_op, env.script_lines(), ErrorType::Semantic, ss.str()));
+			return DataType::Void;
+		}
+	}
+
+	StandardBinaryOperator BinaryExpression::op() const
+	{
+		return standard_binary_operator(_op.type);
+	}
+
+	MemberAccessExpression::MemberAccessExpression(const Expression& object, Token&& member)
+		: _object(object), _member(std::move(member))
+	{
+	}
+
+	void MemberAccessExpression::pre_analyse(RuntimeEnvironment& env) const
+	{
+		_validated = true;
+	}
+
+	void MemberAccessExpression::post_analyse(RuntimeEnvironment& env) const
+	{
+		// TODO validate that member exists for object.evaltype()
+
+		evaltype(env);
+	}
+
+	void MemberAccessExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		_object.accept(visitor);
+	}
+
+	DataType MemberAccessExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	{
+		// TODO look up class table for member
 		return DataType::Void;
 	}
 
@@ -207,6 +253,8 @@ namespace lx
 	void PrefixExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	void PrefixExpression::traverse(ASTVisitor& visitor) const
@@ -219,6 +267,11 @@ namespace lx
 	{
 		// TODO switch over operator and _expr.evaltype()
 		return DataType::Void;
+	}
+
+	StandardPrefixOperator PrefixExpression::op() const
+	{
+		return standard_prefix_operator(_op.type);
 	}
 
 	AsExpression::AsExpression(const Expression& expr, Token&& type)
@@ -234,6 +287,8 @@ namespace lx
 	void AsExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	void AsExpression::traverse(ASTVisitor& visitor) const
@@ -244,8 +299,7 @@ namespace lx
 
 	DataType AsExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO refactor static_cast<DataType>(TokenType) into safer utility that will check that TokenType is indeed a valid data type
-		return static_cast<DataType>(_type.type);
+		return data_type(_type.type);
 	}
 
 	SubscriptExpression::SubscriptExpression(const Expression& container, const Expression& subscript)
@@ -261,6 +315,8 @@ namespace lx
 	void SubscriptExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor) const
@@ -289,6 +345,8 @@ namespace lx
 	void VariableExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	DataType VariableExpression::impl_evaltype(const RuntimeEnvironment& env) const
@@ -316,6 +374,8 @@ namespace lx
 	void BuiltinSymbolExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	DataType BuiltinSymbolExpression::impl_evaltype(const RuntimeEnvironment& env) const
@@ -337,6 +397,8 @@ namespace lx
 	void FunctionCallExpression::post_analyse(RuntimeEnvironment& env) const
 	{
 		// TODO
+
+		evaltype(env);
 	}
 
 	void FunctionCallExpression::traverse(ASTVisitor& visitor) const
@@ -362,6 +424,36 @@ namespace lx
 		}
 	}
 
+	MethodCallExpression::MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args)
+		: _object(object), _args(std::move(args))
+	{
+	}
+
+	void MethodCallExpression::pre_analyse(RuntimeEnvironment& env) const
+	{
+		// TODO
+	}
+
+	void MethodCallExpression::post_analyse(RuntimeEnvironment& env) const
+	{
+		// TODO
+
+		evaltype(env);
+	}
+
+	void MethodCallExpression::traverse(ASTVisitor& visitor) const
+	{
+		ASTNode::traverse(visitor);
+		for (const Expression* arg : _args)
+			arg->accept(visitor);
+	}
+
+	DataType MethodCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	{
+		// TODO
+		return DataType::Void;
+	}
+
 	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
 		: _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
 	{
@@ -369,7 +461,7 @@ namespace lx
 
 	void FunctionDefinition::pre_analyse(RuntimeEnvironment& env) const
 	{
-		validated = false;
+		_validated = false;
 
 		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
 		{
@@ -385,27 +477,26 @@ namespace lx
 			return;
 		}
 
+		std::unordered_set<std::string_view> argnames;
+		for (const auto& [_, identifier] : _arglist)
+		{
+			if (argnames.count(identifier.lexeme))
+				env.errors().push_back(LxError::token_error(identifier, env.script_lines(), ErrorType::Semantic, "repeated argument identifier"));
+			else
+				argnames.insert(identifier.lexeme);
+		}
+
+		if (argnames.size() != _arglist.size())
+			return;
+
 		env.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.start_line, env.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
 
 		Block::pre_analyse(env);
 
 		for (size_t i = 0; i < _arglist.size(); ++i)
-		{
-			const Token& arg_type = _arglist[i].first;
-			const Token& arg_identifier = _arglist[i].second;
+			env.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.start_line, Namespace::Local);
 
-			if (auto ln = env.identifier_first_decl_line_number(arg_identifier.lexeme, Namespace::Isolated))
-			{
-				env.errors().push_back(LxError::token_error(arg_identifier, env.script_lines(), ErrorType::Semantic,
-					"identifier already declared on line " + std::to_string(*ln)));
-
-				return;
-			}
-
-			env.register_variable(arg_identifier.lexeme, static_cast<DataType>(arg_type.type), arg_identifier.start_line, Namespace::Local);
-		}
-
-		validated = true;
+		_validated = true;
 	}
 
 	void FunctionDefinition::post_analyse(RuntimeEnvironment& env) const
@@ -424,7 +515,7 @@ namespace lx
 	{
 		std::vector<DataType> types;
 		for (const auto& arg : _arglist)
-			types.push_back(static_cast<DataType>(arg.first.type));
+			types.push_back(data_type(arg.first.type));
 		return types;
 	}
 	
@@ -438,7 +529,7 @@ namespace lx
 	
 	DataType FunctionDefinition::return_type() const
 	{
-		return _return_type ? static_cast<DataType>(_return_type->type) : DataType::Void;
+		return _return_type ? data_type(_return_type->type) : DataType::Void;
 	}
 
 	ReturnStatement::ReturnStatement(const Expression* expression)
@@ -779,7 +870,12 @@ namespace lx
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
-	
+
+	PatternSimpleRepeatOperator PatternSimpleRepeat::op() const
+	{
+		return pattern_simple_repeat_operator(_op.type);
+	}
+
 	PatternPrefixOperation::PatternPrefixOperation(Token&& op, const PatternExpression& expression)
 		: _op(std::move(op)), _expression(expression)
 	{
@@ -799,6 +895,11 @@ namespace lx
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
+	}
+
+	PatternPrefixOperator PatternPrefixOperation::op() const
+	{
+		return pattern_prefix_operator(_op.type);
 	}
 	
 	PatternBackRef::PatternBackRef(Token&& identifier)
@@ -836,6 +937,11 @@ namespace lx
 		ASTNode::traverse(visitor);
 		_left.accept(visitor);
 		_right.accept(visitor);
+	}
+
+	PatternBinaryOperator PatternBinaryOperation::op() const
+	{
+		return pattern_binary_operator(_op.type);
 	}
 	
 	PatternLazy::PatternLazy(const PatternExpression& expression)

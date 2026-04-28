@@ -105,7 +105,6 @@ namespace lx
 		{
 		case TokenType::And:
 		case TokenType::Asterisk:
-		case TokenType::Dot:
 		case TokenType::EqualTo:
 		case TokenType::GreaterThan:
 		case TokenType::GreaterThanOrEqualTo:
@@ -142,9 +141,6 @@ namespace lx
 	{
 		switch (type)
 		{
-		case TokenType::Dot:
-			return Precedence::Dot;
-
 		case TokenType::Asterisk:
 		case TokenType::Slash:
 		case TokenType::Mod:
@@ -270,7 +266,7 @@ namespace lx
 
 	bool TokenStream::eof() const
 	{
-		return _ptr >= _tokens.size();
+		return _ptr >= _tokens.size() || _tokens[_ptr].type == TokenType::EndOfFile;
 	}
 
 	void TokenStream::advance(size_t n)
