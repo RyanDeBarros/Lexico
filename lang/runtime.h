@@ -4,6 +4,7 @@
 #include "errors.h"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <optional>
 
 namespace lx
@@ -38,46 +39,52 @@ namespace lx
 		std::vector<DataType> arg_types;
 	};
 
+	struct FunctionCallSignature
+	{
+		unsigned int decl_line_number;
+		std::string identifier;
+		std::vector<DataType> arg_types;
+	};
+
+	struct FunctionCallHash
+	{
+		size_t operator()(const FunctionCallSignature& fc) const;
+	};
+
+	struct FunctionCallEqual
+	{
+		bool operator()(const FunctionCallSignature& a, const FunctionCallSignature& b) const;
+	};
+
+	using FunctionCallSet = std::unordered_set<FunctionCallSignature, FunctionCallHash, FunctionCallEqual>;
+
 	class SymbolTable
 	{
 		struct TransparentHash
 		{
 			using is_transparent = void;
 
-			size_t operator()(const std::string_view sv) const
-			{
-				return std::hash<std::string_view>{}(sv);
-			}
-
-			size_t operator()(const std::string& s) const
-			{
-				return std::hash<std::string>{}(s);
-			}
+			size_t operator()(const std::string_view sv) const;
+			size_t operator()(const std::string& s) const;
 		};
 
 		struct TransparentEqual
 		{
 			using is_transparent = void;
 
-			bool operator()(std::string_view a, std::string_view b) const
-			{
-				return a == b;
-			}
+			bool operator()(std::string_view a, std::string_view b) const;
 		};
 
 		std::unordered_map<std::string, VariableSignature, TransparentHash, TransparentEqual> _variable_table;
-		std::unordered_map<std::string, FunctionSignature, TransparentHash, TransparentEqual> _function_table;
+		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _function_table;
+		std::unordered_map<std::string, FunctionCallSet, TransparentHash, TransparentEqual> _function_lut;
 
 	public:
-		std::optional<unsigned int> identifier_is_registered(const std::string_view identifier) const;
-
-		std::optional<VariableSignature> variable_is_registered(const std::string_view identifier) const;
-		bool variable_has_type(const std::string_view identifier, DataType type) const;
+		std::optional<VariableSignature> registered_variable(const std::string_view identifier) const;
 		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number);
 
-		std::optional<FunctionSignature> function_is_registered(const std::string_view identifier) const;
-		bool function_has_return_type(const std::string_view identifier, DataType type) const;
-		bool function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types) const;
+		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
+		FunctionCallSet registered_function_calls(const std::string_view identifier) const;
 		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 	};
 
@@ -111,15 +118,16 @@ namespace lx
 		void push_local_scope(bool isolated);
 		void pop_local_scope();
 
-		std::optional<unsigned int> identifier_is_registered(const std::string_view identifier, Namespace ns) const;
+		unsigned int scope_depth() const;
+		unsigned int scope_isolation_depth() const;
 
-		std::optional<VariableSignature> variable_is_registered(const std::string_view identifier, Namespace ns) const;
-		bool variable_has_type(const std::string_view identifier, DataType type, Namespace ns) const;
+		std::optional<unsigned int> identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const;
+
+		std::optional<VariableSignature> registered_variable(const std::string_view identifier, Namespace ns) const;
 		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns);
 
-		std::optional<FunctionSignature> function_is_registered(const std::string_view identifier, Namespace ns) const;
-		bool function_has_return_type(const std::string_view identifier, DataType type, Namespace ns) const;
-		bool function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types, Namespace ns) const;
+		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const;
+		FunctionCallSet registered_function_calls(const std::string_view identifier, Namespace ns) const;
 		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns);
 	};
 }

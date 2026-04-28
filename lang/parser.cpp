@@ -412,19 +412,29 @@ namespace lx
 				if (peek_token_is_not(0, TokenType::Comma))
 					break;
 				else
+				{
 					comma_ended = true;
+					offset.add(1);
+				}
 			}
 
 			if (comma_ended)
 				throw_error(errors::EXPECTED_DATATYPE, 0);
 
 			parse_token(0, TokenType::RParen, errors::EXPECTED_RPAREN);
-			parse_token(1, TokenType::Arrow, errors::EXPECTED_ARROW);
-			auto& return_type = parse_datatype(2);
-			offset.add(3);
+			offset.add(1);
+
+			Token* return_type = nullptr;
+			if (peek_token_is(0, TokenType::Arrow))
+			{
+				parse_token(0, TokenType::Arrow, errors::EXPECTED_ARROW);
+				return_type = &parse_datatype(1);
+				offset.add(2);
+			}
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist), std::move(return_type))));
+			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist),
+				return_type ? std::make_optional<Token>(std::move(*return_type)) : std::nullopt)));
 			parse_simple_block(TokenType::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
 			return true;
 		}
@@ -603,7 +613,9 @@ namespace lx
 			{
 				args.push_back(&parse_expression(offset));
 				comma_ended = false;
-				if (peek_token_is(0, TokenType::Comma))
+				if (peek_token_is_not(0, TokenType::Comma))
+					break;
+				else
 				{
 					offset.add(1);
 					comma_ended = true;

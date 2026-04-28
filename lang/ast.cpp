@@ -76,10 +76,11 @@ namespace lx
 
 	void VariableDeclaration::pre_analyse(RuntimeEnvironment& env) const
 	{
-		if (auto line_number = env.identifier_is_registered(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Isolated))
+		if (auto ln = env.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Isolated))
 		{
 			validated = false;
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic, "identifier already declared on line " + std::to_string(*line_number)));
+			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
+				"identifier already declared on line " + std::to_string(*ln)));
 		}
 		else
 			validated = true;
@@ -292,8 +293,8 @@ namespace lx
 
 	DataType VariableExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		if (auto sig = env.variable_is_registered(_identifier.lexeme, Namespace::Unknown))
-			return sig->type;
+		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+			return var->type;
 		else
 		{
 			std::stringstream ss;
@@ -347,8 +348,12 @@ namespace lx
 
 	DataType FunctionCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		if (auto sig = env.function_is_registered(_identifier.lexeme, Namespace::Unknown))
-			return sig->return_type;
+		std::vector<DataType> args(_args.size());
+		for (size_t i = 0; i < args.size(); ++i)
+			args[i] = _args[i]->evaltype(env);
+
+		if (auto fn = env.registered_function(_identifier.lexeme, args, Namespace::Unknown))
+			return fn->return_type;
 		else
 		{
 			std::stringstream ss;
@@ -357,24 +362,83 @@ namespace lx
 		}
 	}
 
-	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, Token&& return_type)
+	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
 		: _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
 	{
 	}
 
 	void FunctionDefinition::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		validated = false;
+
+		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		{
+			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
+				"identifier already declared on line " + std::to_string(var->decl_line_number)));
+			return;
+		}
+		
+		if (auto fn = env.registered_function(_identifier.lexeme, arg_types(), Namespace::Unknown))
+		{
+			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
+				"function with matching argument types already declared on line " + std::to_string(fn->decl_line_number)));
+			return;
+		}
+
+		env.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.start_line, env.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
+
+		Block::pre_analyse(env);
+
+		for (size_t i = 0; i < _arglist.size(); ++i)
+		{
+			const Token& arg_type = _arglist[i].first;
+			const Token& arg_identifier = _arglist[i].second;
+
+			if (auto ln = env.identifier_first_decl_line_number(arg_identifier.lexeme, Namespace::Isolated))
+			{
+				env.errors().push_back(LxError::token_error(arg_identifier, env.script_lines(), ErrorType::Semantic,
+					"identifier already declared on line " + std::to_string(*ln)));
+
+				return;
+			}
+
+			env.register_variable(arg_identifier.lexeme, static_cast<DataType>(arg_type.type), arg_identifier.start_line, Namespace::Local);
+		}
+
+		validated = true;
 	}
 
 	void FunctionDefinition::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		// TODO if non-void return type, check that there is a return statement -> validate that evaltype() of returned expression matches the function return type
+
+		Block::post_analyse(env);
 	}
 
 	bool FunctionDefinition::isolated() const
 	{
 		return true;
+	}
+
+	std::vector<DataType> FunctionDefinition::arg_types() const
+	{
+		std::vector<DataType> types;
+		for (const auto& arg : _arglist)
+			types.push_back(static_cast<DataType>(arg.first.type));
+		return types;
+	}
+	
+	std::vector<std::string_view> FunctionDefinition::arg_identifiers() const
+	{
+		std::vector<std::string_view> identifiers;
+		for (const auto& arg : _arglist)
+			identifiers.push_back(arg.second.lexeme);
+		return identifiers;
+	}
+	
+	DataType FunctionDefinition::return_type() const
+	{
+		return _return_type ? static_cast<DataType>(_return_type->type) : DataType::Void;
 	}
 
 	ReturnStatement::ReturnStatement(const Expression* expression)
@@ -397,6 +461,11 @@ namespace lx
 		ASTNode::traverse(visitor);
 		if (_expression)
 			_expression->accept(visitor);
+	}
+
+	DataType ReturnStatement::evaltype(const RuntimeEnvironment& env) const
+	{
+		return _expression ? _expression->evaltype(env) : DataType::Void;
 	}
 	
 	IfStatement::IfStatement(const Expression& condition)

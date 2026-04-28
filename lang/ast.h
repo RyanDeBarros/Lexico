@@ -240,12 +240,16 @@ namespace lx
 	{
 		Token _identifier;
 		std::vector<std::pair<Token, Token>> _arglist;
-		Token _return_type;
+		std::optional<Token> _return_type;
 
 	public:
-		FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, Token&& return_type);
+		FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
+
+		std::vector<DataType> arg_types() const;
+		std::vector<std::string_view> arg_identifiers() const;
+		DataType return_type() const;
 
 	protected:
 		bool isolated() const override;
@@ -260,6 +264,8 @@ namespace lx
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
+		
+		DataType evaltype(const RuntimeEnvironment& env) const;
 	};
 
 	class IfStatement : public Block

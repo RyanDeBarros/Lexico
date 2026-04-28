@@ -112,7 +112,7 @@ static int resize_buffer_callback(ImGuiInputTextCallbackData* data)
 static void draw_input_buffer(std::string& buffer)
 {
     ImGui::InputTextMultiline(
-        "##editor",
+        "##input",
         buffer.data(),
         buffer.capacity() + 1,
         ImVec2(-FLT_MIN, -FLT_MIN),
@@ -124,14 +124,31 @@ static void draw_input_buffer(std::string& buffer)
 
 static void draw_output_buffer(std::string& buffer)
 {
-    ImGui::PushTextWrapPos();
-    ImGui::TextUnformatted(buffer.data());
-    ImGui::PopTextWrapPos();
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0, 0, 0, 0));
+    ImGui::InputTextMultiline(
+        "##output",
+        buffer.data(),
+        buffer.size() + 1,
+        ImVec2(-FLT_MIN, -FLT_MIN),
+        ImGuiInputTextFlags_WordWrap | ImGuiInputTextFlags_ReadOnly
+    );
+    ImGui::PopStyleColor(3);
 }
 
 static void draw_input_window()
 {
     ImGui::Begin(INPUT_WINDOW);
+
+    static int focus_frames = 2;
+    if (focus_frames > 0)
+    {
+        --focus_frames;
+        ImGui::SetWindowFocus();
+        ImGui::SetKeyboardFocusHere();
+    }
+
     draw_input_buffer(STATE.input);
     ImGui::End();
 }

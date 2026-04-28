@@ -6,36 +6,41 @@
 
 namespace lx
 {
-	std::optional<unsigned int> SymbolTable::identifier_is_registered(const std::string_view identifier) const
+	size_t FunctionCallHash::operator()(const FunctionCallSignature& fc) const
 	{
-		if (auto sig = variable_is_registered(identifier))
-			return sig->decl_line_number;
-		else if (auto sig = function_is_registered(identifier))
-			return sig->decl_line_number;
-		else
-			return std::nullopt;
+		size_t h = std::hash<std::string>{}(fc.identifier);
+		for (size_t i = 0; i < fc.arg_types.size(); ++i)
+			h ^= std::hash<DataType>{}(fc.arg_types[i]) << (i + 1);
+		return h;
 	}
 
-	std::optional<VariableSignature> SymbolTable::variable_is_registered(const std::string_view identifier) const
+	bool FunctionCallEqual::operator()(const FunctionCallSignature& a, const FunctionCallSignature& b) const
+	{
+		return a.identifier == b.identifier && a.arg_types == b.arg_types;
+	}
+
+	size_t SymbolTable::TransparentHash::operator()(const std::string_view sv) const
+	{
+		return std::hash<std::string_view>{}(sv);
+	}
+
+	size_t SymbolTable::TransparentHash::operator()(const std::string& s) const
+	{
+		return std::hash<std::string>{}(s);
+	}
+
+	bool SymbolTable::TransparentEqual::operator()(std::string_view a, std::string_view b) const
+	{
+		return a == b;
+	}
+
+	std::optional<VariableSignature> SymbolTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _variable_table.find(identifier);
 		if (it != _variable_table.end())
 			return it->second;
 		else
 			return std::nullopt;
-	}
-
-	bool SymbolTable::variable_has_type(const std::string_view identifier, DataType type) const
-	{
-		auto it = _variable_table.find(identifier);
-		if (it == _variable_table.end())
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": variable not registered: " << identifier;
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-
-		return it->second.type == type;
 	}
 
 	void SymbolTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
@@ -50,51 +55,44 @@ namespace lx
 		_variable_table[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
 	}
 
-	std::optional<FunctionSignature> SymbolTable::function_is_registered(const std::string_view identifier) const
+	std::optional<FunctionSignature> SymbolTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		auto it = _function_table.find(identifier);
-		if (it != _function_table.end())
+		auto it1 = _function_lut.find(identifier);
+		if (it1 != _function_lut.end())
+		{
+			auto it2 = _function_table.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
+			if (it2 != _function_table.end())
+				return it2->second;
+		}
+
+		return std::nullopt;
+	}
+
+	FunctionCallSet SymbolTable::registered_function_calls(const std::string_view identifier) const
+	{
+		auto it = _function_lut.find(identifier);
+		if (it != _function_lut.end())
 			return it->second;
 		else
-			return std::nullopt;
-	}
-
-	bool SymbolTable::function_has_return_type(const std::string_view identifier, DataType type) const
-	{
-		auto it = _function_table.find(identifier);
-		if (it == _function_table.end())
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": function not registered: " << identifier;
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-
-		return it->second.return_type == type;
-	}
-
-	bool SymbolTable::function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types) const
-	{
-		auto it = _function_table.find(identifier);
-		if (it == _function_table.end())
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": function not registered: " << identifier;
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-
-		return it->second.arg_types == types;
+			return {};
 	}
 
 	void SymbolTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		if (_function_table.count(identifier))
+		if (!_function_lut.count(identifier))
+			_function_lut[std::string(identifier)] = {};
+
+		auto& registered_args = _function_lut.find(identifier)->second;
+		FunctionCallSignature fc{ .decl_line_number = line_number, .identifier = std::string(identifier), .arg_types = arg_types };
+		if (registered_args.count(fc))
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": function already registered: " << identifier;
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 
-		_function_table[std::string(identifier)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
+		registered_args.insert(fc);
+		_function_table[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
 	}
 
 	RuntimeEnvironment::RuntimeEnvironment(const std::vector<std::string_view>& script_lines)
@@ -122,55 +120,94 @@ namespace lx
 		_scope_stack.pop_back();
 	}
 
-	std::optional<unsigned int> RuntimeEnvironment::identifier_is_registered(const std::string_view identifier, Namespace ns) const
+	unsigned int RuntimeEnvironment::scope_depth() const
+	{
+		return _scope_stack.size();
+	}
+
+	unsigned int RuntimeEnvironment::scope_isolation_depth() const
+	{
+		unsigned int depth = 0;
+		for (const auto& scope : _scope_stack)
+			if (scope.isolated)
+				++depth;
+		return depth;
+	}
+
+	static std::optional<unsigned int> first_line_number(const SymbolTable& table, const std::string_view identifier)
+	{
+		std::optional<unsigned int> first_line_number = std::nullopt;
+
+		if (auto var = table.registered_variable(identifier))
+			first_line_number = var->decl_line_number;
+
+		auto calls = table.registered_function_calls(identifier);
+		if (!calls.empty())
+		{
+			if (!first_line_number)
+				first_line_number = std::numeric_limits<unsigned int>::max();
+
+			for (const auto& call : calls)
+				first_line_number = std::min(*first_line_number, call.decl_line_number);
+		}
+
+		return first_line_number;
+	}
+
+	std::optional<unsigned int> RuntimeEnvironment::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
 			if (ns == Namespace::Global)
-				return _global_table.identifier_is_registered(identifier);
+				return first_line_number(_global_table, identifier);
 			else if (ns == Namespace::Isolated)
 			{
 				if (!_scope_stack.empty())
-				{
-					if (auto ln = _scope_stack.back().table.identifier_is_registered(identifier))
-						return ln;
-				}
+					return first_line_number(_scope_stack.back().table, identifier);
+				else
+					return std::nullopt;
+			}
 
-				return std::nullopt;
-			}
-			else if (ns == Namespace::Unknown)
-			{
-				if (auto ln = _global_table.identifier_is_registered(identifier))
-					return ln;
-			}
+			std::optional<unsigned int> line_number = std::nullopt;
+
+			if (ns == Namespace::Unknown)
+				line_number = first_line_number(_global_table, identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
-				if (auto ln = it->table.identifier_is_registered(identifier))
-					return ln;
-				else if (it->isolated)
+				if (auto ln = first_line_number(it->table, identifier))
+				{
+					if (line_number)
+						line_number = std::min(*line_number, *ln);
+					else
+						line_number = ln;
+				}
+
+				if (it->isolated)
 					break;
 			}
+
+			return line_number;
 		}
 		catch (const LxError& error)
 		{
 			_errors.push_back(error);
 		}
 
-		return std::nullopt;
+		return {};
 	}
 
-	std::optional<VariableSignature> RuntimeEnvironment::variable_is_registered(const std::string_view identifier, Namespace ns) const
+	std::optional<VariableSignature> RuntimeEnvironment::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
 			if (ns == Namespace::Global)
-				return _global_table.variable_is_registered(identifier);
+				return _global_table.registered_variable(identifier);
 			else if (ns == Namespace::Isolated)
 			{
 				if (!_scope_stack.empty())
 				{
-					if (auto sig = _scope_stack.back().table.variable_is_registered(identifier))
+					if (auto sig = _scope_stack.back().table.registered_variable(identifier))
 						return sig;
 				}
 
@@ -178,13 +215,13 @@ namespace lx
 			}
 			else if (ns == Namespace::Unknown)
 			{
-				if (auto sig = _global_table.variable_is_registered(identifier))
+				if (auto sig = _global_table.registered_variable(identifier))
 					return sig;
 			}
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
-				if (auto sig = it->table.variable_is_registered(identifier))
+				if (auto sig = it->table.registered_variable(identifier))
 					return sig;
 				else if (it->isolated)
 					break;
@@ -196,33 +233,6 @@ namespace lx
 		}
 
 		return std::nullopt;
-	}
-
-	bool RuntimeEnvironment::variable_has_type(const std::string_view identifier, DataType type, Namespace ns) const
-	{
-		try
-		{
-			if (ns == Namespace::Global)
-				return _global_table.variable_has_type(identifier, type);
-			else if (ns == Namespace::Isolated)
-				return !_scope_stack.empty() && _scope_stack.back().table.variable_has_type(identifier, type);
-			else if (ns == Namespace::Unknown && _global_table.variable_has_type(identifier, type))
-				return true;
-
-			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
-			{
-				if (it->table.variable_has_type(identifier, type))
-					return true;
-				else if (it->isolated)
-					break;
-			}
-		}
-		catch (const LxError& error)
-		{
-			_errors.push_back(error);
-		}
-
-		return false;
 	}
 
 	void RuntimeEnvironment::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
@@ -249,31 +259,32 @@ namespace lx
 		}
 	}
 
-	std::optional<FunctionSignature> RuntimeEnvironment::function_is_registered(const std::string_view identifier, Namespace ns) const
+	std::optional<FunctionSignature> RuntimeEnvironment::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
 	{
 		try
 		{
 			if (ns == Namespace::Global)
-				return _global_table.function_is_registered(identifier);
+				return _global_table.registered_function(identifier, arg_types);
 			else if (ns == Namespace::Isolated)
 			{
 				if (!_scope_stack.empty())
 				{
-					if (auto sig = _scope_stack.back().table.function_is_registered(identifier))
+					if (auto sig = _scope_stack.back().table.registered_function(identifier, arg_types))
 						return sig;
 				}
 
 				return std::nullopt;
 			}
-			else if (ns == Namespace::Unknown)
+			
+			if (ns == Namespace::Unknown)
 			{
-				if (auto ln = _global_table.function_is_registered(identifier))
+				if (auto ln = _global_table.registered_function(identifier, arg_types))
 					return ln;
 			}
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
-				if (auto ln = it->table.function_is_registered(identifier))
+				if (auto ln = it->table.registered_function(identifier, arg_types))
 					return ln;
 				else if (it->isolated)
 					break;
@@ -287,22 +298,32 @@ namespace lx
 		return std::nullopt;
 	}
 
-	bool RuntimeEnvironment::function_has_return_type(const std::string_view identifier, DataType type, Namespace ns) const
+	FunctionCallSet RuntimeEnvironment::registered_function_calls(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
 			if (ns == Namespace::Global)
-				return _global_table.function_has_return_type(identifier, type);
+				return _global_table.registered_function_calls(identifier);
 			else if (ns == Namespace::Isolated)
-				return !_scope_stack.empty() && _scope_stack.back().table.function_has_return_type(identifier, type);
-			else if (ns == Namespace::Unknown && _global_table.function_has_return_type(identifier, type))
-				return true;
+			{
+				if (!_scope_stack.empty())
+					return _scope_stack.back().table.registered_function_calls(identifier);
+				else
+					return {};
+			}
+
+			FunctionCallSet callset;
+
+			if (ns == Namespace::Unknown)
+				callset = _global_table.registered_function_calls(identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
-				if (it->table.function_has_return_type(identifier, type))
-					return true;
-				else if (it->isolated)
+				auto calls = it->table.registered_function_calls(identifier);
+				for (const auto& call : calls)
+					callset.insert(call);
+				
+				if (it->isolated)
 					break;
 			}
 		}
@@ -311,34 +332,7 @@ namespace lx
 			_errors.push_back(error);
 		}
 
-		return false;
-	}
-
-	bool RuntimeEnvironment::function_has_arg_types(const std::string_view identifier, const std::vector<DataType>& types, Namespace ns) const
-	{
-		try
-		{
-			if (ns == Namespace::Global)
-				return _global_table.function_has_arg_types(identifier, types);
-			else if (ns == Namespace::Isolated)
-				return !_scope_stack.empty() && _scope_stack.back().table.function_has_arg_types(identifier, types);
-			else if (ns == Namespace::Unknown && _global_table.function_has_arg_types(identifier, types))
-				return true;
-
-			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
-			{
-				if (it->table.function_has_arg_types(identifier, types))
-					return true;
-				else if (it->isolated)
-					break;
-			}
-		}
-		catch (const LxError& error)
-		{
-			_errors.push_back(error);
-		}
-
-		return false;
+		return {};
 	}
 
 	void RuntimeEnvironment::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
