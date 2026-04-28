@@ -27,14 +27,13 @@ namespace lx
 
 	void SemanticAnalyser::analyse(Parser& parser, const std::vector<std::string_view>& script_lines)
 	{
-		RuntimeEnvironment dry(script_lines);
-		AnalysisVisitor visitor(dry);
+		_env.set_script_lines(script_lines);
+		AnalysisVisitor visitor(_env);
 		parser.tree().root().accept(visitor);
-		_errors.insert(_errors.begin(), dry.errors().begin(), dry.errors().end());
 	}
 
 	const std::vector<LxError>& SemanticAnalyser::errors() const
 	{
-		return _errors;
+		return _env.errors();
 	}
 }

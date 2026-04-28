@@ -91,19 +91,31 @@ namespace lx
 		_function_table[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
 	}
 
-	RuntimeEnvironment::RuntimeEnvironment(const std::vector<std::string_view>& script_lines)
-		: _script_lines(script_lines)
-	{
-	}
-
 	std::vector<LxError>& RuntimeEnvironment::errors() const
 	{
 		return _errors;
 	}
 
+	void RuntimeEnvironment::add_semantic_error(const Token& token, const std::string_view cause) const
+	{
+		_errors.push_back(LxError::token_error(token, script_lines(), ErrorType::Semantic, cause));
+	}
+
 	const std::vector<std::string_view>& RuntimeEnvironment::script_lines() const
 	{
-		return _script_lines;
+		if (_script_lines)
+			return *_script_lines;
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": script lines are null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	void RuntimeEnvironment::set_script_lines(const std::vector<std::string_view>& script_lines)
+	{
+		_script_lines = &script_lines;
 	}
 
 	void RuntimeEnvironment::push_local_scope(bool isolated)

@@ -120,7 +120,6 @@ namespace lx
 		
 	public:
 		bool is_global() const;
-		std::string_view variable_name() const;
 	};
 
 	class VariableAssignment : public ASTNode
@@ -272,6 +271,9 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+
+	public:
+		std::vector<DataType> arg_types(const RuntimeEnvironment& env) const;
 	};
 
 	class MethodCallExpression : public Expression

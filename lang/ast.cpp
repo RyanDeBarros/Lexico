@@ -110,14 +110,10 @@ namespace lx
 
 	void VariableDeclaration::pre_analyse(RuntimeEnvironment& env) const
 	{
-		_validated = false;
 		if (_global && env.scope_depth() > 0)
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic, "cannot declare global variable inside a scope"));
+			env.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
 		else if (auto ln = env.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
-		{
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
-				"identifier already declared on line " + std::to_string(*ln)));
-		}
+			env.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(*ln));
 		else
 			_validated = true;
 	}
@@ -138,11 +134,6 @@ namespace lx
 		return _global;
 	}
 
-	std::string_view VariableDeclaration::variable_name() const
-	{
-		return _identifier.lexeme;
-	}
-
 	VariableAssignment::VariableAssignment(Token&& identifier, const Expression& expression)
 		: _identifier(std::move(identifier)), _expression(expression)
 	{
@@ -150,12 +141,21 @@ namespace lx
 
 	void VariableAssignment::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+			_validated = true;
+		else
+			env.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
 	void VariableAssignment::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown);
+		if (var->type != _expression.evaltype(env))
+		{
+			std::stringstream ss;
+			ss << "cannot assign variable of type '" << friendly_name(var->type) << "' to expression of type '" << friendly_name(_expression.evaltype(env)) << "'";
+			env.add_semantic_error(_identifier, ss.str());
+		}
 	}
 
 	void VariableAssignment::traverse(ASTVisitor& visitor) const
@@ -230,7 +230,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << ": operator not defined for types '" << friendly_name(_left.evaltype(env)) << "' and '" << friendly_name(_right.evaltype(env)) << "'";
-			env.errors().push_back(LxError::token_error(_op, env.script_lines(), ErrorType::Semantic, ss.str()));
+			env.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -298,7 +298,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << ": operator not defined for type '" << friendly_name(_expr.evaltype(env)) << "'";
-			env.errors().push_back(LxError::token_error(_op, env.script_lines(), ErrorType::Semantic, ss.str()));
+			env.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -338,7 +338,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << ": cannot convert from '" << friendly_name(_expr.evaltype(env)) << "' to '" << friendly_name(return_type) << "'";
-			env.errors().push_back(LxError::token_error(_type, env.script_lines(), ErrorType::Semantic, ss.str()));
+			env.add_semantic_error(_type, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -380,13 +380,14 @@ namespace lx
 
 	void VariableExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		if (env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+			_validated = true;
+		else
+			env.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
 	void VariableExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
 		evaltype(env);
 	}
 
@@ -421,7 +422,7 @@ namespace lx
 
 	DataType BuiltinSymbolExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO create new symbol types?
+		// TODO create new internal symbol types then switch over symbol enum
 		return DataType::Void;
 	}
 
@@ -432,14 +433,28 @@ namespace lx
 
 	void FunctionCallExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		if (env.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
+			env.add_semantic_error(_identifier, "function not declared in scope");
+		else
+			_validated = true;
 	}
 
 	void FunctionCallExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
-		evaltype(env);
+		auto argtypes = arg_types(env);
+		if (!env.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
+		{
+			std::stringstream ss;
+			ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
+			for (size_t i = 0; i < argtypes.size(); ++i)
+			{
+				ss << "'" << friendly_name(argtypes[i]) << "'";
+				if (i + 1 < argtypes.size())
+					ss << ", ";
+			}
+			ss << ")";
+			env.add_semantic_error(_identifier, ss.str());
+		}
 	}
 
 	void FunctionCallExpression::traverse(ASTVisitor& visitor) const
@@ -451,11 +466,7 @@ namespace lx
 
 	DataType FunctionCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		std::vector<DataType> args(_args.size());
-		for (size_t i = 0; i < args.size(); ++i)
-			args[i] = _args[i]->evaltype(env);
-
-		if (auto fn = env.registered_function(_identifier.lexeme, args, Namespace::Unknown))
+		if (auto fn = env.registered_function(_identifier.lexeme, arg_types(env), Namespace::Unknown))
 			return fn->return_type;
 		else
 		{
@@ -463,6 +474,14 @@ namespace lx
 			ss << __FUNCTION__ << ": function is not registered";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
+	}
+
+	std::vector<DataType> FunctionCallExpression::arg_types(const RuntimeEnvironment& env) const
+	{
+		std::vector<DataType> args(_args.size());
+		for (size_t i = 0; i < args.size(); ++i)
+			args[i] = _args[i]->evaltype(env);
+		return args;
 	}
 
 	MethodCallExpression::MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args)
@@ -502,19 +521,15 @@ namespace lx
 
 	void FunctionDefinition::pre_analyse(RuntimeEnvironment& env) const
 	{
-		_validated = false;
-
 		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
 		{
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
-				"identifier already declared on line " + std::to_string(var->decl_line_number)));
+			env.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(var->decl_line_number));
 			return;
 		}
 		
 		if (auto fn = env.registered_function(_identifier.lexeme, arg_types(), Namespace::Unknown))
 		{
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic,
-				"function with matching argument types already declared on line " + std::to_string(fn->decl_line_number)));
+			env.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
 			return;
 		}
 
@@ -522,7 +537,7 @@ namespace lx
 		for (const auto& [_, identifier] : _arglist)
 		{
 			if (argnames.count(identifier.lexeme))
-				env.errors().push_back(LxError::token_error(identifier, env.script_lines(), ErrorType::Semantic, "repeated argument identifier"));
+				env.add_semantic_error(identifier, "repeated argument identifier");
 			else
 				argnames.insert(identifier.lexeme);
 		}
@@ -545,7 +560,7 @@ namespace lx
 		auto flow = Block::impl_upflow();
 
 		if (return_type() != DataType::Void && !flow.all_return)
-			env.errors().push_back(LxError::token_error(_identifier, env.script_lines(), ErrorType::Semantic, "not all control paths return a value"));
+			env.add_semantic_error(_identifier, "not all control paths return a value");
 
 		for (const ReturnStatement* r : flow.returns)
 		{
@@ -553,7 +568,7 @@ namespace lx
 			{
 				std::stringstream ss;
 				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(env)) << "'";
-				env.errors().push_back(LxError::token_error(r->return_token(), env.script_lines(), ErrorType::Semantic, ss.str()));
+				env.add_semantic_error(r->return_token(), ss.str());
 			}
 		}
 

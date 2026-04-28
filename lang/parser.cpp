@@ -461,7 +461,7 @@ namespace lx
 
 		bool parse_assignment()
 		{
-			if (!peek_token_is(0, TokenType::Identifier) && !peek_token_is(0, TokenType::Percent))
+			if (!peek_token_is(0, TokenType::Identifier) || !peek_token_is(0, TokenType::Percent) || peek_token_is(1, TokenType::LParen))
 				return false;
 
 			auto& identifier = ref(0);
@@ -481,7 +481,9 @@ namespace lx
 
 			auto& identifier = ref(0);
 			auto offset = token_offset(1);
-			context().append(parse_function_call_expression(std::move(identifier), offset));
+			auto& expr = parse_function_call_expression(std::move(identifier), offset);
+			offset.submit();
+			context().append(expr);
 			return true;
 		}
 
@@ -951,10 +953,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::LParen))
 				return _tree.add(std::make_unique<PatternIdentifier>(std::move(identifier)));
 			else
-			{
-				Expression& expr = parse_function_call_expression(std::move(identifier), offset);
-				return _tree.add(std::make_unique<PatternSubexpression>(expr));
-			}
+				return _tree.add(std::make_unique<PatternSubexpression>(parse_function_call_expression(std::move(identifier), offset)));
 		}
 
 		PatternExpression& parse_group_pattern_expression(TokenOffset& offset)
