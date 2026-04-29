@@ -30,6 +30,8 @@ namespace lx
 		{
 			Lexer lexer;
 			lexer.tokenize(script);
+			if (log_errors(lexer.errors(), log))
+				return false;
 
 			Parser parser;
 			parser.parse(lexer);

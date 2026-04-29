@@ -188,14 +188,15 @@ namespace lx
 		const std::string_view _script;
 		std::vector<Token>& _tokens;
 		const std::vector<std::string_view>& _script_lines;
+		std::vector<LxError>& _errors;
 		ScriptPointer _ptr;
 		unsigned int _str_offset = 0;
 		Token _token;
 		char _c;
 
 	public:
-		Tokenizer(const std::string_view script, std::vector<Token>& tokens, const std::vector<std::string_view>& _script_lines)
-			: _script(script), _tokens(tokens), _script_lines(_script_lines), _token(new_token())
+		Tokenizer(const std::string_view script, std::vector<Token>& tokens, const std::vector<std::string_view>& _script_lines, std::vector<LxError>& errors)
+			: _script(script), _tokens(tokens), _script_lines(_script_lines), _errors(errors), _token(new_token())
 		{
 			for (size_t i = 0; i < script.size(); ++i)
 			{
@@ -363,7 +364,10 @@ namespace lx
 				add_token();
 				_ptr.move_right();
 
-				// TODO syntax error: unrecognized character. Continue tokenizing, but don't continue to parser
+				ScriptSegment error_segment = _token.segment;
+				error_segment.end_line = _ptr.last_line();
+				error_segment.end_column = _ptr.last_column();
+				_errors.push_back(LxError::segment_error(error_segment, ErrorType::Syntax, "unrecognized token"));
 			}
 
 			add_token();  // add ongoing token
@@ -401,7 +405,7 @@ namespace lx
 			_token.type = resolve_identifier(_token);
 
 			_tokens.push_back(std::move(_token));
-
+			
 			_token = new_token();
 			_str_offset = _ptr.index();
 		}
@@ -526,7 +530,7 @@ namespace lx
 		_script_lines.push_back(script.substr(off, script.size() - off));
 
 		std::vector<Token> tokens;
-		Tokenizer tokenizer(script, tokens, _script_lines);
+		Tokenizer tokenizer(script, tokens, _script_lines, _errors);
 		_stream.load(std::move(tokens));
 	}
 
@@ -543,5 +547,10 @@ namespace lx
 	const std::vector<std::string_view>& Lexer::script_lines() const
 	{
 		return _script_lines;
+	}
+
+	const std::vector<LxError>& Lexer::errors() const
+	{
+		return _errors;
 	}
 }
