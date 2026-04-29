@@ -34,6 +34,8 @@ namespace lx
 	extern DataType data_type(BuiltinSymbol symbol);
 	extern std::string friendly_name(DataType type);
 
+	extern std::ostream& operator<<(std::ostream& os, DataType type);
+
 	struct MemberSignature
 	{
 		struct DataLayout
@@ -71,6 +73,7 @@ namespace lx
 	extern bool can_cast(DataType from, DataType to);
 	extern bool is_iterable(DataType type);
 	extern bool is_highlightable(DataType type);
+	extern bool is_pageable(DataType type);
 
 	enum class StandardBinaryOperator
 	{

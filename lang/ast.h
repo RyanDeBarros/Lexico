@@ -708,11 +708,12 @@ namespace lx
 
 	class ScopeStatement : public ASTNode
 	{
-		Token _specifier;
+		Token _symbol_token;
+		BuiltinSymbol _specifier;
 		const Expression& _range;
 
 	public:
-		ScopeStatement(Token&& specifier, const Expression& range);
+		ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, const Expression& range);
 		void pre_analyse(ResolutionContext& ctx) const override;
 		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;

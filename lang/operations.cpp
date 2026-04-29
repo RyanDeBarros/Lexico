@@ -98,38 +98,43 @@ namespace lx
 		switch (type)
 		{
 		case DataType::Int:
-			return "int";
+			return "'int'";
 		case DataType::Float:
-			return "float";
+			return "'float'";
 		case DataType::Bool:
-			return "bool";
+			return "'bool'";
 		case DataType::String:
-			return "string";
+			return "'string'";
 		case DataType::Void:
-			return "void";
+			return "'void'";
 		case DataType::Pattern:
-			return "pattern";
+			return "'pattern'";
 		case DataType::Match:
-			return "match";
+			return "'match'";
 		case DataType::Matches:
-			return "matches";
+			return "'matches'";
 		case DataType::CapId:
-			return "capid";
+			return "'capid'";
 		case DataType::Cap:
-			return "cap";
+			return "'cap'";
 		case DataType::IRange:
-			return "irange";
+			return "'irange'";
 		case DataType::SRange:
-			return "srange";
+			return "'srange'";
 		case DataType::List:
-			return "list";
+			return "'list'";
 		case DataType::_Marker:
 		case DataType::_Scope:
 		case DataType::_Color:
-			return "symbol";
+			return "'symbol'";
 		default:
-			return "";
+			return "''";
 		}
+	}
+
+	std::ostream& operator<<(std::ostream& os, DataType type)
+	{
+		return os << friendly_name(type);
 	}
 
 	MemberSignature MemberSignature::make_data(std::string&& identifier, DataType type)
@@ -215,12 +220,14 @@ namespace lx
 
 	bool can_cast(DataType from, DataType to)
 	{
-		if (to == DataType::Void)
+		if (to == DataType::Void || from == to)
 			return true;
 
 		switch (from)
 		{
 		case DataType::Int:
+			return to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern || to == DataType::IRange;
+
 		case DataType::Float:
 		case DataType::Bool:
 		case DataType::String:
@@ -285,6 +292,33 @@ namespace lx
 		case DataType::Float:
 		case DataType::Bool:
 		case DataType::String:
+		case DataType::Pattern:
+		case DataType::Void:
+		case DataType::CapId:
+		case DataType::Cap:
+		case DataType::SRange:
+		case DataType::List:
+		case DataType::_Marker:
+		case DataType::_Scope:
+		case DataType::_Color:
+		default:
+			return false;
+		}
+	}
+
+	bool is_pageable(DataType type)
+	{
+		switch (type)
+		{
+		case DataType::String:
+			return true;
+
+		case DataType::Int:
+		case DataType::Match:
+		case DataType::Matches:
+		case DataType::IRange:
+		case DataType::Float:
+		case DataType::Bool:
 		case DataType::Pattern:
 		case DataType::Void:
 		case DataType::CapId:

@@ -315,12 +315,16 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Scope))
 				return false;
 			
-			auto& identifier = parse_token(1, TokenType::BuiltinSymbol, errors::EXPECTED_SYMBOL);
+			auto& symbol_token = parse_token(1, TokenType::BuiltinSymbol, errors::EXPECTED_SYMBOL);
+			const auto specifier = parse_builtin_symbol(symbol_token.lexeme);
+			if (!specifier)
+				throw_error(errors::EXPECTED_SYMBOL, 1);
+
 			assert_tokens_exist(2, errors::EXPECTED_EXPRESSION);
 			auto offset = token_offset(2);
 			Expression& expr = parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<ScopeStatement>(std::move(identifier), expr));
+			append_to_context(std::make_unique<ScopeStatement>(std::move(symbol_token), *specifier, expr));
 			return true;
 		}
 

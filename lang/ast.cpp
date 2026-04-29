@@ -165,7 +165,7 @@ namespace lx
 		if (var->type != _expression.evaltype(ctx))
 		{
 			std::stringstream ss;
-			ss << "cannot assign variable of type '" << friendly_name(var->type) << "' to expression of type '" << friendly_name(_expression.evaltype(ctx)) << "'";
+			ss << "cannot assign variable of type " << var->type << " to expression of type " << _expression.evaltype(ctx);
 			ctx.add_semantic_error(_identifier.segment.combined_right(_expression.segment()), ss.str());
 		}
 	}
@@ -271,7 +271,7 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << ": operator not defined for types '" << friendly_name(_left.evaltype(ctx)) << "' and '" << friendly_name(_right.evaltype(ctx)) << "'";
+			ss << ": operator not defined for types " << _left.evaltype(ctx) << " and " << _right.evaltype(ctx);
 			ctx.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
@@ -333,7 +333,7 @@ namespace lx
 					return member;
 
 		std::stringstream ss;
-		ss << "data member '" << _member.lexeme << "' does not exist for type '" << friendly_name(_object.evaltype(ctx)) << "'";
+		ss << "data member " << _member.lexeme << " does not exist for type " << _object.evaltype(ctx);
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 
@@ -365,7 +365,7 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << ": operator not defined for type '" << friendly_name(_expr.evaltype(ctx)) << "'";
+			ss << ": operator not defined for type " << _expr.evaltype(ctx);
 			ctx.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
@@ -410,7 +410,7 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << "cannot convert from '" << friendly_name(_expr.evaltype(ctx)) << "' to '" << friendly_name(return_type) << "'";
+			ss << "cannot convert from " << _expr.evaltype(ctx) << " to " << return_type;
 			ctx.add_semantic_error(_type, ss.str());
 			return DataType::Void;
 		}
@@ -468,7 +468,7 @@ namespace lx
 					return member;
 
 		std::stringstream ss;
-		ss << "'" << friendly_name(_container.evaltype(ctx)) << "' does not support [] with index type '" << friendly_name(_subscript.evaltype(ctx)) << "'";
+		ss << _container.evaltype(ctx) << " does not support [] with index type " << _subscript.evaltype(ctx);
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 
@@ -554,7 +554,7 @@ namespace lx
 			ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
 			for (size_t i = 0; i < argtypes.size(); ++i)
 			{
-				ss << "'" << friendly_name(argtypes[i]) << "'";
+				ss << argtypes[i];
 				if (i + 1 < argtypes.size())
 					ss << ", ";
 			}
@@ -646,7 +646,7 @@ namespace lx
 			ss << "no overloads exist for '" << m.identifier << "' with arguments (";
 			for (size_t i = 0; i < arg_types.size(); ++i)
 			{
-				ss << friendly_name(arg_types[i]);
+				ss << arg_types[i];
 				if (i + 1 < arg_types.size())
 					ss << ", ";
 			}
@@ -719,7 +719,7 @@ namespace lx
 			if (r->evaltype(ctx) != return_type())
 			{
 				std::stringstream ss;
-				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(ctx)) << "'";
+				ss << "function should return " << return_type() << " but statement returns " << r->evaltype(ctx);
 				ctx.add_semantic_error(r->segment(), ss.str());
 			}
 		}
@@ -942,7 +942,7 @@ namespace lx
 		if (!is_iterable(_iterable.evaltype(ctx)))
 		{
 			std::stringstream ss;
-			ss << "'" << friendly_name(_iterable.evaltype(ctx)) << "' is not iterable";
+			ss << _iterable.evaltype(ctx) << " is not iterable";
 			ctx.add_semantic_error(_iterable.segment(), ss.str());
 		}
 		Block::post_analyse(ctx);
@@ -982,7 +982,7 @@ namespace lx
 		if (_highlightable && !is_highlightable(_highlightable->evaltype(ctx)))
 		{
 			std::stringstream ss;
-			ss << "'" << friendly_name(_highlightable->evaltype(ctx)) << "' is not highlightable";
+			ss << _highlightable->evaltype(ctx) << " is not highlightable";
 			ctx.add_semantic_error(_highlightable->segment(), ss.str());
 		}
 	}
@@ -1357,19 +1357,24 @@ namespace lx
 		// TODO
 	}
 
-	ScopeStatement::ScopeStatement(Token&& specifier, const Expression& range)
-		: _specifier(std::move(specifier)), _range(range)
+	ScopeStatement::ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, const Expression& range)
+		: _symbol_token(std::move(symbol_token)), _specifier(specifier), _range(range)
 	{
 	}
 
 	void ScopeStatement::pre_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		if (data_type(_specifier) == DataType::_Scope)
+			_validated = true;
+		else
+			ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
 	}
 
 	void ScopeStatement::post_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		const auto range_type = _range.evaltype(ctx);
+		if (!can_cast(range_type, DataType::IRange))
+			ctx.add_semantic_error(_range.segment(), "cannot convert to 'irange'");
 	}
 
 	void ScopeStatement::traverse(ASTVisitor& visitor) const
@@ -1385,12 +1390,17 @@ namespace lx
 
 	void PagePush::pre_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PagePush::post_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		if (!is_pageable(_page.evaltype(ctx)))
+		{
+			std::stringstream ss;
+			ss << "cannot push " << _page.evaltype(ctx) << " to page stack";
+			ctx.add_semantic_error(_page.segment(), ss.str());
+		}
 	}
 
 	void PagePush::traverse(ASTVisitor& visitor) const
@@ -1401,21 +1411,21 @@ namespace lx
 
 	void PagePop::pre_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PagePop::post_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		// NOP
 	}
 
 	void PageClearStack::pre_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PageClearStack::post_analyse(ResolutionContext& ctx) const
 	{
-		// TODO
+		// NOP
 	}
 }
