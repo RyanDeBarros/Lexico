@@ -20,8 +20,18 @@ namespace lx
 	}
 
 	LxError::LxError(ErrorType type, std::string&& message)
-		: std::runtime_error(error_prefix(type) + std::move(message))
+		: std::runtime_error(error_prefix(type) + message), _type(type), _message(std::move(message))
 	{
+	}
+
+	ErrorType LxError::type() const
+	{
+		return _type;
+	}
+
+	std::string LxError::message() const
+	{
+		return _message;
 	}
 
 	std::string LxError::underline(const ScriptSegment& segment, unsigned int tabs)

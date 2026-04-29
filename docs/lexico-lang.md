@@ -7,7 +7,7 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
-TODO match word, match case, built-in functions for changing case, etc.
+TODO match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
 TODO aggregation / SQL constructs
 
@@ -20,7 +20,7 @@ TODO recursion built into patterns (see parentheses balancing example)
 ### `cap`
 
 | Attribute | Type | Description |
-| - | - |
+| - | - | - |
 | `exists` | `bool` | is `true` if the group was captured, `false` otherwise |
 | `start` | `int` | starting position |
 | `end` | `int` | ending position (one after last character) |
@@ -32,7 +32,7 @@ TODO recursion built into patterns (see parentheses balancing example)
 ### `match`
 
 | Attribute | Type | Description |
-| - | - |
+| - | - | - |
 | `caps` | `list` | list of captures |
 | `[]` | `cap` | returns a named capture |
 | `start` | `int` | starting position |

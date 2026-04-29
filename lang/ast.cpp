@@ -294,9 +294,14 @@ namespace lx
 
 	void MemberAccessExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO validate that member exists for object.evaltype()
-
-		evaltype(env);
+		try
+		{
+			evaltype(env);
+		}
+		catch (const LxError& e)
+		{
+			env.add_semantic_error(_member.segment, e.message());
+		}
 	}
 
 	void MemberAccessExpression::traverse(ASTVisitor& visitor) const
@@ -307,13 +312,24 @@ namespace lx
 
 	DataType MemberAccessExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO look up class table for member
-		return DataType::Void;
+		return member(env).data_type();
 	}
 
 	ScriptSegment MemberAccessExpression::impl_segment() const
 	{
 		return _object.segment().combined_right(_member.segment);
+	}
+
+	MemberSignature MemberAccessExpression::member(const RuntimeEnvironment& env) const
+	{
+		const auto members = data_type_members(_object.evaltype(env));
+		for (const auto& member : members)
+			if (member.identifier == _member.lexeme && member.is_data())
+				return member;
+
+		std::stringstream ss;
+		ss << "data member '" << _member.lexeme << "' does not exist for type '" << friendly_name(_object.evaltype(env)) << "'";
+		throw LxError(ErrorType::Internal, ss.str());
 	}
 
 	PrefixExpression::PrefixExpression(Token&& op, const Expression& expr)
@@ -389,7 +405,7 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << ": cannot convert from '" << friendly_name(_expr.evaltype(env)) << "' to '" << friendly_name(return_type) << "'";
+			ss << "cannot convert from '" << friendly_name(_expr.evaltype(env)) << "' to '" << friendly_name(return_type) << "'";
 			env.add_semantic_error(_type, ss.str());
 			return DataType::Void;
 		}
@@ -407,14 +423,19 @@ namespace lx
 
 	void SubscriptExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void SubscriptExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
-		evaltype(env);
+		try
+		{
+			evaltype(env);
+		}
+		catch (const LxError& e)
+		{
+			env.add_semantic_error(segment(), e.message());
+		}
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor) const
@@ -426,13 +447,24 @@ namespace lx
 
 	DataType SubscriptExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO switch over evaltype() of _container to see what [] method should return
-		return DataType::Void;
+		return member(env).return_type({_subscript.evaltype(env)}).value();
 	}
 
 	ScriptSegment SubscriptExpression::impl_segment() const
 	{
 		return _container.segment().combined_right(_subscript.segment());
+	}
+
+	MemberSignature SubscriptExpression::member(const RuntimeEnvironment& env) const
+	{
+		const auto members = data_type_members(_container.evaltype(env));
+		for (const auto& member : members)
+			if (member.identifier == "[]" && member.is_method() && member.return_type({ _subscript.evaltype(env) }).has_value())
+				return member;
+
+		std::stringstream ss;
+		ss << "'" << friendly_name(_container.evaltype(env)) << "' does not support [] with index type '" << friendly_name(_subscript.evaltype(env)) << "'";
+		throw LxError(ErrorType::Internal, ss.str());
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -558,39 +590,70 @@ namespace lx
 		return args;
 	}
 
-	MethodCallExpression::MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args, Token&& closing_paren)
-		: _object(object), _args(std::move(args)), _closing_paren(std::move(closing_paren))
+	MethodCallExpression::MethodCallExpression(const MemberAccessExpression& member, std::vector<const Expression*>&& args, Token&& closing_paren)
+		: _member(member), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
 	}
 
 	void MethodCallExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void MethodCallExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
-		evaltype(env);
+		try
+		{
+			evaltype(env);
+		}
+		catch (const LxError& e)
+		{
+			env.add_semantic_error(segment(), e.message());
+		}
 	}
 
 	void MethodCallExpression::traverse(ASTVisitor& visitor) const
 	{
 		ASTNode::traverse(visitor);
+		_member.accept(visitor);
 		for (const Expression* arg : _args)
 			arg->accept(visitor);
 	}
 
 	DataType MethodCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO
-		return DataType::Void;
+		const auto m = _member.member(env);
+		if (m.is_method())
+		{
+			std::vector<DataType> arg_types;
+			for (const Expression* arg : _args)
+				arg_types.push_back(arg->evaltype(env));
+
+			if (auto r = m.return_type(arg_types))
+				return *r;
+
+			std::stringstream ss;
+			ss << "no overloads exist for '" << m.identifier << "' with arguments (";
+			for (size_t i = 0; i < arg_types.size(); ++i)
+			{
+				ss << friendly_name(arg_types[i]);
+				if (i + 1 < arg_types.size())
+					ss << ", ";
+			}
+			ss << ")";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << "'" << m.identifier << "' is not callable";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	ScriptSegment MethodCallExpression::impl_segment() const
 	{
-		return _object.segment().combined_right(_closing_paren.segment);
+		return _member.segment().combined_right(_closing_paren.segment);
 	}
 
 	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)

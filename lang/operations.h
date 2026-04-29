@@ -4,6 +4,7 @@
 #include "symbols.h"
 
 #include <optional>
+#include <variant>
 
 namespace lx
 {
@@ -32,6 +33,40 @@ namespace lx
 	extern DataType data_type(TokenType type);
 	extern DataType data_type(BuiltinSymbol symbol);
 	extern std::string friendly_name(DataType type);
+
+	struct MemberSignature
+	{
+		struct DataLayout
+		{
+			DataType type;
+		};
+
+		struct Overload
+		{
+			DataType return_type;
+			std::vector<DataType> arg_types;
+		};
+
+		struct MethodLayout
+		{
+			std::vector<Overload> overloads;
+		};
+
+		std::string identifier;
+		std::variant<DataLayout, MethodLayout> layout;
+
+		static MemberSignature make_data(std::string&& identifier, DataType type);
+		static MemberSignature make_method(std::string&& identifier, std::vector<Overload>&& overloads);
+
+		bool is_data() const;
+		bool is_method() const;
+
+		DataType data_type() const;
+		const std::vector<Overload>& method_overloads() const;
+		std::optional<DataType> return_type(const std::vector<DataType>& arg_types) const;
+	};
+
+	extern std::vector<MemberSignature> data_type_members(DataType type);
 
 	extern bool can_cast(DataType from, DataType to);
 	extern bool is_iterable(DataType type);

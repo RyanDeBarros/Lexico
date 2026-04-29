@@ -201,6 +201,9 @@ namespace lx
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
 		ScriptSegment impl_segment() const override;
+
+	public:
+		MemberSignature member(const RuntimeEnvironment& env) const;
 	};
 
 	class PrefixExpression : public Expression
@@ -252,6 +255,9 @@ namespace lx
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
 		ScriptSegment impl_segment() const override;
+
+	public:
+		MemberSignature member(const RuntimeEnvironment& env) const;
 	};
 
 	class VariableExpression : public Expression
@@ -305,12 +311,12 @@ namespace lx
 
 	class MethodCallExpression : public Expression
 	{
-		const Expression& _object;
+		const MemberAccessExpression& _member;
 		std::vector<const Expression*> _args;
 		Token _closing_paren;
 
 	public:
-		MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args, Token&& closing_paren);
+		MethodCallExpression(const MemberAccessExpression& member, std::vector<const Expression*>&& args, Token&& closing_paren);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;

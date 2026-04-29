@@ -350,7 +350,7 @@ namespace lx
 
 				if (isalpha(_c) || _c == '_')
 				{
-					if (_token.type == TokenType::EndOfFile)
+					if (_token.type == TokenType::EndOfFile || _token.type == TokenType::Integer || _token.type == TokenType::Float)
 					{
 						add_token();  // add ongoing token
 						start_token(TokenType::Identifier);
@@ -362,6 +362,8 @@ namespace lx
 
 				add_token();
 				_ptr.move_right();
+
+				// TODO syntax error: unrecognized character. Continue tokenizing, but don't continue to parser
 			}
 
 			add_token();  // add ongoing token

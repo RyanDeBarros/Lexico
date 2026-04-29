@@ -131,6 +131,111 @@ namespace lx
 		}
 	}
 
+	MemberSignature MemberSignature::make_data(std::string&& identifier, DataType type)
+	{
+		return { .identifier = std::move(identifier), .layout = DataLayout{ .type = type } };
+	}
+	
+	MemberSignature MemberSignature::make_method(std::string&& identifier, std::vector<Overload>&& overloads)
+	{
+		return { .identifier = std::move(identifier), .layout = MethodLayout{ .overloads = std::move(overloads) } };
+	}
+
+	bool MemberSignature::is_data() const
+	{
+		return std::holds_alternative<DataLayout>(layout);
+	}
+	
+	bool MemberSignature::is_method() const
+	{
+		return std::holds_alternative<MethodLayout>(layout);
+	}
+
+	DataType MemberSignature::data_type() const
+	{
+		return std::get<DataLayout>(layout).type;
+	}
+	
+	const std::vector<MemberSignature::Overload>& MemberSignature::method_overloads() const
+	{
+		return std::get<MethodLayout>(layout).overloads;
+	}
+
+	std::optional<DataType> MemberSignature::return_type(const std::vector<DataType>& arg_types) const
+	{
+		const auto& overloads = method_overloads();
+		for (const auto& overload : overloads)
+			if (overload.arg_types == arg_types)
+				return overload.return_type;
+
+		return std::nullopt;
+	}
+
+	// TODO use static tables and string_view in signatures / pointers to the table so MemberSignature isn't 80 bytes and can be passed by value, or at least by pointer
+
+	std::vector<MemberSignature> data_type_members(DataType type)
+	{
+		switch (type)
+		{
+		case DataType::Int:
+		case DataType::Float:
+		case DataType::Bool:
+			return {};
+
+		case DataType::String:
+			return {
+				MemberSignature::make_data("len", DataType::Int),
+				MemberSignature::make_method("[]", {
+					{ .return_type = DataType::String, .arg_types = { DataType::Int } },
+					{ .return_type = DataType::String, .arg_types = { DataType::IRange } },
+				}),
+			};
+
+		case DataType::Void:
+		case DataType::Pattern:
+			return {};
+
+		case DataType::Match:
+			return {
+				MemberSignature::make_data("caps", DataType::List),
+				MemberSignature::make_data("start", DataType::Int),
+				MemberSignature::make_data("end", DataType::Int),
+				MemberSignature::make_data("len", DataType::Int),
+				MemberSignature::make_data("pos", DataType::IRange),
+				MemberSignature::make_data("str", DataType::String),
+				MemberSignature::make_method("[]", { { .return_type = DataType::Cap, .arg_types = { DataType::Int } } }),
+			};
+
+		case DataType::Matches:
+		case DataType::CapId:
+			return {};
+
+		case DataType::Cap:
+			return {
+				MemberSignature::make_data("exists", DataType::Bool),
+				MemberSignature::make_data("start", DataType::Int),
+				MemberSignature::make_data("end", DataType::Int),
+				MemberSignature::make_data("len", DataType::Int),
+				MemberSignature::make_data("pos", DataType::IRange),
+				MemberSignature::make_data("str", DataType::String),
+				MemberSignature::make_data("sub", DataType::Match),
+			};
+
+		case DataType::IRange:
+		case DataType::SRange:
+		case DataType::List: // TODO either 1. make list truly type mixing, in which case [] would return a new 'any'/'unresolved' type (it still can't change type dynamically, but it is an unknown type that should be casted when used). 2. make list templated, which introduces new syntax.
+			return {
+				MemberSignature::make_data("len", DataType::Int),
+			};
+
+		case DataType::_Marker:
+		case DataType::_Scope:
+		case DataType::_Color:
+		default:
+			return {};
+		}
+	}
+
 	bool can_cast(DataType from, DataType to)
 	{
 		if (to == DataType::Void)

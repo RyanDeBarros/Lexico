@@ -267,7 +267,8 @@ namespace lx
 				parse_function_call() ||
 				parse_control_statement() ||
 				parse_log_statement() ||
-				parse_highlight_statement();
+				parse_highlight_statement() ||
+				parse_direct_expression_statement();
 
 			if (!parsed)
 				throw_error(errors::UNRECOGNIZED_TOKEN, 0);
@@ -457,7 +458,7 @@ namespace lx
 
 		bool parse_assignment()
 		{
-			if (!(peek_token_is(0, TokenType::Identifier) || peek_token_is(0, TokenType::Percent)) || peek_token_is(1, TokenType::LParen))
+			if (!(peek_token_is(0, TokenType::Identifier) || peek_token_is(0, TokenType::Percent)) || !peek_token_is(1, TokenType::Assign))
 				return false;
 
 			auto& identifier = ref(0);
@@ -478,6 +479,16 @@ namespace lx
 			auto& identifier = ref(0);
 			auto offset = token_offset(1);
 			auto& expr = parse_function_call_expression(std::move(identifier), offset);
+			offset.submit();
+			context().append(expr);
+			return true;
+		}
+
+		bool parse_direct_expression_statement()
+		{
+			auto offset = token_offset();
+			Expression& expr = parse_expression(offset);
+			// TODO assert that expression is imperative() (i.e. a method call - add virtual method in Expression which by default returns false)
 			offset.submit();
 			context().append(expr);
 			return true;
@@ -780,10 +791,10 @@ namespace lx
 			return _tree.add(std::make_unique<FunctionCallExpression>(std::move(identifier), std::move(arglist), std::move(ref(-1))));
 		}
 
-		Expression& parse_method_call_expression(Expression& object, TokenOffset& offset)
+		Expression& parse_method_call_expression(MemberAccessExpression& member, TokenOffset& offset)
 		{
 			auto arglist = parse_call_arglist(offset);
-			return _tree.add(std::make_unique<MethodCallExpression>(object, std::move(arglist), std::move(ref(-1))));
+			return _tree.add(std::make_unique<MethodCallExpression>(member, std::move(arglist), std::move(ref(-1))));
 		}
 
 		std::vector<const Expression*> parse_call_arglist(TokenOffset& offset)
@@ -884,7 +895,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::RBracket))
 				throw_error(errors::EXPECTED_RBRACKET, 0);
 			offset.add(1);  // ']'
-			return expr;
+			return _tree.add(std::make_unique<SubscriptExpression>(lhs, expr));
 		}
 
 		Expression& parse_prefix_expression(TokenOffset& offset)
@@ -906,10 +917,14 @@ namespace lx
 				{
 					offset.add(1);
 					auto& member = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
-					lhs = &_tree.add(std::make_unique<MemberAccessExpression>(*lhs, std::move(member)));
+					offset.add(1);
+					MemberAccessExpression& expr = _tree.add(std::make_unique<MemberAccessExpression>(*lhs, std::move(member)));
+
+					if (peek_token_is(0, TokenType::LParen))
+						lhs = &parse_method_call_expression(expr, offset);
+					else
+						lhs = &expr;
 				}
-				else if (peek_token_is(0, TokenType::LParen))
-					lhs = &parse_method_call_expression(*lhs, offset);
 				else
 				{
 					Precedence precedence = peek(0).precedence();
