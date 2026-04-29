@@ -1,4 +1,4 @@
-#include "runtime.h"
+#include "resolution.h"
 
 #include "errors.h"
 
@@ -91,27 +91,27 @@ namespace lx
 		_function_table[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
 	}
 
-	std::vector<LxError>& RuntimeEnvironment::errors() const
+	std::vector<LxError>& ResolutionContext::errors() const
 	{
 		return _errors;
 	}
 
-	void RuntimeEnvironment::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
+	void ResolutionContext::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
 	{
 		_errors.push_back(LxError::segment_error(segment, ErrorType::Semantic, cause));
 	}
 
-	void RuntimeEnvironment::add_semantic_error(const Token& token, const std::string_view cause) const
+	void ResolutionContext::add_semantic_error(const Token& token, const std::string_view cause) const
 	{
 		add_semantic_error(token.segment, cause);
 	}
 
-	void RuntimeEnvironment::push_local_scope(bool isolated)
+	void ResolutionContext::push_local_scope(bool isolated)
 	{
 		_scope_stack.push_back({ .isolated = isolated });
 	}
 
-	void RuntimeEnvironment::pop_local_scope()
+	void ResolutionContext::pop_local_scope()
 	{
 		if (_scope_stack.empty())
 		{
@@ -122,7 +122,7 @@ namespace lx
 		_scope_stack.pop_back();
 	}
 
-	unsigned int RuntimeEnvironment::scope_depth() const
+	unsigned int ResolutionContext::scope_depth() const
 	{
 		return _scope_stack.size();
 	}
@@ -147,7 +147,7 @@ namespace lx
 		return first_line_number;
 	}
 
-	std::optional<unsigned int> RuntimeEnvironment::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
+	std::optional<unsigned int> ResolutionContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -183,7 +183,7 @@ namespace lx
 		return {};
 	}
 
-	std::optional<VariableSignature> RuntimeEnvironment::registered_variable(const std::string_view identifier, Namespace ns) const
+	std::optional<VariableSignature> ResolutionContext::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -212,7 +212,7 @@ namespace lx
 		return std::nullopt;
 	}
 
-	void RuntimeEnvironment::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
+	void ResolutionContext::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
 	{
 		switch (ns)
 		{
@@ -236,7 +236,7 @@ namespace lx
 		}
 	}
 
-	std::optional<FunctionSignature> RuntimeEnvironment::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
+	std::optional<FunctionSignature> ResolutionContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
 	{
 		try
 		{
@@ -265,7 +265,7 @@ namespace lx
 		return std::nullopt;
 	}
 
-	FunctionCallSet RuntimeEnvironment::registered_function_calls(const std::string_view identifier, Namespace ns) const
+	FunctionCallSet ResolutionContext::registered_function_calls(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -297,7 +297,7 @@ namespace lx
 		return {};
 	}
 
-	void RuntimeEnvironment::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
+	void ResolutionContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
 	{
 		switch (ns)
 		{

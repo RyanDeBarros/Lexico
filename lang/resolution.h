@@ -83,7 +83,7 @@ namespace lx
 		Unknown
 	};
 
-	class RuntimeEnvironment
+	class ResolutionContext
 	{
 		SymbolTable _global_table;
 		std::vector<ScopeContext> _scope_stack;

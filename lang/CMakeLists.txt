@@ -4,7 +4,7 @@ set(LANG_SOURCES
 	parser.cpp
 	semantics.cpp
 	executor.cpp
-	runtime.cpp
+	resolution.cpp
 	errors.cpp
 	token.cpp
 	ast.cpp

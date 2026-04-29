@@ -46,14 +46,14 @@ namespace lx
 		return _root;
 	}
 
-	void Block::pre_analyse(RuntimeEnvironment& env) const
+	void Block::pre_analyse(ResolutionContext& ctx) const
 	{
-		env.push_local_scope(isolated());
+		ctx.push_local_scope(isolated());
 	}
 
-	void Block::post_analyse(RuntimeEnvironment& env) const
+	void Block::post_analyse(ResolutionContext& ctx) const
 	{
-		env.pop_local_scope();
+		ctx.pop_local_scope();
 	}
 
 	void Block::traverse(ASTVisitor& visitor) const
@@ -90,7 +90,7 @@ namespace lx
 		return true;
 	}
 
-	DataType Expression::evaltype(const RuntimeEnvironment& env) const
+	DataType Expression::evaltype(const ResolutionContext& ctx) const
 	{
 		if (!_validated)
 		{
@@ -99,7 +99,7 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		if (!_evaltype)
-			_evaltype = impl_evaltype(env);
+			_evaltype = impl_evaltype(ctx);
 		return *_evaltype;
 	}
 
@@ -110,24 +110,29 @@ namespace lx
 		return *_segment;
 	}
 
+	bool Expression::imperative() const
+	{
+		return false;
+	}
+
 	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, const Expression& expression)
 		: _global(global), _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
-	void VariableDeclaration::pre_analyse(RuntimeEnvironment& env) const
+	void VariableDeclaration::pre_analyse(ResolutionContext& ctx) const
 	{
-		if (_global && env.scope_depth() > 0)
-			env.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
-		else if (auto ln = env.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
-			env.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(*ln));
+		if (_global && ctx.scope_depth() > 0)
+			ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
+		else if (auto ln = ctx.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
+			ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(*ln));
 		else
 			_validated = true;
 	}
 
-	void VariableDeclaration::post_analyse(RuntimeEnvironment& env) const
+	void VariableDeclaration::post_analyse(ResolutionContext& ctx) const
 	{
-		env.register_variable(_identifier.lexeme, _expression.evaltype(env), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
+		ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
 	}
 
 	void VariableDeclaration::traverse(ASTVisitor& visitor) const
@@ -146,22 +151,22 @@ namespace lx
 	{
 	}
 
-	void VariableAssignment::pre_analyse(RuntimeEnvironment& env) const
+	void VariableAssignment::pre_analyse(ResolutionContext& ctx) const
 	{
-		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			_validated = true;
 		else
-			env.add_semantic_error(_identifier, "variable is not declared in scope");
+			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableAssignment::post_analyse(RuntimeEnvironment& env) const
+	void VariableAssignment::post_analyse(ResolutionContext& ctx) const
 	{
-		auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown);
-		if (var->type != _expression.evaltype(env))
+		auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown);
+		if (var->type != _expression.evaltype(ctx))
 		{
 			std::stringstream ss;
-			ss << "cannot assign variable of type '" << friendly_name(var->type) << "' to expression of type '" << friendly_name(_expression.evaltype(env)) << "'";
-			env.add_semantic_error(_identifier.segment.combined_right(_expression.segment()), ss.str());
+			ss << "cannot assign variable of type '" << friendly_name(var->type) << "' to expression of type '" << friendly_name(_expression.evaltype(ctx)) << "'";
+			ctx.add_semantic_error(_identifier.segment.combined_right(_expression.segment()), ss.str());
 		}
 	}
 
@@ -176,17 +181,17 @@ namespace lx
 	{
 	}
 
-	void LiteralExpression::pre_analyse(RuntimeEnvironment& env) const
+	void LiteralExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void LiteralExpression::post_analyse(RuntimeEnvironment& env) const
+	void LiteralExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
-	DataType LiteralExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType LiteralExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		switch (_literal.type)
 		{
@@ -217,17 +222,17 @@ namespace lx
 	{
 	}
 	
-	void ListExpression::pre_analyse(RuntimeEnvironment& env) const
+	void ListExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 	
-	void ListExpression::post_analyse(RuntimeEnvironment& env) const
+	void ListExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
-	DataType ListExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType ListExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		return DataType::List;
 	}
@@ -242,14 +247,14 @@ namespace lx
 	{
 	}
 
-	void BinaryExpression::pre_analyse(RuntimeEnvironment& env) const
+	void BinaryExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void BinaryExpression::post_analyse(RuntimeEnvironment& env) const
+	void BinaryExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
 	void BinaryExpression::traverse(ASTVisitor& visitor) const
@@ -259,15 +264,15 @@ namespace lx
 		_right.accept(visitor);
 	}
 
-	DataType BinaryExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType BinaryExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (auto type = lx::evaltype(op(), _left.evaltype(env), _right.evaltype(env)))
+		if (auto type = lx::evaltype(op(), _left.evaltype(ctx), _right.evaltype(ctx)))
 			return *type;
 		else
 		{
 			std::stringstream ss;
-			ss << ": operator not defined for types '" << friendly_name(_left.evaltype(env)) << "' and '" << friendly_name(_right.evaltype(env)) << "'";
-			env.add_semantic_error(_op, ss.str());
+			ss << ": operator not defined for types '" << friendly_name(_left.evaltype(ctx)) << "' and '" << friendly_name(_right.evaltype(ctx)) << "'";
+			ctx.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -287,20 +292,20 @@ namespace lx
 	{
 	}
 
-	void MemberAccessExpression::pre_analyse(RuntimeEnvironment& env) const
+	void MemberAccessExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void MemberAccessExpression::post_analyse(RuntimeEnvironment& env) const
+	void MemberAccessExpression::post_analyse(ResolutionContext& ctx) const
 	{
 		try
 		{
-			evaltype(env);
+			evaltype(ctx);
 		}
 		catch (const LxError& e)
 		{
-			env.add_semantic_error(_member.segment, e.message());
+			ctx.add_semantic_error(_member.segment, e.message());
 		}
 	}
 
@@ -310,9 +315,9 @@ namespace lx
 		_object.accept(visitor);
 	}
 
-	DataType MemberAccessExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType MemberAccessExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		return member(env).data_type();
+		return member(ctx).data_type();
 	}
 
 	ScriptSegment MemberAccessExpression::impl_segment() const
@@ -320,15 +325,15 @@ namespace lx
 		return _object.segment().combined_right(_member.segment);
 	}
 
-	MemberSignature MemberAccessExpression::member(const RuntimeEnvironment& env) const
+	const MemberSignature& MemberAccessExpression::member(const ResolutionContext& ctx) const
 	{
-		const auto members = data_type_members(_object.evaltype(env));
-		for (const auto& member : members)
-			if (member.identifier == _member.lexeme && member.is_data())
-				return member;
+		if (const auto members = data_type_members(_object.evaltype(ctx)))
+			for (const auto& member : *members)
+				if (member.identifier == _member.lexeme && member.is_data())
+					return member;
 
 		std::stringstream ss;
-		ss << "data member '" << _member.lexeme << "' does not exist for type '" << friendly_name(_object.evaltype(env)) << "'";
+		ss << "data member '" << _member.lexeme << "' does not exist for type '" << friendly_name(_object.evaltype(ctx)) << "'";
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 
@@ -337,14 +342,14 @@ namespace lx
 	{
 	}
 
-	void PrefixExpression::pre_analyse(RuntimeEnvironment& env) const
+	void PrefixExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void PrefixExpression::post_analyse(RuntimeEnvironment& env) const
+	void PrefixExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
 	void PrefixExpression::traverse(ASTVisitor& visitor) const
@@ -353,15 +358,15 @@ namespace lx
 		_expr.accept(visitor);
 	}
 
-	DataType PrefixExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType PrefixExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (auto type = lx::evaltype(op(), _expr.evaltype(env)))
+		if (auto type = lx::evaltype(op(), _expr.evaltype(ctx)))
 			return *type;
 		else
 		{
 			std::stringstream ss;
-			ss << ": operator not defined for type '" << friendly_name(_expr.evaltype(env)) << "'";
-			env.add_semantic_error(_op, ss.str());
+			ss << ": operator not defined for type '" << friendly_name(_expr.evaltype(ctx)) << "'";
+			ctx.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -381,14 +386,14 @@ namespace lx
 	{
 	}
 
-	void AsExpression::pre_analyse(RuntimeEnvironment& env) const
+	void AsExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void AsExpression::post_analyse(RuntimeEnvironment& env) const
+	void AsExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
 	void AsExpression::traverse(ASTVisitor& visitor) const
@@ -397,16 +402,16 @@ namespace lx
 		_expr.accept(visitor);
 	}
 
-	DataType AsExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType AsExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		DataType return_type = data_type(_type.type);
-		if (can_cast(_expr.evaltype(env), return_type))
+		if (can_cast(_expr.evaltype(ctx), return_type))
 			return return_type;
 		else
 		{
 			std::stringstream ss;
-			ss << "cannot convert from '" << friendly_name(_expr.evaltype(env)) << "' to '" << friendly_name(return_type) << "'";
-			env.add_semantic_error(_type, ss.str());
+			ss << "cannot convert from '" << friendly_name(_expr.evaltype(ctx)) << "' to '" << friendly_name(return_type) << "'";
+			ctx.add_semantic_error(_type, ss.str());
 			return DataType::Void;
 		}
 	}
@@ -421,20 +426,20 @@ namespace lx
 	{
 	}
 
-	void SubscriptExpression::pre_analyse(RuntimeEnvironment& env) const
+	void SubscriptExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void SubscriptExpression::post_analyse(RuntimeEnvironment& env) const
+	void SubscriptExpression::post_analyse(ResolutionContext& ctx) const
 	{
 		try
 		{
-			evaltype(env);
+			evaltype(ctx);
 		}
 		catch (const LxError& e)
 		{
-			env.add_semantic_error(segment(), e.message());
+			ctx.add_semantic_error(segment(), e.message());
 		}
 	}
 
@@ -445,9 +450,9 @@ namespace lx
 		_subscript.accept(visitor);
 	}
 
-	DataType SubscriptExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType SubscriptExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		return member(env).return_type({_subscript.evaltype(env)}).value();
+		return member(ctx).return_type({_subscript.evaltype(ctx)}).value();
 	}
 
 	ScriptSegment SubscriptExpression::impl_segment() const
@@ -455,15 +460,15 @@ namespace lx
 		return _container.segment().combined_right(_subscript.segment());
 	}
 
-	MemberSignature SubscriptExpression::member(const RuntimeEnvironment& env) const
+	const MemberSignature& SubscriptExpression::member(const ResolutionContext& ctx) const
 	{
-		const auto members = data_type_members(_container.evaltype(env));
-		for (const auto& member : members)
-			if (member.identifier == "[]" && member.is_method() && member.return_type({ _subscript.evaltype(env) }).has_value())
-				return member;
+		if (const auto members = data_type_members(_container.evaltype(ctx)))
+			for (const auto& member : *members)
+				if (member.identifier == "[]" && member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
+					return member;
 
 		std::stringstream ss;
-		ss << "'" << friendly_name(_container.evaltype(env)) << "' does not support [] with index type '" << friendly_name(_subscript.evaltype(env)) << "'";
+		ss << "'" << friendly_name(_container.evaltype(ctx)) << "' does not support [] with index type '" << friendly_name(_subscript.evaltype(ctx)) << "'";
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 
@@ -472,22 +477,22 @@ namespace lx
 	{
 	}
 
-	void VariableExpression::pre_analyse(RuntimeEnvironment& env) const
+	void VariableExpression::pre_analyse(ResolutionContext& ctx) const
 	{
-		if (env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			_validated = true;
 		else
-			env.add_semantic_error(_identifier, "variable is not declared in scope");
+			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableExpression::post_analyse(RuntimeEnvironment& env) const
+	void VariableExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
-	DataType VariableExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType VariableExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			return var->type;
 		else
 		{
@@ -507,17 +512,17 @@ namespace lx
 	{
 	}
 
-	void BuiltinSymbolExpression::pre_analyse(RuntimeEnvironment& env) const
+	void BuiltinSymbolExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void BuiltinSymbolExpression::post_analyse(RuntimeEnvironment& env) const
+	void BuiltinSymbolExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		evaltype(env);
+		evaltype(ctx);
 	}
 
-	DataType BuiltinSymbolExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType BuiltinSymbolExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		return data_type(_builtin_symbol);
 	}
@@ -532,18 +537,18 @@ namespace lx
 	{
 	}
 
-	void FunctionCallExpression::pre_analyse(RuntimeEnvironment& env) const
+	void FunctionCallExpression::pre_analyse(ResolutionContext& ctx) const
 	{
-		if (env.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
-			env.add_semantic_error(_identifier, "function not declared in scope");
+		if (ctx.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
+			ctx.add_semantic_error(_identifier, "function not declared in scope");
 		else
 			_validated = true;
 	}
 
-	void FunctionCallExpression::post_analyse(RuntimeEnvironment& env) const
+	void FunctionCallExpression::post_analyse(ResolutionContext& ctx) const
 	{
-		auto argtypes = arg_types(env);
-		if (!env.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
+		auto argtypes = arg_types(ctx);
+		if (!ctx.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
 		{
 			std::stringstream ss;
 			ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
@@ -554,7 +559,7 @@ namespace lx
 					ss << ", ";
 			}
 			ss << ")";
-			env.add_semantic_error(segment(), ss.str());
+			ctx.add_semantic_error(segment(), ss.str());
 		}
 	}
 
@@ -565,9 +570,9 @@ namespace lx
 			arg->accept(visitor);
 	}
 
-	DataType FunctionCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	DataType FunctionCallExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (auto fn = env.registered_function(_identifier.lexeme, arg_types(env), Namespace::Unknown))
+		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx), Namespace::Unknown))
 			return fn->return_type;
 		else
 		{
@@ -582,11 +587,11 @@ namespace lx
 		return _identifier.segment.combined_right(_closing_paren.segment);
 	}
 
-	std::vector<DataType> FunctionCallExpression::arg_types(const RuntimeEnvironment& env) const
+	std::vector<DataType> FunctionCallExpression::arg_types(const ResolutionContext& ctx) const
 	{
 		std::vector<DataType> args(_args.size());
 		for (size_t i = 0; i < args.size(); ++i)
-			args[i] = _args[i]->evaltype(env);
+			args[i] = _args[i]->evaltype(ctx);
 		return args;
 	}
 
@@ -595,20 +600,20 @@ namespace lx
 	{
 	}
 
-	void MethodCallExpression::pre_analyse(RuntimeEnvironment& env) const
+	void MethodCallExpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		_validated = true;
 	}
 
-	void MethodCallExpression::post_analyse(RuntimeEnvironment& env) const
+	void MethodCallExpression::post_analyse(ResolutionContext& ctx) const
 	{
 		try
 		{
-			evaltype(env);
+			evaltype(ctx);
 		}
 		catch (const LxError& e)
 		{
-			env.add_semantic_error(segment(), e.message());
+			ctx.add_semantic_error(segment(), e.message());
 		}
 	}
 
@@ -620,14 +625,19 @@ namespace lx
 			arg->accept(visitor);
 	}
 
-	DataType MethodCallExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	bool MethodCallExpression::imperative() const
 	{
-		const auto m = _member.member(env);
+		return true;
+	}
+
+	DataType MethodCallExpression::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		const auto m = _member.member(ctx);
 		if (m.is_method())
 		{
 			std::vector<DataType> arg_types;
 			for (const Expression* arg : _args)
-				arg_types.push_back(arg->evaltype(env));
+				arg_types.push_back(arg->evaltype(ctx));
 
 			if (auto r = m.return_type(arg_types))
 				return *r;
@@ -661,17 +671,17 @@ namespace lx
 	{
 	}
 
-	void FunctionDefinition::pre_analyse(RuntimeEnvironment& env) const
+	void FunctionDefinition::pre_analyse(ResolutionContext& ctx) const
 	{
-		if (auto var = env.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 		{
-			env.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(var->decl_line_number));
+			ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(var->decl_line_number));
 			return;
 		}
 		
-		if (auto fn = env.registered_function(_identifier.lexeme, arg_types(), Namespace::Unknown))
+		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(), Namespace::Unknown))
 		{
-			env.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
+			ctx.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
 			return;
 		}
 
@@ -679,7 +689,7 @@ namespace lx
 		for (const auto& [_, identifier] : _arglist)
 		{
 			if (argnames.count(identifier.lexeme))
-				env.add_semantic_error(identifier, "repeated argument identifier");
+				ctx.add_semantic_error(identifier, "repeated argument identifier");
 			else
 				argnames.insert(identifier.lexeme);
 		}
@@ -687,34 +697,34 @@ namespace lx
 		if (argnames.size() != _arglist.size())
 			return;
 
-		env.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line, env.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
+		ctx.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line, ctx.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
 
-		Block::pre_analyse(env);
+		Block::pre_analyse(ctx);
 
 		for (size_t i = 0; i < _arglist.size(); ++i)
-			env.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
+			ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
 
 		_validated = true;
 	}
 
-	void FunctionDefinition::post_analyse(RuntimeEnvironment& env) const
+	void FunctionDefinition::post_analyse(ResolutionContext& ctx) const
 	{
 		auto flow = Block::impl_upflow();
 
 		if (return_type() != DataType::Void && !flow.all_return)
-			env.add_semantic_error(_identifier, "not all control paths return a value");
+			ctx.add_semantic_error(_identifier, "not all control paths return a value");
 
 		for (const ReturnStatement* r : flow.returns)
 		{
-			if (r->evaltype(env) != return_type())
+			if (r->evaltype(ctx) != return_type())
 			{
 				std::stringstream ss;
-				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(env)) << "'";
-				env.add_semantic_error(r->segment(), ss.str());
+				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(ctx)) << "'";
+				ctx.add_semantic_error(r->segment(), ss.str());
 			}
 		}
 
-		Block::post_analyse(env);
+		Block::post_analyse(ctx);
 	}
 
 	UpflowInfo FunctionDefinition::impl_upflow() const
@@ -753,11 +763,11 @@ namespace lx
 	{
 	}
 
-	void ReturnStatement::pre_analyse(RuntimeEnvironment& env) const
+	void ReturnStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 	}
 
-	void ReturnStatement::post_analyse(RuntimeEnvironment& env) const
+	void ReturnStatement::post_analyse(ResolutionContext& ctx) const
 	{
 	}
 
@@ -773,9 +783,9 @@ namespace lx
 		return { .all_return = true, .returns = { this } };
 	}
 
-	DataType ReturnStatement::evaltype(const RuntimeEnvironment& env) const
+	DataType ReturnStatement::evaltype(const ResolutionContext& ctx) const
 	{
-		return _expression ? _expression->evaltype(env) : DataType::Void;
+		return _expression ? _expression->evaltype(ctx) : DataType::Void;
 	}
 
 	ScriptSegment ReturnStatement::segment() const
@@ -814,17 +824,17 @@ namespace lx
 	{
 	}
 
-	void IfStatement::pre_analyse(RuntimeEnvironment& env) const
+	void IfStatement::pre_analyse(ResolutionContext& ctx) const
 	{
-		Block::pre_analyse(env);
+		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void IfStatement::post_analyse(RuntimeEnvironment& env) const
+	void IfStatement::post_analyse(ResolutionContext& ctx) const
 	{
-		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
-		Block::post_analyse(env);
+		if (_condition.evaltype(ctx) != DataType::Bool)
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+		Block::post_analyse(ctx);
 	}
 
 	void IfStatement::traverse(ASTVisitor& visitor) const
@@ -850,17 +860,17 @@ namespace lx
 	{
 	}
 
-	void ElifStatement::pre_analyse(RuntimeEnvironment& env) const
+	void ElifStatement::pre_analyse(ResolutionContext& ctx) const
 	{
-		Block::pre_analyse(env);
+		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void ElifStatement::post_analyse(RuntimeEnvironment& env) const
+	void ElifStatement::post_analyse(ResolutionContext& ctx) const
 	{
-		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
-		Block::post_analyse(env);
+		if (_condition.evaltype(ctx) != DataType::Bool)
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+		Block::post_analyse(ctx);
 	}
 
 	void ElifStatement::traverse(ASTVisitor& visitor) const
@@ -891,17 +901,17 @@ namespace lx
 	{
 	}
 
-	void WhileLoop::pre_analyse(RuntimeEnvironment& env) const
+	void WhileLoop::pre_analyse(ResolutionContext& ctx) const
 	{
-		Block::pre_analyse(env);
+		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void WhileLoop::post_analyse(RuntimeEnvironment& env) const
+	void WhileLoop::post_analyse(ResolutionContext& ctx) const
 	{
-		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
-		Block::post_analyse(env);
+		if (_condition.evaltype(ctx) != DataType::Bool)
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+		Block::post_analyse(ctx);
 	}
 
 	void WhileLoop::traverse(ASTVisitor& visitor) const
@@ -920,22 +930,22 @@ namespace lx
 	{
 	}
 
-	void ForLoop::pre_analyse(RuntimeEnvironment& env) const
+	void ForLoop::pre_analyse(ResolutionContext& ctx) const
 	{
-		Block::pre_analyse(env);
-		env.registered_variable(_iterator.lexeme, Namespace::Local);
+		Block::pre_analyse(ctx);
+		ctx.registered_variable(_iterator.lexeme, Namespace::Local);
 		_validated = true;
 	}
 
-	void ForLoop::post_analyse(RuntimeEnvironment& env) const
+	void ForLoop::post_analyse(ResolutionContext& ctx) const
 	{
-		if (!is_iterable(_iterable.evaltype(env)))
+		if (!is_iterable(_iterable.evaltype(ctx)))
 		{
 			std::stringstream ss;
-			ss << "'" << friendly_name(_iterable.evaltype(env)) << "' is not iterable";
-			env.add_semantic_error(_iterable.segment(), ss.str());
+			ss << "'" << friendly_name(_iterable.evaltype(ctx)) << "' is not iterable";
+			ctx.add_semantic_error(_iterable.segment(), ss.str());
 		}
-		Block::post_analyse(env);
+		Block::post_analyse(ctx);
 	}
 
 	void ForLoop::traverse(ASTVisitor& visitor) const
@@ -959,21 +969,21 @@ namespace lx
 	{
 	}
 
-	void HighlightStatement::pre_analyse(RuntimeEnvironment& env) const
+	void HighlightStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		if (!_color_token || data_type(_color) == DataType::_Color)
 			_validated = true;
 		else
-			env.add_semantic_error(*_color_token, "symbol is not a color");
+			ctx.add_semantic_error(*_color_token, "symbol is not a color");
 	}
 
-	void HighlightStatement::post_analyse(RuntimeEnvironment& env) const
+	void HighlightStatement::post_analyse(ResolutionContext& ctx) const
 	{
-		if (_highlightable && !is_highlightable(_highlightable->evaltype(env)))
+		if (_highlightable && !is_highlightable(_highlightable->evaltype(ctx)))
 		{
 			std::stringstream ss;
-			ss << "'" << friendly_name(_highlightable->evaltype(env)) << "' is not highlightable";
-			env.add_semantic_error(_highlightable->segment(), ss.str());
+			ss << "'" << friendly_name(_highlightable->evaltype(ctx)) << "' is not highlightable";
+			ctx.add_semantic_error(_highlightable->segment(), ss.str());
 		}
 	}
 
@@ -989,12 +999,12 @@ namespace lx
 	{
 	}
 
-	void DeletePattern::pre_analyse(RuntimeEnvironment& env) const
+	void DeletePattern::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void DeletePattern::post_analyse(RuntimeEnvironment& env) const
+	void DeletePattern::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1004,12 +1014,12 @@ namespace lx
 	{
 	}
 
-	void PatternDeclaration::pre_analyse(RuntimeEnvironment& env) const
+	void PatternDeclaration::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternDeclaration::post_analyse(RuntimeEnvironment& env) const
+	void PatternDeclaration::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1019,12 +1029,12 @@ namespace lx
 	{
 	}
 
-	void PatternSubexpression::pre_analyse(RuntimeEnvironment& env) const
+	void PatternSubexpression::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternSubexpression::post_analyse(RuntimeEnvironment& env) const
+	void PatternSubexpression::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1040,12 +1050,12 @@ namespace lx
 	{
 	}
 
-	void PatternLiteral::pre_analyse(RuntimeEnvironment& env) const
+	void PatternLiteral::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternLiteral::post_analyse(RuntimeEnvironment& env) const
+	void PatternLiteral::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1055,12 +1065,12 @@ namespace lx
 	{
 	}
 
-	void PatternIdentifier::pre_analyse(RuntimeEnvironment& env) const
+	void PatternIdentifier::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternIdentifier::post_analyse(RuntimeEnvironment& env) const
+	void PatternIdentifier::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1070,12 +1080,12 @@ namespace lx
 	{
 	}
 
-	void PatternBuiltin::pre_analyse(RuntimeEnvironment& env) const
+	void PatternBuiltin::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternBuiltin::post_analyse(RuntimeEnvironment& env) const
+	void PatternBuiltin::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1085,12 +1095,12 @@ namespace lx
 	{
 	}
 
-	void PatternAs::pre_analyse(RuntimeEnvironment& env) const
+	void PatternAs::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternAs::post_analyse(RuntimeEnvironment& env) const
+	void PatternAs::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1106,12 +1116,12 @@ namespace lx
 	{
 	}
 
-	void PatternRepeat::pre_analyse(RuntimeEnvironment& env) const
+	void PatternRepeat::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternRepeat::post_analyse(RuntimeEnvironment& env) const
+	void PatternRepeat::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1128,12 +1138,12 @@ namespace lx
 	{
 	}
 
-	void PatternSimpleRepeat::pre_analyse(RuntimeEnvironment& env) const
+	void PatternSimpleRepeat::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternSimpleRepeat::post_analyse(RuntimeEnvironment& env) const
+	void PatternSimpleRepeat::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1154,12 +1164,12 @@ namespace lx
 	{
 	}
 
-	void PatternPrefixOperation::pre_analyse(RuntimeEnvironment& env) const
+	void PatternPrefixOperation::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternPrefixOperation::post_analyse(RuntimeEnvironment& env) const
+	void PatternPrefixOperation::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1180,12 +1190,12 @@ namespace lx
 	{
 	}
 
-	void PatternBackRef::pre_analyse(RuntimeEnvironment& env) const
+	void PatternBackRef::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternBackRef::post_analyse(RuntimeEnvironment& env) const
+	void PatternBackRef::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1195,12 +1205,12 @@ namespace lx
 	{
 	}
 
-	void PatternBinaryOperation::pre_analyse(RuntimeEnvironment& env) const
+	void PatternBinaryOperation::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternBinaryOperation::post_analyse(RuntimeEnvironment& env) const
+	void PatternBinaryOperation::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1222,12 +1232,12 @@ namespace lx
 	{
 	}
 
-	void PatternLazy::pre_analyse(RuntimeEnvironment& env) const
+	void PatternLazy::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternLazy::post_analyse(RuntimeEnvironment& env) const
+	void PatternLazy::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1243,12 +1253,12 @@ namespace lx
 	{
 	}
 
-	void PatternCapture::pre_analyse(RuntimeEnvironment& env) const
+	void PatternCapture::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PatternCapture::post_analyse(RuntimeEnvironment& env) const
+	void PatternCapture::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1264,12 +1274,12 @@ namespace lx
 	{
 	}
 
-	void AppendStatement::pre_analyse(RuntimeEnvironment& env) const
+	void AppendStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void AppendStatement::post_analyse(RuntimeEnvironment& env) const
+	void AppendStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1285,12 +1295,12 @@ namespace lx
 	{
 	}
 
-	void FindStatement::pre_analyse(RuntimeEnvironment& env) const
+	void FindStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void FindStatement::post_analyse(RuntimeEnvironment& env) const
+	void FindStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1300,12 +1310,12 @@ namespace lx
 	{
 	}
 
-	void FilterStatement::pre_analyse(RuntimeEnvironment& env) const
+	void FilterStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void FilterStatement::post_analyse(RuntimeEnvironment& env) const
+	void FilterStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1315,12 +1325,12 @@ namespace lx
 	{
 	}
 
-	void ReplaceStatement::pre_analyse(RuntimeEnvironment& env) const
+	void ReplaceStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void ReplaceStatement::post_analyse(RuntimeEnvironment& env) const
+	void ReplaceStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1337,12 +1347,12 @@ namespace lx
 	{
 	}
 
-	void ApplyStatement::pre_analyse(RuntimeEnvironment& env) const
+	void ApplyStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void ApplyStatement::post_analyse(RuntimeEnvironment& env) const
+	void ApplyStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1352,12 +1362,12 @@ namespace lx
 	{
 	}
 
-	void ScopeStatement::pre_analyse(RuntimeEnvironment& env) const
+	void ScopeStatement::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void ScopeStatement::post_analyse(RuntimeEnvironment& env) const
+	void ScopeStatement::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1373,12 +1383,12 @@ namespace lx
 	{
 	}
 
-	void PagePush::pre_analyse(RuntimeEnvironment& env) const
+	void PagePush::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PagePush::post_analyse(RuntimeEnvironment& env) const
+	void PagePush::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
@@ -1389,22 +1399,22 @@ namespace lx
 		_page.accept(visitor);
 	}
 
-	void PagePop::pre_analyse(RuntimeEnvironment& env) const
+	void PagePop::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PagePop::post_analyse(RuntimeEnvironment& env) const
+	void PagePop::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PageClearStack::pre_analyse(RuntimeEnvironment& env) const
+	void PageClearStack::pre_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}
 
-	void PageClearStack::post_analyse(RuntimeEnvironment& env) const
+	void PageClearStack::post_analyse(ResolutionContext& ctx) const
 	{
 		// TODO
 	}

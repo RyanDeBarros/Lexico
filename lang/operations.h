@@ -66,7 +66,7 @@ namespace lx
 		std::optional<DataType> return_type(const std::vector<DataType>& arg_types) const;
 	};
 
-	extern std::vector<MemberSignature> data_type_members(DataType type);
+	extern const std::vector<MemberSignature>* data_type_members(DataType type);
 
 	extern bool can_cast(DataType from, DataType to);
 	extern bool is_iterable(DataType type);

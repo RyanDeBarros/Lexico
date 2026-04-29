@@ -488,7 +488,9 @@ namespace lx
 		{
 			auto offset = token_offset();
 			Expression& expr = parse_expression(offset);
-			// TODO assert that expression is imperative() (i.e. a method call - add virtual method in Expression which by default returns false)
+			if (!expr.imperative())
+				throw LxError::segment_error(expr.segment(), ErrorType::Syntax, "expression is not imperative");
+
 			offset.submit();
 			context().append(expr);
 			return true;

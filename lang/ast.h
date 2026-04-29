@@ -6,7 +6,7 @@
 #include "symbols.h"
 #include "errors.h"
 #include "operations.h"
-#include "runtime.h"
+#include "resolution.h"
 
 namespace lx
 {
@@ -40,8 +40,8 @@ namespace lx
 		
 		bool validated() const;
 
-		virtual void pre_analyse(RuntimeEnvironment& env) const = 0;
-		virtual void post_analyse(RuntimeEnvironment& env) const = 0;
+		virtual void pre_analyse(ResolutionContext& ctx) const = 0;
+		virtual void post_analyse(ResolutionContext& ctx) const = 0;
 		void accept(ASTVisitor& visitor) const;
 		virtual void traverse(ASTVisitor& visitor) const {}
 		UpflowInfo upflow() const;
@@ -55,8 +55,8 @@ namespace lx
 		std::vector<ASTNode*> _children;
 
 	public:
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		virtual void traverse(ASTVisitor& visitor) const override;
 
 	protected:
@@ -101,11 +101,12 @@ namespace lx
 		mutable std::optional<ScriptSegment> _segment;
 
 	public:
-		DataType evaltype(const RuntimeEnvironment& env) const;
+		DataType evaltype(const ResolutionContext& ctx) const;
 		ScriptSegment segment() const;
+		virtual bool imperative() const;
 
 	protected:
-		virtual DataType impl_evaltype(const RuntimeEnvironment& env) const = 0;
+		virtual DataType impl_evaltype(const ResolutionContext& ctx) const = 0;
 		virtual ScriptSegment impl_segment() const = 0;
 	};
 
@@ -117,8 +118,8 @@ namespace lx
 
 	public:
 		VariableDeclaration(bool global, Token&& identifier, const Expression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 		
 	public:
@@ -132,8 +133,8 @@ namespace lx
 
 	public:
 		VariableAssignment(Token&& identifier, const Expression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -143,11 +144,11 @@ namespace lx
 
 	public:
 		LiteralExpression(Token&& literal);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -159,11 +160,11 @@ namespace lx
 
 	public:
 		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<const Expression*>&& elements);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -175,12 +176,12 @@ namespace lx
 
 	public:
 		BinaryExpression(Token&& op, const Expression& left, const Expression& right);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
@@ -194,16 +195,16 @@ namespace lx
 
 	public:
 		MemberAccessExpression(const Expression& object, Token&& member);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
-		MemberSignature member(const RuntimeEnvironment& env) const;
+		const MemberSignature& member(const ResolutionContext& ctx) const;
 	};
 
 	class PrefixExpression : public Expression
@@ -213,12 +214,12 @@ namespace lx
 
 	public:
 		PrefixExpression(Token&& op, const Expression& expr);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
@@ -232,12 +233,12 @@ namespace lx
 
 	public:
 		AsExpression(const Expression& expr, Token&& type);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -248,16 +249,16 @@ namespace lx
 
 	public:
 		SubscriptExpression(const Expression& container, const Expression& subscript);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
-		MemberSignature member(const RuntimeEnvironment& env) const;
+		const MemberSignature& member(const ResolutionContext& ctx) const;
 	};
 
 	class VariableExpression : public Expression
@@ -266,11 +267,11 @@ namespace lx
 
 	public:
 		VariableExpression(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -281,11 +282,11 @@ namespace lx
 
 	public:
 		BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -297,16 +298,16 @@ namespace lx
 
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args, Token&& closing_paren);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
-		std::vector<DataType> arg_types(const RuntimeEnvironment& env) const;
+		std::vector<DataType> arg_types(const ResolutionContext& ctx) const;
 	};
 
 	class MethodCallExpression : public Expression
@@ -317,12 +318,13 @@ namespace lx
 
 	public:
 		MethodCallExpression(const MemberAccessExpression& member, std::vector<const Expression*>&& args, Token&& closing_paren);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
+		bool imperative() const override;
 
 	protected:
-		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -334,8 +336,8 @@ namespace lx
 
 	public:
 		FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 
 	protected:
 		UpflowInfo impl_upflow() const override;
@@ -354,15 +356,15 @@ namespace lx
 
 	public:
 		ReturnStatement(Token&& return_token, const Expression* expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
 		UpflowInfo impl_upflow() const override;
 		
 	public:
-		DataType evaltype(const RuntimeEnvironment& env) const;
+		DataType evaltype(const ResolutionContext& ctx) const;
 		ScriptSegment segment() const;
 	};
 
@@ -388,8 +390,8 @@ namespace lx
 
 	public:
 		IfStatement(const Expression& condition);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
@@ -403,8 +405,8 @@ namespace lx
 
 	public:
 		ElifStatement(const Expression& condition);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
@@ -424,8 +426,8 @@ namespace lx
 
 	public:
 		WhileLoop(const Expression& condition);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
@@ -439,8 +441,8 @@ namespace lx
 
 	public:
 		ForLoop(Token&& iterator, const Expression& iterable);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
@@ -450,15 +452,15 @@ namespace lx
 	class BreakStatement : public ASTNode
 	{
 	public:
-		void pre_analyse(RuntimeEnvironment& env) const override {}
-		void post_analyse(RuntimeEnvironment& env) const override {}
+		void pre_analyse(ResolutionContext& ctx) const override {}
+		void post_analyse(ResolutionContext& ctx) const override {}
 	};
 
 	class ContinueStatement : public ASTNode
 	{
 	public:
-		void pre_analyse(RuntimeEnvironment& env) const override {}
-		void post_analyse(RuntimeEnvironment& env) const override {}
+		void pre_analyse(ResolutionContext& ctx) const override {}
+		void post_analyse(ResolutionContext& ctx) const override {}
 	};
 
 	class LogStatement : public ASTNode
@@ -467,8 +469,8 @@ namespace lx
 
 	public:
 		LogStatement(std::vector<const Expression*>&& args);
-		void pre_analyse(RuntimeEnvironment& env) const override {}
-		void post_analyse(RuntimeEnvironment& env) const override {}
+		void pre_analyse(ResolutionContext& ctx) const override {}
+		void post_analyse(ResolutionContext& ctx) const override {}
 	};
 
 	class HighlightStatement : public ASTNode
@@ -480,8 +482,8 @@ namespace lx
 
 	public:
 		HighlightStatement(bool clear, const Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -491,8 +493,8 @@ namespace lx
 
 	public:
 		DeletePattern(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternDeclaration : public ASTNode
@@ -501,8 +503,8 @@ namespace lx
 
 	public:
 		PatternDeclaration(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternExpression : public ASTNode
@@ -515,8 +517,8 @@ namespace lx
 
 	public:
 		PatternSubexpression(const Expression& expr);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -526,8 +528,8 @@ namespace lx
 
 	public:
 		PatternLiteral(Token&& literal);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternIdentifier : public PatternExpression
@@ -536,8 +538,8 @@ namespace lx
 
 	public:
 		PatternIdentifier(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternBuiltin : public PatternExpression
@@ -547,8 +549,8 @@ namespace lx
 
 	public:
 		PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternAs : public PatternExpression
@@ -558,8 +560,8 @@ namespace lx
 
 	public:
 		PatternAs(const PatternExpression& expression, Token&& type);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -570,8 +572,8 @@ namespace lx
 
 	public:
 		PatternRepeat(const PatternExpression& expression, const Expression& range);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -582,8 +584,8 @@ namespace lx
 
 	public:
 		PatternSimpleRepeat(const PatternExpression& expression, Token&& op);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 		PatternSimpleRepeatOperator op() const;
@@ -596,8 +598,8 @@ namespace lx
 
 	public:
 		PatternPrefixOperation(Token&& op, const PatternExpression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 		PatternPrefixOperator op() const;
@@ -609,8 +611,8 @@ namespace lx
 
 	public:
 		PatternBackRef(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PatternBinaryOperation : public PatternExpression
@@ -621,8 +623,8 @@ namespace lx
 
 	public:
 		PatternBinaryOperation(Token&& op, const PatternExpression& left, const PatternExpression& right);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 		PatternBinaryOperator op() const;
@@ -634,8 +636,8 @@ namespace lx
 
 	public:
 		PatternLazy(const PatternExpression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -646,8 +648,8 @@ namespace lx
 
 	public:
 		PatternCapture(Token&& identifier, const PatternExpression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -657,8 +659,8 @@ namespace lx
 
 	public:
 		AppendStatement(const PatternExpression& expression);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -668,8 +670,8 @@ namespace lx
 
 	public:
 		FindStatement(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class FilterStatement : public ASTNode
@@ -678,8 +680,8 @@ namespace lx
 
 	public:
 		FilterStatement(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class ReplaceStatement : public ASTNode
@@ -689,8 +691,8 @@ namespace lx
 
 	public:
 		ReplaceStatement(const Expression& match, const Expression& string);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -700,8 +702,8 @@ namespace lx
 
 	public:
 		ApplyStatement(Token&& identifier);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class ScopeStatement : public ASTNode
@@ -711,8 +713,8 @@ namespace lx
 
 	public:
 		ScopeStatement(Token&& specifier, const Expression& range);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
@@ -722,22 +724,22 @@ namespace lx
 
 	public:
 		PagePush(const Expression& page);
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 		void traverse(ASTVisitor& visitor) const override;
 	};
 
 	class PagePop : public ASTNode
 	{
 	public:
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 
 	class PageClearStack : public ASTNode
 	{
 	public:
-		void pre_analyse(RuntimeEnvironment& env) const override;
-		void post_analyse(RuntimeEnvironment& env) const override;
+		void pre_analyse(ResolutionContext& ctx) const override;
+		void post_analyse(ResolutionContext& ctx) const override;
 	};
 }
