@@ -26,6 +26,7 @@ namespace lx
 		constexpr const char* EXPECTED_ASSIGN = "expected '='";
 		constexpr const char* EXPECTED_LPAREN = "expected '('";
 		constexpr const char* EXPECTED_RPAREN = "expected ')'";
+		constexpr const char* EXPECTED_LBRACKET = "expected '['";
 		constexpr const char* EXPECTED_RBRACKET = "expected ']'";
 		constexpr const char* EXPECTED_ARROW = "expected '->'";
 		constexpr const char* EXPECTED_IF_END = "expected 'end if' statement";
@@ -744,8 +745,6 @@ namespace lx
 			return *lhs;
 		}
 
-		// TODO in parse_primary_expression/parse_primary_pattern_expression, check for [...] list constructor
-
 		Expression& parse_primary_expression(TokenOffset& offset)
 		{
 			if (peek_token_is(0, TokenType::Identifier))
@@ -758,6 +757,8 @@ namespace lx
 				return parse_group_expression(offset);
 			else if (peek(0).is_prefix_operator())
 				return parse_prefix_expression(offset);
+			else if (peek_token_is(0, TokenType::LBracket))
+				return parse_list_expression(offset);
 			else
 				throw_error(errors::UNRECOGNIZED_TOKEN, 0);
 		}
@@ -833,6 +834,37 @@ namespace lx
 			auto& literal = ref(0);
 			offset.add(1);
 			return _tree.add(std::make_unique<T>(std::move(literal)));
+		}
+
+		Expression& parse_list_expression(TokenOffset& offset)
+		{
+			auto& lbracket_token = parse_token(0, TokenType::LBracket, errors::EXPECTED_LBRACKET);
+			offset.add(1);  // '['
+
+			std::vector<const Expression*> elements;
+			bool comma_ended = false;
+			while (continue_statement() && !peek_token_is(0, TokenType::RBracket))
+			{
+				elements.push_back(&parse_expression(offset));
+
+				if (peek_token_is(0, TokenType::Comma))
+				{
+					comma_ended = true;
+					offset.add(1);
+				}
+				else
+				{
+					comma_ended = false;
+					break;
+				}
+			}
+
+			if (comma_ended)
+				throw_error(errors::EXPECTED_EXPRESSION, 0);
+
+			auto& rbracket_token = parse_token(0, TokenType::RBracket, errors::EXPECTED_RBRACKET);
+			offset.add(1);  // ']'
+			return _tree.add(std::make_unique<ListExpression>(std::move(lbracket_token), std::move(rbracket_token), std::move(elements)));
 		}
 
 		Expression& parse_group_expression(TokenOffset& offset)

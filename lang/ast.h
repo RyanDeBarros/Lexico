@@ -151,6 +151,22 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
+	class ListExpression : public Expression
+	{
+		std::vector<const Expression*> _elements;
+		Token _lbracket_token;
+		Token _rbracket_token;
+
+	public:
+		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<const Expression*>&& elements);
+		void pre_analyse(RuntimeEnvironment& env) const override;
+		void post_analyse(RuntimeEnvironment& env) const override;
+
+	protected:
+		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
+	};
+
 	class BinaryExpression : public Expression
 	{
 		Token _op;

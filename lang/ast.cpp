@@ -212,6 +212,31 @@ namespace lx
 		return _literal.segment;
 	}
 
+	ListExpression::ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<const Expression*>&& elements)
+		: _lbracket_token(std::move(lbracket_token)), _rbracket_token(std::move(rbracket_token)), _elements(std::move(elements))
+	{
+	}
+	
+	void ListExpression::pre_analyse(RuntimeEnvironment& env) const
+	{
+		_validated = true;
+	}
+	
+	void ListExpression::post_analyse(RuntimeEnvironment& env) const
+	{
+		evaltype(env);
+	}
+
+	DataType ListExpression::impl_evaltype(const RuntimeEnvironment& env) const
+	{
+		return DataType::List;
+	}
+
+	ScriptSegment ListExpression::impl_segment() const
+	{
+		return _lbracket_token.segment.combined_right(_rbracket_token.segment);
+	}
+
 	BinaryExpression::BinaryExpression(Token&& op, const Expression& left, const Expression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
