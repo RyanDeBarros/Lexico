@@ -17,7 +17,7 @@ namespace lx
 	{
 		LxError(ErrorType type, std::string&& message = "");
 
-		static std::string underline(const Token& token, unsigned int tabs = 1);
-		static LxError token_error(const Token& token, const std::vector<std::string_view>& script_lines, ErrorType type, const std::string_view cause);
+		static std::string underline(const ScriptSegment& segment, unsigned int tabs = 1);
+		static LxError segment_error(const ScriptSegment& segment, ErrorType type, const std::string_view cause);
 	};
 }

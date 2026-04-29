@@ -131,18 +131,34 @@ namespace lx
 	extern Precedence operator+(Precedence a, Precedence b);
 	extern Precedence operator+(Precedence a, int b);
 
+	struct ScriptSegment
+	{
+		const std::vector<std::string_view>& script_lines;
+		
+		unsigned int start_line = 0;
+		unsigned int end_line = 0;
+		unsigned int start_column = 0;
+		unsigned int end_column = 0;
+		
+		ScriptSegment(const std::vector<std::string_view>& script_lines);
+		ScriptSegment(const ScriptSegment&);
+		ScriptSegment(ScriptSegment&&) noexcept;
+		ScriptSegment& operator=(const ScriptSegment&);
+		ScriptSegment& operator=(ScriptSegment&&) noexcept;
+
+		std::string line_number_prefix() const;
+
+		ScriptSegment combined_right(ScriptSegment right) const;
+	};
+
 	struct Token
 	{
 		TokenType type = TokenType::EndOfFile;
 
 		std::string_view lexeme;
-		unsigned int start_line = 0;
-		unsigned int end_line = 0;
-		unsigned int start_column = 0;
-		unsigned int end_column = 0;
+		ScriptSegment segment;
 
 		std::string resolved() const;
-		std::string line_number_prefix() const;
 
 		bool is_datatype() const;
 		bool is_literal() const;

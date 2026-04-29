@@ -187,14 +187,15 @@ namespace lx
 	{
 		const std::string_view _script;
 		std::vector<Token>& _tokens;
+		const std::vector<std::string_view>& _script_lines;
 		ScriptPointer _ptr;
 		unsigned int _str_offset = 0;
 		Token _token;
 		char _c;
 
 	public:
-		Tokenizer(const std::string_view script, std::vector<Token>& tokens)
-			: _script(script), _tokens(tokens)
+		Tokenizer(const std::string_view script, std::vector<Token>& tokens, const std::vector<std::string_view>& _script_lines)
+			: _script(script), _tokens(tokens), _script_lines(_script_lines), _token(new_token())
 		{
 			for (size_t i = 0; i < script.size(); ++i)
 			{
@@ -370,11 +371,16 @@ namespace lx
 			concat_runoffs();
 		}
 
+		Token new_token() const
+		{
+			return { .segment = _script_lines };
+		}
+
 		void start_token(TokenType type)
 		{
 			_token.type = type;
-			_token.start_line = _ptr.line();
-			_token.start_column = _ptr.column();
+			_token.segment.start_line = _ptr.line();
+			_token.segment.start_column = _ptr.column();
 			_str_offset = _ptr.index();
 		}
 
@@ -386,14 +392,15 @@ namespace lx
 
 		void impl_add_token()
 		{
-			_token.end_line = _ptr.last_line();
-			_token.end_column = _ptr.last_column();
+			_token.segment.end_line = _ptr.last_line();
+			_token.segment.end_column = _ptr.last_column();
 
 			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
 			_token.type = resolve_identifier(_token);
 
 			_tokens.push_back(std::move(_token));
-			_token = {};
+
+			_token = new_token();
 			_str_offset = _ptr.index();
 		}
 
@@ -469,8 +476,8 @@ namespace lx
 					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Ahead)
 					{
 						_token = std::move(_tokens[i]);
-						_token.end_column = _tokens[i + 1].end_column;
-						_token.end_line = _tokens[i + 1].end_line;
+						_token.segment.end_column = _tokens[i + 1].segment.end_column;
+						_token.segment.end_line = _tokens[i + 1].segment.end_line;
 						_token.type = TokenType::NotAhead;
 						final_tokens.push_back(std::move(_token));
 						++i;
@@ -480,8 +487,8 @@ namespace lx
 					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Behind)
 					{
 						_token = std::move(_tokens[i]);
-						_token.end_column = _tokens[i + 1].end_column;
-						_token.end_line = _tokens[i + 1].end_line;
+						_token.segment.end_column = _tokens[i + 1].segment.end_column;
+						_token.segment.end_line = _tokens[i + 1].segment.end_line;
 						_token.type = TokenType::NotBehind;
 						final_tokens.push_back(std::move(_token));
 						++i;
@@ -497,10 +504,6 @@ namespace lx
 
 	void Lexer::tokenize(const std::string_view script)
 	{
-		std::vector<Token> tokens;
-		Tokenizer tokenizer(script, tokens);
-		_stream.load(std::move(tokens));
-
 		size_t off = 0;
 		for (size_t i = 0; i < script.size(); ++i)
 		{
@@ -519,6 +522,10 @@ namespace lx
 			}
 		}
 		_script_lines.push_back(script.substr(off, script.size() - off));
+
+		std::vector<Token> tokens;
+		Tokenizer tokenizer(script, tokens, _script_lines);
+		_stream.load(std::move(tokens));
 	}
 
 	const TokenStream& Lexer::stream() const

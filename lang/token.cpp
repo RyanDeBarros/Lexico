@@ -15,6 +15,67 @@ namespace lx
 		return static_cast<Precedence>(static_cast<int>(a) + b);
 	}
 
+	ScriptSegment::ScriptSegment(const std::vector<std::string_view>& script_lines)
+		: script_lines(script_lines)
+	{
+	}
+
+	ScriptSegment::ScriptSegment(const ScriptSegment& other)
+		: script_lines(other.script_lines), start_line(other.start_line), start_column(other.start_column), end_line(other.end_line), end_column(other.end_column)
+	{
+	}
+
+	ScriptSegment::ScriptSegment(ScriptSegment&& other) noexcept
+		: script_lines(other.script_lines), start_line(other.start_line), start_column(other.start_column), end_line(other.end_line), end_column(other.end_column)
+	{
+	}
+
+	ScriptSegment& ScriptSegment::operator=(const ScriptSegment& other)
+	{
+		if (this != &other)
+		{
+			start_line = other.start_line;
+			start_column = other.start_column;
+			end_line = other.end_line;
+			end_column = other.end_column;
+		}
+		return *this;
+	}
+
+	ScriptSegment& ScriptSegment::operator=(ScriptSegment&& other) noexcept
+	{
+		if (this != &other)
+		{
+			start_line = other.start_line;
+			start_column = other.start_column;
+			end_line = other.end_line;
+			end_column = other.end_column;
+		}
+		return *this;
+	}
+
+	std::string ScriptSegment::line_number_prefix() const
+	{
+		std::string line_number = std::to_string(start_line) + ".";
+		const unsigned int digit_count = line_number.length();
+		for (unsigned int i = 0; i < 4 - digit_count % 4; ++i)
+			line_number += " ";
+		return line_number;
+	}
+
+	ScriptSegment ScriptSegment::combined_right(ScriptSegment right) const
+	{
+		ScriptSegment combo = *this;
+		if (right.end_line > end_line)
+		{
+			combo.end_column = right.end_column;
+			combo.end_line = right.end_line;
+		}
+		else
+			combo.end_column = std::max(end_column, right.end_column);
+		return combo;
+	}
+
 	std::string Token::resolved() const
 	{
 		if (type != TokenType::String)
@@ -51,15 +112,6 @@ namespace lx
 			str += '\\';
 
 		return str;
-	}
-
-	std::string Token::line_number_prefix() const
-	{
-		std::string line_number = std::to_string(start_line) + ".";
-		const unsigned int digit_count = line_number.length();
-		for (unsigned int i = 0; i < 4 - digit_count % 4; ++i)
-			line_number += " ";
-		return line_number;
 	}
 
 	bool Token::is_datatype() const

@@ -133,6 +133,30 @@ namespace lx
 		}
 	}
 
+	bool is_highlightable(DataType type)
+	{
+		switch (type)
+		{
+		case DataType::Int:
+		case DataType::Match:
+		case DataType::Matches:
+		case DataType::IRange:
+			return true;
+
+		case DataType::Float:
+		case DataType::Bool:
+		case DataType::String:
+		case DataType::Pattern:
+		case DataType::Void:
+		case DataType::CapId:
+		case DataType::Cap:
+		case DataType::SRange:
+		case DataType::List:
+		default:
+			return false;
+		}
+	}
+
 	StandardBinaryOperator standard_binary_operator(TokenType type)
 	{
 		switch (type)

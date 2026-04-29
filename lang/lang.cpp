@@ -32,12 +32,12 @@ namespace lx
 			lexer.tokenize(script);
 
 			Parser parser;
-			parser.parse(lexer, lexer.script_lines());
+			parser.parse(lexer);
 			if (log_errors(parser.errors(), log))
 				return false;
 
 			SemanticAnalyser analyser;
-			analyser.analyse(parser, lexer.script_lines());
+			analyser.analyse(parser);
 			if (log_errors(analyser.errors(), log))
 				return false;
 

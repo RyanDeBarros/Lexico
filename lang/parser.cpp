@@ -42,14 +42,13 @@ namespace lx
 	{
 		TokenStream& _stream;
 		std::vector<LxError>& _errors;
-		const std::vector<std::string_view>& _script_lines;
 		size_t _token_offset = 0;
 		AbstractSyntaxTree& _tree;
 		std::stack<Block*> _context_stack;
 
 	public:
-		ASTBuilder(TokenStream& stream, std::vector<LxError>& errors, const std::vector<std::string_view>& script_lines, AbstractSyntaxTree& tree)
-			: _stream(stream), _errors(errors), _script_lines(script_lines), _tree(tree)
+		ASTBuilder(TokenStream& stream, std::vector<LxError>& errors, AbstractSyntaxTree& tree)
+			: _stream(stream), _errors(errors), _tree(tree)
 		{
 			while (!eof())
 			{
@@ -117,7 +116,7 @@ namespace lx
 			return actual > _token_offset ? actual - _token_offset : 0;
 		}
 
-		const Token& peek(size_t n) const
+		const Token& peek(int n) const
 		{
 			return _stream.peek(n + _token_offset);
 		}
@@ -187,16 +186,14 @@ namespace lx
 				throw LxError(ErrorType::Syntax, cause);
 			else
 			{
-				Token token;
 				if (peek_offset < tokens_left())
-					token = peek(peek_offset);
+					throw LxError::segment_error(peek(peek_offset).segment, ErrorType::Syntax, cause);
 				else
 				{
-					token = peek(tokens_left() - 1);
-					++token.start_column;
+					ScriptSegment segment = peek(tokens_left() - 1).segment;
+					++segment.start_column;
+					throw LxError::segment_error(segment, ErrorType::Syntax, cause);
 				}
-
-				throw LxError::token_error(token, _script_lines, ErrorType::Syntax, cause);
 			}
 		}
 
@@ -209,12 +206,12 @@ namespace lx
 				advance(1);
 		}
 
-		Token& ref(size_t n)
+		Token& ref(int n)
 		{
 			return _stream.ref(n + _token_offset);
 		}
 
-		Token& parse_token(size_t n, TokenType type, const char* err)
+		Token& parse_token(int n, TokenType type, const char* err)
 		{
 			if (tokens_exist(n) && peek(n).type == type)
 				return ref(n);
@@ -222,7 +219,7 @@ namespace lx
 				throw_error(err, n);
 		}
 
-		Token& parse_datatype(size_t n)
+		Token& parse_datatype(int n)
 		{
 			if (tokens_exist(n) && peek(n).is_datatype())
 				return ref(n);
@@ -459,7 +456,7 @@ namespace lx
 
 		bool parse_assignment()
 		{
-			if (!peek_token_is(0, TokenType::Identifier) || !peek_token_is(0, TokenType::Percent) || peek_token_is(1, TokenType::LParen))
+			if (!(peek_token_is(0, TokenType::Identifier) || peek_token_is(0, TokenType::Percent)) || peek_token_is(1, TokenType::LParen))
 				return false;
 
 			auto& identifier = ref(0);
@@ -538,12 +535,11 @@ namespace lx
 			if (!peek_token_is(0, TokenType::If))
 				return false;
 
-			auto& if_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = append_to_context(std::make_unique<IfStatement>(std::move(if_token), expr));
+			auto& stmt = append_to_context(std::make_unique<IfStatement>(expr));
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
 			return true;
@@ -554,12 +550,11 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Elif))
 				return false;
 
-			auto& elif_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = _tree.add(std::make_unique<ElifStatement>(std::move(elif_token), expr));
+			auto& stmt = _tree.add(std::make_unique<ElifStatement>(expr));
 			cond.set_fallback(&stmt);
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
@@ -584,12 +579,11 @@ namespace lx
 			if (!peek_token_is(0, TokenType::While))
 				return false;
 
-			auto& while_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(std::move(while_token), expr)));
+			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(expr)));
 			parse_simple_block(TokenType::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
 			return true;
 		}
@@ -599,7 +593,6 @@ namespace lx
 			if (!peek_token_is(0, TokenType::For))
 				return false;
 
-			auto& for_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 			parse_token(2, TokenType::In, errors::EXPECTED_IN_CLAUSE);
 
@@ -607,7 +600,7 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(for_token), std::move(identifier), expr)));
+			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), expr)));
 			parse_simple_block(TokenType::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
 			return true;
 		}
@@ -658,6 +651,7 @@ namespace lx
 				clear = true;
 			}
 
+			Token* color_token = nullptr;
 			BuiltinSymbol color = BuiltinSymbol::Yellow;
 			Expression* expr = nullptr;
 
@@ -666,6 +660,7 @@ namespace lx
 
 			if (peek_token_is(0, TokenType::Color))
 			{
+				color_token = &ref(0);
 				offset.add(1);
 
 				if (auto c = parse_builtin_symbol(parse_token(0, TokenType::BuiltinSymbol, errors::EXPECTED_COLOR_CLAUSE).lexeme))
@@ -678,7 +673,7 @@ namespace lx
 			}
 
 			offset.submit();
-			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color));
+			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color_token ? std::make_optional<Token>(*color_token) : std::nullopt, color));
 			return true;
 		}
 
@@ -780,12 +775,14 @@ namespace lx
 
 		Expression& parse_function_call_expression(Token&& identifier, TokenOffset& offset)
 		{
-			return _tree.add(std::make_unique<FunctionCallExpression>(std::move(identifier), parse_call_arglist(offset)));
+			auto arglist = parse_call_arglist(offset);
+			return _tree.add(std::make_unique<FunctionCallExpression>(std::move(identifier), std::move(arglist), std::move(ref(-1))));
 		}
 
 		Expression& parse_method_call_expression(Expression& object, TokenOffset& offset)
 		{
-			return _tree.add(std::make_unique<MethodCallExpression>(object, parse_call_arglist(offset)));
+			auto arglist = parse_call_arglist(offset);
+			return _tree.add(std::make_unique<MethodCallExpression>(object, std::move(arglist), std::move(ref(-1))));
 		}
 
 		std::vector<const Expression*> parse_call_arglist(TokenOffset& offset)
@@ -825,8 +822,9 @@ namespace lx
 			auto symbol = parse_builtin_symbol(peek(0).lexeme);
 			if (!symbol)
 				throw_error(errors::UNRECOGNIZED_SYMBOL, 0);
+			auto& symbol_token = ref(0);
 			offset.add(1);
-			return _tree.add(std::make_unique<T>(*symbol));
+			return _tree.add(std::make_unique<T>(std::move(symbol_token), *symbol));
 		}
 
 		template<typename T>
@@ -1012,9 +1010,9 @@ namespace lx
 		}
 	};
 
-	void Parser::parse(Lexer& lexer, const std::vector<std::string_view>& script_lines)
+	void Parser::parse(Lexer& lexer)
 	{
-		ASTBuilder builder(lexer.stream(), _errors, script_lines, _tree);
+		ASTBuilder builder(lexer.stream(), _errors, _tree);
 	}
 
 	const AbstractSyntaxTree& Parser::tree() const

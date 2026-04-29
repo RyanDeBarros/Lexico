@@ -24,7 +24,7 @@ namespace lx
 	{
 	}
 
-	std::string LxError::underline(const Token& token, unsigned int tabs)
+	std::string LxError::underline(const ScriptSegment& segment, unsigned int tabs)
 	{
 		std::stringstream ss;
 
@@ -33,25 +33,33 @@ namespace lx
 			ss << "    ";
 			--tabs;
 		}
-		for (unsigned int i = 1; i < token.start_column; ++i)
+		
+		for (unsigned int i = 1; i < segment.start_column; ++i)
 			ss << ' ';
+		
 		ss << '^';
-		if (token.start_line == token.end_line)
+
+		unsigned int end_column = segment.end_column;
+		if (segment.start_line != segment.end_line)
 		{
-			for (unsigned int i = token.start_column + 1; i <= token.end_column; ++i)
-				ss << '~';
+			size_t line_length = segment.script_lines[segment.start_line].size();
+			end_column = line_length > 0 ? line_length - 1 : 0;
 		}
+
+		for (unsigned int i = segment.start_column + 1; i <= end_column; ++i)
+			ss << '~';
+
 		return ss.str();
 	}
 
-	LxError LxError::token_error(const Token& token, const std::vector<std::string_view>& script_lines, ErrorType type, const std::string_view cause)
+	LxError LxError::segment_error(const ScriptSegment& segment, ErrorType type, const std::string_view cause)
 	{
 		std::stringstream ss;
 		ss << cause;
 		ss << ":\n";
-		std::string line_number = token.line_number_prefix();
+		std::string line_number = segment.line_number_prefix();
 		unsigned int tabs = 1 + line_number.size() / 4;
-		ss << "    " << line_number << script_lines[token.start_line - 1] << '\n' << LxError::underline(token, tabs);
+		ss << "    " << line_number << segment.script_lines[segment.start_line - 1] << '\n' << LxError::underline(segment, tabs);
 		return LxError(type, ss.str());
 	}
 }

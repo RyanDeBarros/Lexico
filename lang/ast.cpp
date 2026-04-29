@@ -103,6 +103,13 @@ namespace lx
 		return *_evaltype;
 	}
 
+	ScriptSegment Expression::segment() const
+	{
+		if (!_segment)
+			_segment = impl_segment();
+		return *_segment;
+	}
+
 	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, const Expression& expression)
 		: _global(global), _identifier(std::move(identifier)), _expression(expression)
 	{
@@ -120,7 +127,7 @@ namespace lx
 
 	void VariableDeclaration::post_analyse(RuntimeEnvironment& env) const
 	{
-		env.register_variable(_identifier.lexeme, _expression.evaltype(env), _identifier.start_line, _global ? Namespace::Global : Namespace::Local);
+		env.register_variable(_identifier.lexeme, _expression.evaltype(env), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
 	}
 
 	void VariableDeclaration::traverse(ASTVisitor& visitor) const
@@ -154,7 +161,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << "cannot assign variable of type '" << friendly_name(var->type) << "' to expression of type '" << friendly_name(_expression.evaltype(env)) << "'";
-			env.add_semantic_error(_identifier, ss.str());
+			env.add_semantic_error(_identifier.segment.combined_right(_expression.segment()), ss.str());
 		}
 	}
 
@@ -200,6 +207,11 @@ namespace lx
 		}
 	}
 
+	ScriptSegment LiteralExpression::impl_segment() const
+	{
+		return _literal.segment;
+	}
+
 	BinaryExpression::BinaryExpression(Token&& op, const Expression& left, const Expression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
@@ -233,6 +245,11 @@ namespace lx
 			env.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
+	}
+
+	ScriptSegment BinaryExpression::impl_segment() const
+	{
+		return _left.segment().combined_right(_right.segment());
 	}
 
 	StandardBinaryOperator BinaryExpression::op() const
@@ -269,6 +286,11 @@ namespace lx
 		return DataType::Void;
 	}
 
+	ScriptSegment MemberAccessExpression::impl_segment() const
+	{
+		return _object.segment().combined_right(_member.segment);
+	}
+
 	PrefixExpression::PrefixExpression(Token&& op, const Expression& expr)
 		: _op(std::move(op)), _expr(expr)
 	{
@@ -301,6 +323,11 @@ namespace lx
 			env.add_semantic_error(_op, ss.str());
 			return DataType::Void;
 		}
+	}
+
+	ScriptSegment PrefixExpression::impl_segment() const
+	{
+		return _op.segment.combined_right(_expr.segment());
 	}
 
 	StandardPrefixOperator PrefixExpression::op() const
@@ -343,6 +370,11 @@ namespace lx
 		}
 	}
 
+	ScriptSegment AsExpression::impl_segment() const
+	{
+		return _expr.segment().combined_right(_type.segment);
+	}
+
 	SubscriptExpression::SubscriptExpression(const Expression& container, const Expression& subscript)
 		: _container(container), _subscript(subscript)
 	{
@@ -371,6 +403,11 @@ namespace lx
 	{
 		// TODO switch over evaltype() of _container to see what [] method should return
 		return DataType::Void;
+	}
+
+	ScriptSegment SubscriptExpression::impl_segment() const
+	{
+		return _container.segment().combined_right(_subscript.segment());
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -403,8 +440,13 @@ namespace lx
 		}
 	}
 
-	BuiltinSymbolExpression::BuiltinSymbolExpression(BuiltinSymbol builtin_symbol)
-		: _builtin_symbol(builtin_symbol)
+	ScriptSegment VariableExpression::impl_segment() const
+	{
+		return _identifier.segment;
+	}
+
+	BuiltinSymbolExpression::BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
+		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
 	{
 	}
 
@@ -426,8 +468,13 @@ namespace lx
 		return DataType::Void;
 	}
 
-	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args)
-		: _identifier(std::move(identifier)), _args(std::move(args))
+	ScriptSegment BuiltinSymbolExpression::impl_segment() const
+	{
+		return _symbol_token.segment;
+	}
+
+	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args, Token&& closing_paren)
+		: _identifier(std::move(identifier)), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
 	}
 
@@ -453,7 +500,7 @@ namespace lx
 					ss << ", ";
 			}
 			ss << ")";
-			env.add_semantic_error(_identifier, ss.str());
+			env.add_semantic_error(segment(), ss.str());
 		}
 	}
 
@@ -476,6 +523,11 @@ namespace lx
 		}
 	}
 
+	ScriptSegment FunctionCallExpression::impl_segment() const
+	{
+		return _identifier.segment.combined_right(_closing_paren.segment);
+	}
+
 	std::vector<DataType> FunctionCallExpression::arg_types(const RuntimeEnvironment& env) const
 	{
 		std::vector<DataType> args(_args.size());
@@ -484,8 +536,8 @@ namespace lx
 		return args;
 	}
 
-	MethodCallExpression::MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args)
-		: _object(object), _args(std::move(args))
+	MethodCallExpression::MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args, Token&& closing_paren)
+		: _object(object), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
 	}
 
@@ -512,6 +564,11 @@ namespace lx
 	{
 		// TODO
 		return DataType::Void;
+	}
+
+	ScriptSegment MethodCallExpression::impl_segment() const
+	{
+		return _object.segment().combined_right(_closing_paren.segment);
 	}
 
 	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
@@ -545,12 +602,12 @@ namespace lx
 		if (argnames.size() != _arglist.size())
 			return;
 
-		env.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.start_line, env.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
+		env.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line, env.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
 
 		Block::pre_analyse(env);
 
 		for (size_t i = 0; i < _arglist.size(); ++i)
-			env.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.start_line, Namespace::Local);
+			env.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
 
 		_validated = true;
 	}
@@ -568,7 +625,7 @@ namespace lx
 			{
 				std::stringstream ss;
 				ss << "function should return '" << friendly_name(return_type()) << "' but statement returns '" << friendly_name(r->evaltype(env)) << "'";
-				env.add_semantic_error(r->return_token(), ss.str());
+				env.add_semantic_error(r->segment(), ss.str());
 			}
 		}
 
@@ -636,9 +693,9 @@ namespace lx
 		return _expression ? _expression->evaltype(env) : DataType::Void;
 	}
 
-	const Token& ReturnStatement::return_token() const
+	ScriptSegment ReturnStatement::segment() const
 	{
-		return _return_token;
+		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
 	void IfConditional::set_fallback(const IfFallbackBlock* fallback)
@@ -667,8 +724,8 @@ namespace lx
 		return info;
 	}
 
-	IfStatement::IfStatement(Token&& if_token, const Expression& condition)
-		: _if_token(std::move(if_token)), _condition(condition)
+	IfStatement::IfStatement(const Expression& condition)
+		: _condition(condition)
 	{
 	}
 
@@ -681,7 +738,7 @@ namespace lx
 	void IfStatement::post_analyse(RuntimeEnvironment& env) const
 	{
 		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_if_token, "condition expression does not resolve to a 'bool'");
+			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -703,8 +760,8 @@ namespace lx
 		return false;
 	}
 
-	ElifStatement::ElifStatement(Token&& elif_token, const Expression& condition)
-		: _elif_token(std::move(elif_token)), _condition(condition)
+	ElifStatement::ElifStatement(const Expression& condition)
+		: _condition(condition)
 	{
 	}
 
@@ -717,7 +774,7 @@ namespace lx
 	void ElifStatement::post_analyse(RuntimeEnvironment& env) const
 	{
 		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_elif_token, "condition expression does not resolve to a 'bool'");
+			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -744,8 +801,8 @@ namespace lx
 		return false;
 	}
 	
-	WhileLoop::WhileLoop(Token&& while_token, const Expression& condition)
-		: _while_token(std::move(while_token)), _condition(condition)
+	WhileLoop::WhileLoop(const Expression& condition)
+		: _condition(condition)
 	{
 	}
 
@@ -758,7 +815,7 @@ namespace lx
 	void WhileLoop::post_analyse(RuntimeEnvironment& env) const
 	{
 		if (_condition.evaltype(env) != DataType::Bool)
-			env.add_semantic_error(_while_token, "condition expression does not resolve to a 'bool'");
+			env.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(env);
 	}
 
@@ -773,8 +830,8 @@ namespace lx
 		return false;
 	}
 
-	ForLoop::ForLoop(Token&& for_token, Token&& iterator, const Expression& iterable)
-		: _for_token(std::move(for_token)), _iterator(std::move(iterator)), _iterable(iterable)
+	ForLoop::ForLoop(Token&& iterator, const Expression& iterable)
+		: _iterator(std::move(iterator)), _iterable(iterable)
 	{
 	}
 
@@ -791,7 +848,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << "'" << friendly_name(_iterable.evaltype(env)) << "' is not iterable";
-			env.add_semantic_error(_for_token, ss.str());
+			env.add_semantic_error(_iterable.segment(), ss.str());
 		}
 		Block::post_analyse(env);
 	}
@@ -812,19 +869,27 @@ namespace lx
 	{
 	}
 	
-	HighlightStatement::HighlightStatement(bool clear, const Expression* highlightable, BuiltinSymbol color)
-		: _clear(clear), _highlightable(highlightable), _color(color)
+	HighlightStatement::HighlightStatement(bool clear, const Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color)
+		: _clear(clear), _highlightable(highlightable), _color_token(std::move(color_token)), _color(color)
 	{
 	}
 
 	void HighlightStatement::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		if (!_color_token || is_color(_color)) // TODO instead of is_color, use new internal data type for symbol colors
+			_validated = true;
+		else
+			env.add_semantic_error(*_color_token, "symbol is not a color");
 	}
 
 	void HighlightStatement::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		if (_highlightable && !is_highlightable(_highlightable->evaltype(env)))
+		{
+			std::stringstream ss;
+			ss << "'" << friendly_name(_highlightable->evaltype(env)) << "' is not highlightable";
+			env.add_semantic_error(_highlightable->segment(), ss.str());
+		}
 	}
 
 	void HighlightStatement::traverse(ASTVisitor& visitor) const
@@ -915,8 +980,8 @@ namespace lx
 		// TODO
 	}
 
-	PatternBuiltin::PatternBuiltin(BuiltinSymbol builtin_symbol)
-		: _builtin_symbol(builtin_symbol)
+	PatternBuiltin::PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol)
+		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
 	{
 	}
 

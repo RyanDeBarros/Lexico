@@ -96,26 +96,14 @@ namespace lx
 		return _errors;
 	}
 
+	void RuntimeEnvironment::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
+	{
+		_errors.push_back(LxError::segment_error(segment, ErrorType::Semantic, cause));
+	}
+
 	void RuntimeEnvironment::add_semantic_error(const Token& token, const std::string_view cause) const
 	{
-		_errors.push_back(LxError::token_error(token, script_lines(), ErrorType::Semantic, cause));
-	}
-
-	const std::vector<std::string_view>& RuntimeEnvironment::script_lines() const
-	{
-		if (_script_lines)
-			return *_script_lines;
-		else
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": script lines are null";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-	}
-
-	void RuntimeEnvironment::set_script_lines(const std::vector<std::string_view>& script_lines)
-	{
-		_script_lines = &script_lines;
+		add_semantic_error(token.segment, cause);
 	}
 
 	void RuntimeEnvironment::push_local_scope(bool isolated)

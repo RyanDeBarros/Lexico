@@ -28,6 +28,7 @@ namespace lx
 
 	extern bool can_cast(DataType from, DataType to);
 	extern bool is_iterable(DataType type);
+	extern bool is_highlightable(DataType type);
 
 	enum class StandardBinaryOperator
 	{

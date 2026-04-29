@@ -36,4 +36,5 @@ namespace lx
 	};
 
 	extern std::optional<BuiltinSymbol> parse_builtin_symbol(const std::string_view symbol);
+	extern bool is_color(BuiltinSymbol symbol);
 }

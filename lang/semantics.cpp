@@ -25,9 +25,8 @@ namespace lx
 		}
 	};
 
-	void SemanticAnalyser::analyse(Parser& parser, const std::vector<std::string_view>& script_lines)
+	void SemanticAnalyser::analyse(Parser& parser)
 	{
-		_env.set_script_lines(script_lines);
 		AnalysisVisitor visitor(_env);
 		parser.tree().root().accept(visitor);
 	}

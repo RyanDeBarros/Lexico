@@ -98,12 +98,15 @@ namespace lx
 	class Expression : public ASTNode
 	{
 		mutable std::optional<DataType> _evaltype;
+		mutable std::optional<ScriptSegment> _segment;
 
 	public:
 		DataType evaltype(const RuntimeEnvironment& env) const;
+		ScriptSegment segment() const;
 
 	protected:
 		virtual DataType impl_evaltype(const RuntimeEnvironment& env) const = 0;
+		virtual ScriptSegment impl_segment() const = 0;
 	};
 
 	class VariableDeclaration : public ASTNode
@@ -145,6 +148,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class BinaryExpression : public Expression
@@ -161,6 +165,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 
 	public:
 		StandardBinaryOperator op() const;
@@ -179,6 +184,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class PrefixExpression : public Expression
@@ -194,6 +200,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 
 	public:
 		StandardPrefixOperator op() const;
@@ -212,6 +219,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class SubscriptExpression : public Expression
@@ -227,6 +235,7 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class VariableExpression : public Expression
@@ -240,34 +249,39 @@ namespace lx
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class BuiltinSymbolExpression : public Expression
 	{
+		Token _symbol_token;
 		BuiltinSymbol _builtin_symbol;
 
 	public:
-		BuiltinSymbolExpression(BuiltinSymbol builtin_symbol);
+		BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class FunctionCallExpression : public Expression
 	{
 		Token _identifier;
 		std::vector<const Expression*> _args;
+		Token _closing_paren;
 
 	public:
-		FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args);
+		FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args, Token&& closing_paren);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 
 	public:
 		std::vector<DataType> arg_types(const RuntimeEnvironment& env) const;
@@ -277,15 +291,17 @@ namespace lx
 	{
 		const Expression& _object;
 		std::vector<const Expression*> _args;
+		Token _closing_paren;
 
 	public:
-		MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args);
+		MethodCallExpression(const Expression& object, std::vector<const Expression*>&& args, Token&& closing_paren);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
 
 	protected:
 		DataType impl_evaltype(const RuntimeEnvironment& env) const override;
+		ScriptSegment impl_segment() const override;
 	};
 
 	class FunctionDefinition : public Block
@@ -325,7 +341,7 @@ namespace lx
 		
 	public:
 		DataType evaltype(const RuntimeEnvironment& env) const;
-		const Token& return_token() const;
+		ScriptSegment segment() const;
 	};
 
 	class IfFallbackBlock : public virtual Block
@@ -346,11 +362,10 @@ namespace lx
 
 	class IfStatement : public IfConditional
 	{
-		Token _if_token;
 		const Expression& _condition;
 
 	public:
-		IfStatement(Token&& if_token, const Expression& condition);
+		IfStatement(const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -362,11 +377,10 @@ namespace lx
 
 	class ElifStatement : public IfConditional, public IfFallbackBlock
 	{
-		Token _elif_token;
 		const Expression& _condition;
 
 	public:
-		ElifStatement(Token&& elif_token, const Expression& condition);
+		ElifStatement(const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -384,11 +398,10 @@ namespace lx
 
 	class WhileLoop : public Block
 	{
-		Token _while_token;
 		const Expression& _condition;
 
 	public:
-		WhileLoop(Token&& while_token, const Expression& condition);
+		WhileLoop(const Expression& condition);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -399,12 +412,11 @@ namespace lx
 
 	class ForLoop : public Block
 	{
-		Token _for_token;
 		Token _iterator;
 		const Expression& _iterable;
 
 	public:
-		ForLoop(Token&& for_token, Token&& iterator, const Expression& iterable);
+		ForLoop(Token&& iterator, const Expression& iterable);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -441,10 +453,11 @@ namespace lx
 	{
 		bool _clear;
 		const Expression* _highlightable;
+		std::optional<Token> _color_token;
 		BuiltinSymbol _color;
 
 	public:
-		HighlightStatement(bool clear, const Expression* highlightable, BuiltinSymbol color);
+		HighlightStatement(bool clear, const Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 		void traverse(ASTVisitor& visitor) const override;
@@ -507,10 +520,11 @@ namespace lx
 
 	class PatternBuiltin : public PatternExpression
 	{
+		Token _symbol_token;
 		BuiltinSymbol _builtin_symbol;
 
 	public:
-		PatternBuiltin(BuiltinSymbol builtin_symbol);
+		PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 		void pre_analyse(RuntimeEnvironment& env) const override;
 		void post_analyse(RuntimeEnvironment& env) const override;
 	};

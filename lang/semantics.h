@@ -10,7 +10,7 @@ namespace lx
 		RuntimeEnvironment _env;
 
 	public:
-		void analyse(Parser& parser, const std::vector<std::string_view>& script_lines);
+		void analyse(Parser& parser);
 
 		const std::vector<LxError>& errors() const;
 	};
