@@ -7,24 +7,31 @@ namespace lx
 {
 	enum class BuiltinSymbol
 	{
-		Percent,
+		// Pattern
 		Alphanumeric,
-		Any,
-		Cap,
 		Digit,
-		End,
 		Letter,
-		Line,
-		Lines,
 		Lowercase,
 		Newline,
-		Page,
 		Space,
-		Start,
 		Uppercase,
 		Varname,
 
-		// Colors
+		// Marker
+		Any,
+		Cap,
+		End,
+		Start,
+
+		// Matches
+		Percent,
+
+		// Scope
+		Line,
+		Lines,
+		Page,
+
+		// Color
 		Yellow,
 		Red,
 		Green,
@@ -36,5 +43,4 @@ namespace lx
 	};
 
 	extern std::optional<BuiltinSymbol> parse_builtin_symbol(const std::string_view symbol);
-	extern bool is_color(BuiltinSymbol symbol);
 }

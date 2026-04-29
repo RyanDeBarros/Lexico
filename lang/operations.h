@@ -1,6 +1,7 @@
 #pragma once
 
 #include "token.h"
+#include "symbols.h"
 
 #include <optional>
 
@@ -21,9 +22,15 @@ namespace lx
 		IRange,
 		SRange,
 		List,
+
+		// Internal
+		_Marker,
+		_Scope,
+		_Color,
 	};
 
 	extern DataType data_type(TokenType type);
+	extern DataType data_type(BuiltinSymbol symbol);
 	extern std::string friendly_name(DataType type);
 
 	extern bool can_cast(DataType from, DataType to);

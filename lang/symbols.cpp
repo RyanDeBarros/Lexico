@@ -60,23 +60,4 @@ namespace lx
 		else
 			return std::nullopt;
 	}
-
-	bool is_color(BuiltinSymbol symbol)
-	{
-		switch (symbol)
-		{
-		case BuiltinSymbol::Yellow:
-		case BuiltinSymbol::Red:
-		case BuiltinSymbol::Green:
-		case BuiltinSymbol::Blue:
-		case BuiltinSymbol::Grey:
-		case BuiltinSymbol::Purple:
-		case BuiltinSymbol::Orange:
-		case BuiltinSymbol::Mono:
-			return true;
-
-		default:
-			return false;
-		}
-	}
 }

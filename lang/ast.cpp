@@ -452,20 +452,17 @@ namespace lx
 
 	void BuiltinSymbolExpression::pre_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void BuiltinSymbolExpression::post_analyse(RuntimeEnvironment& env) const
 	{
-		// TODO
-
 		evaltype(env);
 	}
 
 	DataType BuiltinSymbolExpression::impl_evaltype(const RuntimeEnvironment& env) const
 	{
-		// TODO create new internal symbol types then switch over symbol enum
-		return DataType::Void;
+		return data_type(_builtin_symbol);
 	}
 
 	ScriptSegment BuiltinSymbolExpression::impl_segment() const
@@ -876,7 +873,7 @@ namespace lx
 
 	void HighlightStatement::pre_analyse(RuntimeEnvironment& env) const
 	{
-		if (!_color_token || is_color(_color)) // TODO instead of is_color, use new internal data type for symbol colors
+		if (!_color_token || data_type(_color) == DataType::_Color)
 			_validated = true;
 		else
 			env.add_semantic_error(*_color_token, "symbol is not a color");
