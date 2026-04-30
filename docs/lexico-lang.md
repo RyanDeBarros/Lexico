@@ -7,11 +7,11 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
-TODO match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
+TODO v0.2 match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
-TODO aggregation / SQL constructs
+TODO v0.3 aggregation / SQL constructs
 
-TODO recursion built into patterns (see parentheses balancing example)
+TODO v0.4 recursion built into patterns (see parentheses balancing example)
 
 ## Data types
 
@@ -823,7 +823,7 @@ find line
 ```
 
 #### lexico
-TODO standard library with built-in patterns/functions
+TODO v0.2 standard library with built-in patterns/functions
 ```
 pattern userChar
 append $alphanumeric or "." or "_" or "%" or "+" or "-"

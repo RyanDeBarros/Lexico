@@ -223,6 +223,7 @@ namespace lx
 	{
 		Expression& _object;
 		Token _member;
+		bool _callable = false;
 
 	public:
 		MemberAccessExpression(Expression& object, Token&& member);
@@ -237,6 +238,7 @@ namespace lx
 
 	public:
 		const MemberSignature& member(const ResolutionContext& ctx) const;
+		void set_callable(bool callable);
 	};
 
 	class PrefixExpression : public Expression

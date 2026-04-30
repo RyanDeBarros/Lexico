@@ -31,6 +31,7 @@ namespace lx
 	};
 
 	extern DataType data_type(TokenType type);
+	extern DataType literal_type(TokenType type);
 	extern DataType data_type(BuiltinSymbol symbol);
 	extern std::string friendly_name(DataType type);
 

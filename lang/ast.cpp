@@ -99,7 +99,7 @@ namespace lx
 				info.always_returns |= subinfo.always_returns;
 				info.merge_loop_control(subinfo);
 
-				livecode = !info.always_returns; // TODO not the best indicator
+				livecode = !info.always_returns;
 			}
 			else
 			{
@@ -258,23 +258,7 @@ namespace lx
 
 	DataType LiteralExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		switch (_literal.type)
-		{
-		case TokenType::Integer:
-			return DataType::Int;
-		case TokenType::Float:
-			return DataType::Float;
-		case TokenType::String:
-			return DataType::String;
-		case TokenType::Bool:
-			return DataType::Bool;
-		default:
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": literal type " << static_cast<int>(_literal.type) << " is not convertible to data type";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		}
+		return literal_type(_literal.type);
 	}
 
 	ScriptSegment LiteralExpression::impl_segment() const
@@ -394,12 +378,17 @@ namespace lx
 	{
 		if (const auto members = data_type_members(_object.evaltype(ctx)))
 			for (const auto& member : *members)
-				if (member.identifier == _member.lexeme && member.is_data())
+				if (member.identifier == _member.lexeme && (_callable ? member.is_method() : member.is_data()))
 					return member;
 
 		std::stringstream ss;
 		ss << "data member " << _member.lexeme << " does not exist for type " << _object.evaltype(ctx);
 		throw LxError(ErrorType::Internal, ss.str());
+	}
+
+	void MemberAccessExpression::set_callable(bool callable)
+	{
+		_callable = callable;
 	}
 
 	PrefixExpression::PrefixExpression(Token&& op, Expression& expr)
@@ -663,6 +652,7 @@ namespace lx
 	MethodCallExpression::MethodCallExpression(MemberAccessExpression& member, std::vector<Expression*>&& args, Token&& closing_paren)
 		: _member(member), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
+		_member.set_callable(true);
 	}
 
 	void MethodCallExpression::pre_analyse(ResolutionContext& ctx)
@@ -919,7 +909,7 @@ namespace lx
 	void IfStatement::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
 		Block::post_analyse(ctx);
 	}
 
@@ -960,7 +950,7 @@ namespace lx
 	void ElifStatement::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
 		Block::post_analyse(ctx);
 	}
 
@@ -1054,7 +1044,7 @@ namespace lx
 	void WhileLoop::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
+			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
 		Loop::post_analyse(ctx);
 	}
 
@@ -1239,12 +1229,12 @@ namespace lx
 
 	void DeletePattern::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void DeletePattern::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// NOP
 	}
 
 	ScriptSegment DeletePattern::impl_segment() const
@@ -1259,12 +1249,12 @@ namespace lx
 
 	void PatternDeclaration::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PatternDeclaration::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// NOP
 	}
 
 	ScriptSegment PatternDeclaration::impl_segment() const
@@ -1279,12 +1269,12 @@ namespace lx
 
 	void PatternSubexpression::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_expr.pre_analyse(ctx);
 	}
 
 	void PatternSubexpression::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_expr.post_analyse(ctx);
 	}
 
 	void PatternSubexpression::traverse(ASTVisitor& visitor)
@@ -1305,12 +1295,18 @@ namespace lx
 
 	void PatternLiteral::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PatternLiteral::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		DataType type = literal_type(_literal.type);
+		if (type != DataType::Pattern && type != DataType::String)
+		{
+			std::stringstream ss;
+			ss << "literal type " << type << " is not implicitly convertible to " << DataType::Pattern << " or " << DataType::String;
+			ctx.add_semantic_error(_literal.segment, ss.str());
+		}
 	}
 
 	ScriptSegment PatternLiteral::impl_segment() const

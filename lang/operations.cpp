@@ -46,6 +46,27 @@ namespace lx
 		}
 	}
 
+	DataType literal_type(TokenType type)
+	{
+		switch (type)
+		{
+		case TokenType::Integer:
+			return DataType::Int;
+		case TokenType::Float:
+			return DataType::Float;
+		case TokenType::String:
+			return DataType::String;
+		case TokenType::Bool:
+			return DataType::Bool;
+		default:
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": literal type " << static_cast<int>(type) << " is not convertible to data type";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		}
+	}
+
 	DataType data_type(BuiltinSymbol symbol)
 	{
 		switch (symbol)

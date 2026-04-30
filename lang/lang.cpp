@@ -9,7 +9,7 @@
 
 namespace lx
 {
-	// TODO serialize token stream + validated AST: will need to switch to ids instead of raw pointers for node relationships
+	// TODO v0.2 serialize token stream + validated AST: will need to switch to ids instead of raw pointers for node relationships
 
 	template<typename T>
 	static bool log_messages(const std::vector<T>& messages, std::stringstream& log) requires (std::is_base_of_v<LxStatusMessage, T>)
