@@ -12,6 +12,8 @@ namespace lx
 		std::vector<LxError> _errors;
 
 	public:
+		Parser(Token&& start_token);
+
 		void parse(Lexer& lexer);
 
 		const AbstractSyntaxTree& tree() const;

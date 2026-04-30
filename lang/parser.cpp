@@ -280,10 +280,11 @@ namespace lx
 			if (!peek_token_is(0, first))
 				return false;
 
+			auto& kw_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 
 			token_offset(2).submit();
-			append_to_context(std::make_unique<Node>(std::move(identifier)));
+			append_to_context(std::make_unique<Node>(std::move(kw_token), std::move(identifier)));
 			return true;
 		}
 
@@ -303,10 +304,11 @@ namespace lx
 				return false;
 
 			assert_tokens_exist(1, errors::EXPECTED_PATTERN_EXPRESSION);
+			auto& append_token = ref(0);
 			auto offset = token_offset(1);
 			PatternExpression& expr = parse_pattern_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<AppendStatement>(expr));
+			append_to_context(std::make_unique<AppendStatement>(std::move(append_token), expr));
 			return true;
 		}
 
@@ -315,6 +317,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Scope))
 				return false;
 			
+			auto& scope_token = ref(0);
 			auto& symbol_token = parse_token(1, TokenType::BuiltinSymbol, errors::EXPECTED_SYMBOL);
 			const auto specifier = parse_builtin_symbol(symbol_token.lexeme);
 			if (!specifier)
@@ -324,7 +327,7 @@ namespace lx
 			auto offset = token_offset(2);
 			Expression& expr = parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<ScopeStatement>(std::move(symbol_token), *specifier, expr));
+			append_to_context(std::make_unique<ScopeStatement>(std::move(scope_token), std::move(symbol_token), *specifier, expr));
 			return true;
 		}
 
@@ -343,13 +346,14 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Filter))
 				return false;
 
+			auto& replace_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& match_expr = parse_expression(offset);
 			parse_token(0, TokenType::With, errors::EXPECTED_WITH_CLAUSE);
 			offset.add(1);
 			Expression& string_expr = parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<ReplaceStatement>(match_expr, string_expr));
+			append_to_context(std::make_unique<ReplaceStatement>(std::move(replace_token), match_expr, string_expr));
 			return true;
 		}
 
@@ -368,22 +372,25 @@ namespace lx
 			if (peek_token_is(1, TokenType::Push))
 			{
 				assert_tokens_exist(2, errors::EXPECTED_EXPRESSION);
+				auto& page_token = ref(0);
 				auto offset = token_offset(2);
 				Expression& page = parse_expression(offset);
 				offset.submit();
-				append_to_context(std::make_unique<PagePush>(page));
+				append_to_context(std::make_unique<PagePush>(std::move(page_token), page));
 				return true;
 			}
 			else if (peek_token_is(1, TokenType::Pop))
 			{
+				auto& page_token = ref(0);
 				token_offset(2).submit();
-				append_to_context(std::make_unique<PagePop>());
+				append_to_context(std::make_unique<PagePop>(std::move(page_token)));
 				return true;
 			}
 			else if (peek_token_is(1, TokenType::Delete))
 			{
+				auto& page_token = ref(0);
 				token_offset(2).submit();
-				append_to_context(std::make_unique<PageClearStack>());
+				append_to_context(std::make_unique<PageClearStack>(std::move(page_token)));
 				return true;
 			}
 			else
@@ -395,6 +402,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Fn))
 				return false;
 
+			auto& fn_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 			parse_token(2, TokenType::LParen, errors::EXPECTED_LPAREN);
 			auto offset = token_offset(3);
@@ -434,7 +442,7 @@ namespace lx
 			}
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(identifier), std::move(arglist),
+			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(fn_token), std::move(identifier), std::move(arglist),
 				return_type ? std::make_optional<Token>(std::move(*return_type)) : std::nullopt)));
 			parse_simple_block(TokenType::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
 			return true;
@@ -554,11 +562,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::If))
 				return false;
 
+			auto& if_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = append_to_context(std::make_unique<IfStatement>(expr));
+			auto& stmt = append_to_context(std::make_unique<IfStatement>(std::move(if_token), expr));
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
 			return true;
@@ -569,11 +578,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Elif))
 				return false;
 
+			auto& elif_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto& stmt = _tree.add(std::make_unique<ElifStatement>(expr));
+			auto& stmt = _tree.add(std::make_unique<ElifStatement>(std::move(elif_token), expr));
 			cond.set_fallback(&stmt);
 			auto ctx = context(stmt);
 			parse_if_block(stmt);
@@ -585,8 +595,9 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Else))
 				return false;
 
+			auto& else_token = ref(0);
 			token_offset(1).submit();
-			auto& stmt = _tree.add(std::make_unique<ElseStatement>());
+			auto& stmt = _tree.add(std::make_unique<ElseStatement>(std::move(else_token)));
 			cond.set_fallback(&stmt);
 			auto ctx = context(stmt);
 			parse_simple_block(TokenType::If, errors::EXPECTED_IF_END, errors::EXPECTED_IF);
@@ -598,11 +609,12 @@ namespace lx
 			if (!peek_token_is(0, TokenType::While))
 				return false;
 
+			auto& loop_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(expr)));
+			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(std::move(loop_token), expr)));
 			parse_simple_block(TokenType::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
 			return true;
 		}
@@ -612,6 +624,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::For))
 				return false;
 
+			auto& loop_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 			parse_token(2, TokenType::In, errors::EXPECTED_IN_CLAUSE);
 
@@ -619,7 +632,7 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(identifier), expr)));
+			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(loop_token), std::move(identifier), expr)));
 			parse_simple_block(TokenType::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
 			return true;
 		}
@@ -629,6 +642,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Log))
 				return false;
 
+			auto& log_token = ref(0);
 			auto offset = token_offset(1);
 
 			std::vector<Expression*> args;
@@ -651,7 +665,7 @@ namespace lx
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
 			offset.submit();
-			append_to_context(std::make_unique<LogStatement>(std::move(args)));
+			append_to_context(std::make_unique<LogStatement>(std::move(log_token), std::move(args)));
 			return true;
 		}
 
@@ -660,6 +674,7 @@ namespace lx
 			if (!peek_token_is(0, TokenType::Highlight))
 				return false;
 
+			auto& highlight_token = ref(0);
 			auto offset = token_offset();
 			offset.add(1);
 
@@ -692,7 +707,8 @@ namespace lx
 			}
 
 			offset.submit();
-			append_to_context(std::make_unique<HighlightStatement>(clear, expr, color_token ? std::make_optional<Token>(*color_token) : std::nullopt, color));
+			append_to_context(std::make_unique<HighlightStatement>(std::move(highlight_token), clear, expr,
+				color_token ? std::make_optional<Token>(*color_token) : std::nullopt, color));
 			return true;
 		}
 
@@ -969,15 +985,17 @@ namespace lx
 		{
 			if (peek_token_is(0, TokenType::Capture))
 			{
+				auto& capture_token = ref(0);
 				offset.add(1);
 				auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternCapture>(std::move(identifier), parse_pattern_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_pattern_expression(offset, Precedence::Lowest)));
 			}
 			else if (peek_token_is(0, TokenType::Lazy))
 			{
+				auto& lazy_token = ref(0);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternLazy>(parse_pattern_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_pattern_expression(offset, Precedence::Lowest)));
 			}
 			else
 				return nullptr;
@@ -1063,6 +1081,11 @@ namespace lx
 			return _tree.add(std::make_unique<PatternSimpleRepeat>(lhs, std::move(op)));
 		}
 	};
+
+	Parser::Parser(Token&& start_token)
+		: _tree(std::move(start_token))
+	{
+	}
 
 	void Parser::parse(Lexer& lexer)
 	{

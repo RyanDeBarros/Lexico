@@ -146,6 +146,7 @@ namespace lx
 		ScriptSegment& operator=(const ScriptSegment&);
 		ScriptSegment& operator=(ScriptSegment&&) noexcept;
 
+		std::string_view first_line() const;
 		std::string line_number_prefix() const;
 
 		ScriptSegment combined_right(ScriptSegment right) const;

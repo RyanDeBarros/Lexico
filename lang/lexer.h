@@ -15,6 +15,7 @@ namespace lx
 		void tokenize(const std::string_view script);
 		const TokenStream& stream() const;
 		TokenStream& stream();
+		Token start_token() const;
 		const std::vector<std::string_view>& script_lines() const;
 		const std::vector<LxError>& errors() const;
 	};

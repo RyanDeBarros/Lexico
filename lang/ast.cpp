@@ -25,16 +25,23 @@ namespace lx
 		visitor.post_visit(*this);
 	}
 
-	UpflowInfo ASTNode::upflow()
+	UpflowInfo ASTNode::upflow(const ResolutionContext& ctx)
 	{
 		if (!_upflow)
-			_upflow = impl_upflow();
+			_upflow = impl_upflow(ctx);
 		return *_upflow;
 	}
 
-	UpflowInfo ASTNode::impl_upflow()
+	UpflowInfo ASTNode::impl_upflow(const ResolutionContext& ctx)
 	{
 		return {};
+	}
+
+	ScriptSegment ASTNode::segment() const
+	{
+		if (!_segment)
+			_segment = impl_segment();
+		return *_segment;
 	}
 
 	ASTNode& AbstractSyntaxTree::impl_add(std::unique_ptr<ASTNode>&& node)
@@ -42,6 +49,11 @@ namespace lx
 		ASTNode* ref = node.get();
 		_nodes.push_back(std::move(node));
 		return *ref;
+	}
+
+	AbstractSyntaxTree::AbstractSyntaxTree(Token&& start_token)
+		: _root(std::move(start_token))
+	{
 	}
 
 	const ASTRoot& AbstractSyntaxTree::root() const
@@ -71,14 +83,15 @@ namespace lx
 			node->accept(visitor);
 	}
 
-	UpflowInfo Block::impl_upflow()
+	UpflowInfo Block::impl_upflow(const ResolutionContext& ctx)
 	{
 		UpflowInfo info;
 		bool livecode = true;
+		std::vector<ScriptSegment> warning_segments;
 
 		for (ASTNode* node : _children)
 		{
-			auto subinfo = node->upflow();
+			auto subinfo = node->upflow(ctx);
 			info.dead_returns.insert(info.dead_returns.end(), subinfo.dead_returns.begin(), subinfo.dead_returns.end());
 			if (livecode)
 			{
@@ -91,9 +104,12 @@ namespace lx
 			else
 			{
 				info.dead_returns.insert(info.dead_returns.end(), subinfo.live_returns.begin(), subinfo.live_returns.end());
-				// TODO warning -> gather line numbers than print all lines in batch instead of doing underline
+				warning_segments.push_back(node->segment());
 			}
 		}
+
+		if (!warning_segments.empty())
+			ctx.warnings().push_back(LxWarning::batch_warning(warning_segments, ErrorType::Semantic, "unreachable code"));
 
 		return info;
 	}
@@ -101,6 +117,11 @@ namespace lx
 	void Block::append(ASTNode& child)
 	{
 		_children.push_back(&child);
+	}
+
+	ASTRoot::ASTRoot(Token&& start_token)
+		: _start_token(std::move(start_token))
+	{
 	}
 
 	void ASTRoot::pre_analyse(ResolutionContext& ctx)
@@ -112,7 +133,7 @@ namespace lx
 
 	void ASTRoot::post_analyse(ResolutionContext& ctx)
 	{
-		auto flow = upflow();
+		auto flow = upflow(ctx);
 		for (BreakStatement* b : flow.breaks)
 			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
 		for (ContinueStatement* c : flow.continues)
@@ -126,6 +147,11 @@ namespace lx
 		return true;
 	}
 
+	ScriptSegment ASTRoot::impl_segment() const
+	{
+		return _start_token.segment;
+	}
+
 	DataType Expression::evaltype(const ResolutionContext& ctx) const
 	{
 		if (!_validated)
@@ -137,13 +163,6 @@ namespace lx
 		if (!_evaltype)
 			_evaltype = impl_evaltype(ctx);
 		return *_evaltype;
-	}
-
-	ScriptSegment Expression::segment() const
-	{
-		if (!_segment)
-			_segment = impl_segment();
-		return *_segment;
 	}
 
 	bool Expression::imperative() const
@@ -175,6 +194,11 @@ namespace lx
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
+	}
+
+	ScriptSegment VariableDeclaration::impl_segment() const
+	{
+		return _identifier.segment.combined_right(_expression.segment());
 	}
 
 	bool VariableDeclaration::is_global() const
@@ -210,6 +234,11 @@ namespace lx
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
+	}
+
+	ScriptSegment VariableAssignment::impl_segment() const
+	{
+		return _identifier.segment.combined_right(_expression.segment());
 	}
 
 	LiteralExpression::LiteralExpression(Token&& literal)
@@ -702,8 +731,8 @@ namespace lx
 		return _member.segment().combined_right(_closing_paren.segment);
 	}
 
-	FunctionDefinition::FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
-		: _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
+	FunctionDefinition::FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
+		: _fn_token(std::move(fn_token)), _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
 	{
 	}
 
@@ -745,7 +774,7 @@ namespace lx
 
 	void FunctionDefinition::post_analyse(ResolutionContext& ctx)
 	{
-		auto flow = Block::impl_upflow();
+		auto flow = Block::impl_upflow(ctx);
 
 		if (return_type() != DataType::Void && !flow.always_returns)
 			ctx.add_semantic_error(_identifier, "not all control paths return a value");
@@ -766,8 +795,7 @@ namespace lx
 			{
 				std::stringstream ss;
 				ss << "function should return " << return_type() << " but (unreachable) statement returns " << r->evaltype(ctx);
-				// TODO should be warning?
-				ctx.add_semantic_error(r->segment(), ss.str());
+				ctx.add_semantic_warning(r->segment(), ss.str());
 			}
 		}
 
@@ -780,9 +808,14 @@ namespace lx
 		Block::post_analyse(ctx);
 	}
 
-	UpflowInfo FunctionDefinition::impl_upflow()
+	UpflowInfo FunctionDefinition::impl_upflow(const ResolutionContext& ctx)
 	{
 		return {};
+	}
+
+	ScriptSegment FunctionDefinition::impl_segment() const
+	{
+		return _fn_token.segment.combined_right(_identifier.segment);
 	}
 
 	bool FunctionDefinition::isolated() const
@@ -831,19 +864,19 @@ namespace lx
 			_expression->accept(visitor);
 	}
 
-	UpflowInfo ReturnStatement::impl_upflow()
+	UpflowInfo ReturnStatement::impl_upflow(const ResolutionContext& ctx)
 	{
 		return { .always_returns = true, .live_returns = { this } };
+	}
+
+	ScriptSegment ReturnStatement::impl_segment() const
+	{
+		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
 	DataType ReturnStatement::evaltype(const ResolutionContext& ctx) const
 	{
 		return _expression ? _expression->evaltype(ctx) : DataType::Void;
-	}
-
-	ScriptSegment ReturnStatement::segment() const
-	{
-		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
 	void IfConditional::set_fallback(IfFallbackBlock* fallback)
@@ -858,12 +891,12 @@ namespace lx
 			_fallback = fallback;
 	}
 
-	UpflowInfo IfConditional::impl_upflow()
+	UpflowInfo IfConditional::impl_upflow(const ResolutionContext& ctx)
 	{
-		auto info = Block::impl_upflow();
+		auto info = Block::impl_upflow(ctx);
 		if (_fallback)
 		{
-			auto fallback_info = _fallback->upflow();
+			auto fallback_info = _fallback->upflow(ctx);
 			info.live_returns.insert(info.live_returns.end(), fallback_info.live_returns.begin(), fallback_info.live_returns.end());
 			info.dead_returns.insert(info.dead_returns.end(), fallback_info.dead_returns.begin(), fallback_info.dead_returns.end());
 			info.always_returns &= fallback_info.always_returns;
@@ -872,8 +905,8 @@ namespace lx
 		return info;
 	}
 
-	IfStatement::IfStatement(Expression& condition)
-		: _condition(condition)
+	IfStatement::IfStatement(Token&& if_token, Expression& condition)
+		: _if_token(std::move(if_token)), _condition(condition)
 	{
 	}
 
@@ -898,9 +931,14 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo IfStatement::impl_upflow()
+	UpflowInfo IfStatement::impl_upflow(const ResolutionContext& ctx)
 	{
-		return IfConditional::impl_upflow();
+		return IfConditional::impl_upflow(ctx);
+	}
+
+	ScriptSegment IfStatement::impl_segment() const
+	{
+		return _if_token.segment;
 	}
 
 	bool IfStatement::isolated() const
@@ -908,8 +946,8 @@ namespace lx
 		return false;
 	}
 
-	ElifStatement::ElifStatement(Expression& condition)
-		: _condition(condition)
+	ElifStatement::ElifStatement(Token&& elif_token, Expression& condition)
+		: _elif_token(std::move(elif_token)), _condition(condition)
 	{
 	}
 
@@ -934,9 +972,14 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo ElifStatement::impl_upflow()
+	UpflowInfo ElifStatement::impl_upflow(const ResolutionContext& ctx)
 	{
-		return IfConditional::impl_upflow();
+		return IfConditional::impl_upflow(ctx);
+	}
+
+	ScriptSegment ElifStatement::impl_segment() const
+	{
+		return _elif_token.segment;
 	}
 
 	bool ElifStatement::isolated() const
@@ -944,9 +987,24 @@ namespace lx
 		return false;
 	}
 
+	ElseStatement::ElseStatement(Token&& else_token)
+		: _else_token(std::move(else_token))
+	{
+	}
+
+	ScriptSegment ElseStatement::impl_segment() const
+	{
+		return _else_token.segment;
+	}
+	
 	bool ElseStatement::isolated() const
 	{
 		return false;
+	}
+
+	Loop::Loop(Token&& loop_token)
+		: _loop_token(std::move(loop_token))
+	{
 	}
 
 	void Loop::pre_analyse(ResolutionContext& ctx)
@@ -958,7 +1016,7 @@ namespace lx
 
 	void Loop::post_analyse(ResolutionContext& ctx)
 	{
-		auto subflow = Block::impl_upflow();
+		auto subflow = Block::impl_upflow(ctx);
 		for (BreakStatement* b : subflow.breaks)
 			b->attach_loop(this);
 		for (ContinueStatement* c : subflow.continues)
@@ -967,9 +1025,9 @@ namespace lx
 		Block::post_analyse(ctx);
 	}
 
-	UpflowInfo Loop::impl_upflow()
+	UpflowInfo Loop::impl_upflow(const ResolutionContext& ctx)
 	{
-		auto info = Block::impl_upflow();
+		auto info = Block::impl_upflow(ctx);
 		info.always_returns &= !info.may_break;
 		info.may_break = false;
 		info.may_continue = false;
@@ -977,9 +1035,14 @@ namespace lx
 		info.continues.clear();
 		return info;
 	}
+
+	ScriptSegment Loop::impl_segment() const
+	{
+		return _loop_token.segment;
+	}
 	
-	WhileLoop::WhileLoop(Expression& condition)
-		: _condition(condition)
+	WhileLoop::WhileLoop(Token&& loop_token, Expression& condition)
+		: Loop(std::move(loop_token)), _condition(condition)
 	{
 	}
 
@@ -1006,8 +1069,8 @@ namespace lx
 		return false;
 	}
 
-	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
-		: _iterator(std::move(iterator)), _iterable(iterable)
+	ForLoop::ForLoop(Token&& loop_token, Token&& iterator, Expression& iterable)
+		: Loop(std::move(loop_token)), _iterator(std::move(iterator)), _iterable(iterable)
 	{
 	}
 
@@ -1055,9 +1118,14 @@ namespace lx
 		// NOP
 	}
 
-	UpflowInfo BreakStatement::impl_upflow()
+	UpflowInfo BreakStatement::impl_upflow(const ResolutionContext& ctx)
 	{
 		return { .may_break = true, .breaks = { this } };
+	}
+
+	ScriptSegment BreakStatement::impl_segment() const
+	{
+		return _break_token.segment;
 	}
 
 	void BreakStatement::attach_loop(const Loop* loop)
@@ -1070,11 +1138,6 @@ namespace lx
 		}
 
 		_backloop = loop;
-	}
-
-	ScriptSegment BreakStatement::segment() const
-	{
-		return _break_token.segment;
 	}
 
 	ContinueStatement::ContinueStatement(Token&& continue_token)
@@ -1092,9 +1155,14 @@ namespace lx
 		// NOP
 	}
 
-	UpflowInfo ContinueStatement::impl_upflow()
+	UpflowInfo ContinueStatement::impl_upflow(const ResolutionContext& ctx)
 	{
 		return { .may_continue = true, .continues = { this } };
+	}
+
+	ScriptSegment ContinueStatement::impl_segment() const
+	{
+		return _continue_token.segment;
 	}
 
 	void ContinueStatement::attach_loop(const Loop* loop)
@@ -1109,13 +1177,8 @@ namespace lx
 		_backloop = loop;
 	}
 
-	ScriptSegment ContinueStatement::segment() const
-	{
-		return _continue_token.segment;
-	}
-
-	LogStatement::LogStatement(std::vector<Expression*>&& args)
-		: _args(std::move(args))
+	LogStatement::LogStatement(Token&& log_token, std::vector<Expression*>&& args)
+		: _log_token(std::move(log_token)), _args(std::move(args))
 	{
 	}
 
@@ -1129,8 +1192,13 @@ namespace lx
 		// NOP
 	}
 
-	HighlightStatement::HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color)
-		: _clear(clear), _highlightable(highlightable), _color_token(std::move(color_token)), _color(color)
+	ScriptSegment LogStatement::impl_segment() const
+	{
+		return _log_token.segment;
+	}
+
+	HighlightStatement::HighlightStatement(Token&& highlight_token, bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color)
+		: _highlight_token(std::move(highlight_token)), _clear(clear), _highlightable(highlightable), _color_token(std::move(color_token)), _color(color)
 	{
 	}
 
@@ -1159,8 +1227,13 @@ namespace lx
 			_highlightable->accept(visitor);
 	}
 
-	DeletePattern::DeletePattern(Token&& identifier)
-		: _identifier(std::move(identifier))
+	ScriptSegment HighlightStatement::impl_segment() const
+	{
+		return _highlight_token.segment;
+	}
+
+	DeletePattern::DeletePattern(Token&& delete_token, Token&& identifier)
+		: _delete_token(std::move(delete_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1174,8 +1247,13 @@ namespace lx
 		// TODO
 	}
 
-	PatternDeclaration::PatternDeclaration(Token&& identifier)
-		: _identifier(std::move(identifier))
+	ScriptSegment DeletePattern::impl_segment() const
+	{
+		return _delete_token.segment.combined_right(_identifier.segment);
+	}
+
+	PatternDeclaration::PatternDeclaration(Token&& pattern_token, Token&& identifier)
+		: _pattern_token(std::move(pattern_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1187,6 +1265,11 @@ namespace lx
 	void PatternDeclaration::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
+	}
+
+	ScriptSegment PatternDeclaration::impl_segment() const
+	{
+		return _pattern_token.segment.combined_right(_identifier.segment);
 	}
 
 	PatternSubexpression::PatternSubexpression(Expression& expr)
@@ -1210,6 +1293,11 @@ namespace lx
 		_expr.accept(visitor);
 	}
 
+	ScriptSegment PatternSubexpression::impl_segment() const
+	{
+		return _expr.segment();
+	}
+
 	PatternLiteral::PatternLiteral(Token&& literal)
 		: _literal(std::move(literal))
 	{
@@ -1223,6 +1311,11 @@ namespace lx
 	void PatternLiteral::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
+	}
+
+	ScriptSegment PatternLiteral::impl_segment() const
+	{
+		return _literal.segment;
 	}
 
 	PatternIdentifier::PatternIdentifier(Token&& identifier)
@@ -1240,6 +1333,11 @@ namespace lx
 		// TODO
 	}
 
+	ScriptSegment PatternIdentifier::impl_segment() const
+	{
+		return _identifier.segment;
+	}
+
 	PatternBuiltin::PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol)
 		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
 	{
@@ -1253,6 +1351,11 @@ namespace lx
 	void PatternBuiltin::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
+	}
+
+	ScriptSegment PatternBuiltin::impl_segment() const
+	{
+		return _symbol_token.segment;
 	}
 
 	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
@@ -1276,6 +1379,11 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
+	ScriptSegment PatternAs::impl_segment() const
+	{
+		return _expression.segment().combined_right(_type.segment);
+	}
+
 	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
 		: _expression(expression), _range(range)
 	{
@@ -1297,7 +1405,12 @@ namespace lx
 		_expression.accept(visitor);
 		_range.accept(visitor);
 	}
-	
+
+	ScriptSegment PatternRepeat::impl_segment() const
+	{
+		return _expression.segment().combined_right(_range.segment());
+	}
+
 	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
 		: _expression(expression), _op(std::move(op))
 	{
@@ -1317,6 +1430,11 @@ namespace lx
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
+	}
+
+	ScriptSegment PatternSimpleRepeat::impl_segment() const
+	{
+		return _expression.segment().combined_right(_op.segment);
 	}
 
 	PatternSimpleRepeatOperator PatternSimpleRepeat::op() const
@@ -1345,13 +1463,18 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
+	ScriptSegment PatternPrefixOperation::impl_segment() const
+	{
+		return _op.segment.combined_right(_expression.segment());
+	}
+
 	PatternPrefixOperator PatternPrefixOperation::op() const
 	{
 		return pattern_prefix_operator(_op.type);
 	}
 	
-	PatternBackRef::PatternBackRef(Token&& identifier)
-		: _identifier(std::move(identifier))
+	PatternBackRef::PatternBackRef(Token&& ref_token, Token&& identifier)
+		: _ref_token(std::move(ref_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1363,6 +1486,11 @@ namespace lx
 	void PatternBackRef::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
+	}
+
+	ScriptSegment PatternBackRef::impl_segment() const
+	{
+		return _ref_token.segment.combined_right(_identifier.segment);
 	}
 
 	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
@@ -1387,13 +1515,18 @@ namespace lx
 		_right.accept(visitor);
 	}
 
+	ScriptSegment PatternBinaryOperation::impl_segment() const
+	{
+		return _left.segment().combined_right(_right.segment());
+	}
+
 	PatternBinaryOperator PatternBinaryOperation::op() const
 	{
 		return pattern_binary_operator(_op.type);
 	}
 	
-	PatternLazy::PatternLazy(PatternExpression& expression)
-		: _expression(expression)
+	PatternLazy::PatternLazy(Token&& lazy_token, PatternExpression& expression)
+		: _lazy_token(std::move(lazy_token)), _expression(expression)
 	{
 	}
 
@@ -1412,9 +1545,14 @@ namespace lx
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
-	
-	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
-		: _identifier(std::move(identifier)), _expression(expression)
+
+	ScriptSegment PatternLazy::impl_segment() const
+	{
+		return _lazy_token.segment.combined_right(_expression.segment());
+	}
+
+	PatternCapture::PatternCapture(Token&& capture_token, Token&& identifier, PatternExpression& expression)
+		: _capture_token(std::move(capture_token)), _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
@@ -1434,8 +1572,13 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
-	AppendStatement::AppendStatement(PatternExpression& expression)
-		: _expression(expression)
+	ScriptSegment PatternCapture::impl_segment() const
+	{
+		return _capture_token.segment.combined_right(_expression.segment());
+	}
+
+	AppendStatement::AppendStatement(Token&& append_token, PatternExpression& expression)
+		: _append_token(std::move(append_token)), _expression(expression)
 	{
 	}
 
@@ -1455,8 +1598,13 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
-	FindStatement::FindStatement(Token&& identifier)
-		: _identifier(std::move(identifier))
+	ScriptSegment AppendStatement::impl_segment() const
+	{
+		return _append_token.segment;
+	}
+
+	FindStatement::FindStatement(Token&& find_token, Token&& identifier)
+		: _find_token(std::move(find_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1470,8 +1618,13 @@ namespace lx
 		// TODO
 	}
 
-	FilterStatement::FilterStatement(Token&& identifier)
-		: _identifier(std::move(identifier))
+	ScriptSegment FindStatement::impl_segment() const
+	{
+		return _find_token.segment.combined_right(_identifier.segment);
+	}
+
+	FilterStatement::FilterStatement(Token&& filter_token, Token&& identifier)
+		: _filter_token(std::move(filter_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1485,8 +1638,13 @@ namespace lx
 		// TODO
 	}
 
-	ReplaceStatement::ReplaceStatement(Expression& match, Expression& string)
-		: _match(match), _string(string)
+	ScriptSegment FilterStatement::impl_segment() const
+	{
+		return _filter_token.segment;
+	}
+
+	ReplaceStatement::ReplaceStatement(Token&& replace_token, Expression& match, Expression& string)
+		: _replace_token(std::move(replace_token)), _match(match), _string(string)
 	{
 	}
 
@@ -1506,9 +1664,14 @@ namespace lx
 		_match.accept(visitor);
 		_string.accept(visitor);
 	}
+
+	ScriptSegment ReplaceStatement::impl_segment() const
+	{
+		return _replace_token.segment;
+	}
 	
-	ApplyStatement::ApplyStatement(Token&& identifier)
-		: _identifier(std::move(identifier))
+	ApplyStatement::ApplyStatement(Token&& apply_token, Token&& identifier)
+		: _apply_token(std::move(apply_token)), _identifier(std::move(identifier))
 	{
 	}
 
@@ -1522,8 +1685,13 @@ namespace lx
 		// TODO
 	}
 
-	ScopeStatement::ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, Expression& range)
-		: _symbol_token(std::move(symbol_token)), _specifier(specifier), _range(range)
+	ScriptSegment ApplyStatement::impl_segment() const
+	{
+		return _apply_token.segment;
+	}
+
+	ScopeStatement::ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression& range)
+		: _scope_token(std::move(scope_token)), _symbol_token(std::move(symbol_token)), _specifier(specifier), _range(range)
 	{
 	}
 
@@ -1547,9 +1715,14 @@ namespace lx
 		ASTNode::traverse(visitor);
 		_range.accept(visitor);
 	}
-	
-	PagePush::PagePush(Expression& page)
-		: _page(page)
+
+	ScriptSegment ScopeStatement::impl_segment() const
+	{
+		return _scope_token.segment;
+	}
+
+	PagePush::PagePush(Token&& page_token, Expression& page)
+		: _page_token(std::move(page_token)), _page(page)
 	{
 	}
 
@@ -1568,10 +1741,20 @@ namespace lx
 		}
 	}
 
+	ScriptSegment PagePush::impl_segment() const
+	{
+		return _page_token.segment;
+	}
+
 	void PagePush::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_page.accept(visitor);
+	}
+
+	PagePop::PagePop(Token&& page_token)
+		: _page_token(std::move(page_token))
+	{
 	}
 
 	void PagePop::pre_analyse(ResolutionContext& ctx)
@@ -1584,6 +1767,16 @@ namespace lx
 		// NOP
 	}
 
+	ScriptSegment PagePop::impl_segment() const
+	{
+		return _page_token.segment;
+	}
+
+	PageClearStack::PageClearStack(Token&& page_token)
+		: _page_token(std::move(page_token))
+	{
+	}
+
 	void PageClearStack::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
@@ -1592,5 +1785,10 @@ namespace lx
 	void PageClearStack::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
+	}
+
+	ScriptSegment PageClearStack::impl_segment() const
+	{
+		return _page_token.segment;
 	}
 }

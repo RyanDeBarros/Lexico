@@ -88,11 +88,16 @@ namespace lx
 		SymbolTable _global_table;
 		std::vector<ScopeContext> _scope_stack;
 		mutable std::vector<LxError> _errors;
+		mutable std::vector<LxWarning> _warnings;
 
 	public:
 		std::vector<LxError>& errors() const;
 		void add_semantic_error(const Token& token, const std::string_view cause) const;
 		void add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const;
+
+		std::vector<LxWarning>& warnings() const;
+		void add_semantic_warning(const Token& token, const std::string_view cause) const;
+		void add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const;
 
 		void push_local_scope(bool isolated);
 		void pop_local_scope();

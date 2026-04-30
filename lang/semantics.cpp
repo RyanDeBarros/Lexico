@@ -27,14 +27,20 @@ namespace lx
 
 	void SemanticAnalyser::analyse(Parser& parser)
 	{
-		ResolutionContext ctx;
-		AnalysisVisitor visitor(ctx);
+		ResolutionContext dry_ctx;
+		AnalysisVisitor visitor(dry_ctx);
 		parser.tree().root().accept(visitor);
-		_errors = std::move(ctx.errors());
+		_errors = std::move(dry_ctx.errors());
+		_warnings = std::move(dry_ctx.warnings());
 	}
 
 	const std::vector<LxError>& SemanticAnalyser::errors() const
 	{
 		return _errors;
+	}
+
+	const std::vector<LxWarning>& SemanticAnalyser::warnings() const
+	{
+		return _warnings;
 	}
 }

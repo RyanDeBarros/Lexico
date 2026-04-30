@@ -544,6 +544,16 @@ namespace lx
 		return _stream;
 	}
 
+	Token Lexer::start_token() const
+	{
+		Token token{ .segment = ScriptSegment(_script_lines) };
+		token.segment.start_line = 1;
+		token.segment.end_line = 1;
+		token.segment.start_column = 1;
+		token.segment.end_column = 1;
+		return token;
+	}
+
 	const std::vector<std::string_view>& Lexer::script_lines() const
 	{
 		return _script_lines;

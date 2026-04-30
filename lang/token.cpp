@@ -54,6 +54,11 @@ namespace lx
 		return *this;
 	}
 
+	std::string_view ScriptSegment::first_line() const
+	{
+		return script_lines[start_line - 1];
+	}
+
 	std::string ScriptSegment::line_number_prefix() const
 	{
 		std::string line_number = std::to_string(start_line) + ".";

@@ -106,6 +106,21 @@ namespace lx
 		add_semantic_error(token.segment, cause);
 	}
 
+	std::vector<LxWarning>& ResolutionContext::warnings() const
+	{
+		return _warnings;
+	}
+
+	void ResolutionContext::add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const
+	{
+		_warnings.push_back(LxWarning::segment_warning(segment, ErrorType::Semantic, cause));
+	}
+
+	void ResolutionContext::add_semantic_warning(const Token& token, const std::string_view cause) const
+	{
+		add_semantic_warning(token.segment, cause);
+	}
+
 	void ResolutionContext::push_local_scope(bool isolated)
 	{
 		_scope_stack.push_back({ .isolated = isolated });
