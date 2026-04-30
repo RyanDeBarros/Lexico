@@ -15,6 +15,7 @@ namespace lx
 		void parse(Lexer& lexer);
 
 		const AbstractSyntaxTree& tree() const;
+		AbstractSyntaxTree& tree();
 		const std::vector<LxError>& errors() const;
 	};
 }

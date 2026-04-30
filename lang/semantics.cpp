@@ -12,13 +12,13 @@ namespace lx
 		{
 		}
 
-		void pre_visit(const ASTNode& node) override
+		void pre_visit(ASTNode& node) override
 		{
 			if (!node.validated())
 				node.pre_analyse(_env);
 		}
 
-		void post_visit(const ASTNode& node) override
+		void post_visit(ASTNode& node) override
 		{
 			if (node.validated())
 				node.post_analyse(_env);

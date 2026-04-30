@@ -13,18 +13,28 @@ namespace lx
 	class ASTNode;
 	class Block;
 	class ReturnStatement;
+	class BreakStatement;
+	class ContinueStatement;
 
 	struct ASTVisitor
 	{
 		virtual ~ASTVisitor() = default;
-		virtual void pre_visit(const ASTNode& node) = 0;
-		virtual void post_visit(const ASTNode& node) = 0;
+		virtual void pre_visit(ASTNode& node) = 0;
+		virtual void post_visit(ASTNode& node) = 0;
 	};
 
 	struct UpflowInfo
 	{
-		bool all_return = false;
-		std::vector<const ReturnStatement*> returns;
+		bool always_returns = false;
+		bool may_break = false;
+		bool may_continue = false;
+
+		std::vector<const ReturnStatement*> live_returns;
+		std::vector<const ReturnStatement*> dead_returns;
+		std::vector<BreakStatement*> breaks;
+		std::vector<ContinueStatement*> continues;
+
+		void merge_loop_control(const UpflowInfo& other);
 	};
 
 	class ASTNode
@@ -40,14 +50,14 @@ namespace lx
 		
 		bool validated() const;
 
-		virtual void pre_analyse(ResolutionContext& ctx) const = 0;
-		virtual void post_analyse(ResolutionContext& ctx) const = 0;
-		void accept(ASTVisitor& visitor) const;
-		virtual void traverse(ASTVisitor& visitor) const {}
-		UpflowInfo upflow() const;
+		virtual void pre_analyse(ResolutionContext& ctx) = 0;
+		virtual void post_analyse(ResolutionContext& ctx) = 0;
+		void accept(ASTVisitor& visitor);
+		virtual void traverse(ASTVisitor& visitor) {}
+		UpflowInfo upflow();
 
 	protected:
-		virtual UpflowInfo impl_upflow() const;
+		virtual UpflowInfo impl_upflow();
 	};
 
 	class Block : public ASTNode
@@ -55,12 +65,12 @@ namespace lx
 		std::vector<ASTNode*> _children;
 
 	public:
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		virtual void traverse(ASTVisitor& visitor) const override;
+		virtual void pre_analyse(ResolutionContext& ctx) override;
+		virtual void post_analyse(ResolutionContext& ctx) override;
+		virtual void traverse(ASTVisitor& visitor) override;
 
 	protected:
-		virtual UpflowInfo impl_upflow() const override;
+		virtual UpflowInfo impl_upflow() override;
 
 	protected:
 		virtual bool isolated() const = 0;
@@ -72,6 +82,8 @@ namespace lx
 	class ASTRoot : public Block
 	{
 	protected:
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 		bool isolated() const override;
 	};
 
@@ -114,13 +126,13 @@ namespace lx
 	{
 		bool _global;
 		Token _identifier;
-		const Expression& _expression;
+		Expression& _expression;
 
 	public:
-		VariableDeclaration(bool global, Token&& identifier, const Expression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 		
 	public:
 		bool is_global() const;
@@ -129,13 +141,13 @@ namespace lx
 	class VariableAssignment : public ASTNode
 	{
 		Token _identifier;
-		const Expression& _expression;
+		Expression& _expression;
 
 	public:
-		VariableAssignment(Token&& identifier, const Expression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		VariableAssignment(Token&& identifier, Expression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class LiteralExpression : public Expression
@@ -144,8 +156,8 @@ namespace lx
 
 	public:
 		LiteralExpression(Token&& literal);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -154,14 +166,14 @@ namespace lx
 
 	class ListExpression : public Expression
 	{
-		std::vector<const Expression*> _elements;
+		std::vector<Expression*> _elements;
 		Token _lbracket_token;
 		Token _rbracket_token;
 
 	public:
-		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<const Expression*>&& elements);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -171,14 +183,14 @@ namespace lx
 	class BinaryExpression : public Expression
 	{
 		Token _op;
-		const Expression& _left;
-		const Expression& _right;
+		Expression& _left;
+		Expression& _right;
 
 	public:
-		BinaryExpression(Token&& op, const Expression& left, const Expression& right);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		BinaryExpression(Token&& op, Expression& left, Expression& right);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -190,14 +202,14 @@ namespace lx
 
 	class MemberAccessExpression : public Expression
 	{
-		const Expression& _object;
+		Expression& _object;
 		Token _member;
 
 	public:
-		MemberAccessExpression(const Expression& object, Token&& member);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		MemberAccessExpression(Expression& object, Token&& member);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -210,13 +222,13 @@ namespace lx
 	class PrefixExpression : public Expression
 	{
 		Token _op;
-		const Expression& _expr;
+		Expression& _expr;
 
 	public:
-		PrefixExpression(Token&& op, const Expression& expr);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PrefixExpression(Token&& op, Expression& expr);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -228,14 +240,14 @@ namespace lx
 
 	class AsExpression : public Expression
 	{
-		const Expression& _expr;
+		Expression& _expr;
 		Token _type;
 
 	public:
-		AsExpression(const Expression& expr, Token&& type);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		AsExpression(Expression& expr, Token&& type);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -244,14 +256,14 @@ namespace lx
 
 	class SubscriptExpression : public Expression
 	{
-		const Expression& _container;
-		const Expression& _subscript;
+		Expression& _container;
+		Expression& _subscript;
 
 	public:
-		SubscriptExpression(const Expression& container, const Expression& subscript);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		SubscriptExpression(Expression& container, Expression& subscript);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -267,8 +279,8 @@ namespace lx
 
 	public:
 		VariableExpression(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -282,8 +294,8 @@ namespace lx
 
 	public:
 		BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -293,14 +305,14 @@ namespace lx
 	class FunctionCallExpression : public Expression
 	{
 		Token _identifier;
-		std::vector<const Expression*> _args;
+		std::vector<Expression*> _args;
 		Token _closing_paren;
 
 	public:
-		FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args, Token&& closing_paren);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -312,15 +324,15 @@ namespace lx
 
 	class MethodCallExpression : public Expression
 	{
-		const MemberAccessExpression& _member;
-		std::vector<const Expression*> _args;
+		MemberAccessExpression& _member;
+		std::vector<Expression*> _args;
 		Token _closing_paren;
 
 	public:
-		MethodCallExpression(const MemberAccessExpression& member, std::vector<const Expression*>&& args, Token&& closing_paren);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		MethodCallExpression(MemberAccessExpression& member, std::vector<Expression*>&& args, Token&& closing_paren);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 		bool imperative() const override;
 
 	protected:
@@ -336,11 +348,11 @@ namespace lx
 
 	public:
 		FunctionDefinition(Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
-		UpflowInfo impl_upflow() const override;
+		UpflowInfo impl_upflow() override;
 		bool isolated() const override;
 
 	public:
@@ -352,16 +364,16 @@ namespace lx
 	class ReturnStatement : public ASTNode
 	{
 		Token _return_token;
-		const Expression* _expression;
+		Expression* _expression;
 
 	public:
-		ReturnStatement(Token&& return_token, const Expression* expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		ReturnStatement(Token&& return_token, Expression* expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
-		UpflowInfo impl_upflow() const override;
+		UpflowInfo impl_upflow() override;
 		
 	public:
 		DataType evaltype(const ResolutionContext& ctx) const;
@@ -375,42 +387,42 @@ namespace lx
 	class IfConditional : public virtual Block
 	{
 	protected:
-		const IfFallbackBlock* _fallback = nullptr;
+		IfFallbackBlock* _fallback = nullptr;
 
 	public:
-		void set_fallback(const IfFallbackBlock* fallback);
+		void set_fallback(IfFallbackBlock* fallback);
 
 	protected:
-		UpflowInfo impl_upflow() const override;
+		UpflowInfo impl_upflow() override;
 	};
 
 	class IfStatement : public IfConditional
 	{
-		const Expression& _condition;
+		Expression& _condition;
 
 	public:
-		IfStatement(const Expression& condition);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		IfStatement(Expression& condition);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
-		UpflowInfo impl_upflow() const override;
+		UpflowInfo impl_upflow() override;
 		bool isolated() const override;
 	};
 
 	class ElifStatement : public IfConditional, public IfFallbackBlock
 	{
-		const Expression& _condition;
+		Expression& _condition;
 
 	public:
-		ElifStatement(const Expression& condition);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		ElifStatement(Expression& condition);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
-		UpflowInfo impl_upflow() const override;
+		UpflowInfo impl_upflow() override;
 		bool isolated() const override;
 	};
 
@@ -420,30 +432,39 @@ namespace lx
 		bool isolated() const override;
 	};
 
-	class WhileLoop : public Block
+	class Loop : public Block
 	{
-		const Expression& _condition;
+
+	protected:
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		UpflowInfo impl_upflow() override;
+	};
+
+	class WhileLoop : public Loop
+	{
+		Expression& _condition;
 
 	public:
-		WhileLoop(const Expression& condition);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		WhileLoop(Expression& condition);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		bool isolated() const override;
 	};
 
-	class ForLoop : public Block
+	class ForLoop : public Loop
 	{
 		Token _iterator;
-		const Expression& _iterable;
+		Expression& _iterable;
 
 	public:
-		ForLoop(Token&& iterator, const Expression& iterable);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		ForLoop(Token&& iterator, Expression& iterable);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 	protected:
 		bool isolated() const override;
@@ -451,40 +472,62 @@ namespace lx
 
 	class BreakStatement : public ASTNode
 	{
+		Token _break_token;
+		const Loop* _backloop = nullptr;
+
 	public:
-		void pre_analyse(ResolutionContext& ctx) const override {}
-		void post_analyse(ResolutionContext& ctx) const override {}
+		BreakStatement(Token&& break_token);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+
+	protected:
+		UpflowInfo impl_upflow() override;
+
+	public:
+		void attach_loop(const Loop* loop);
+		ScriptSegment segment() const;
 	};
 
 	class ContinueStatement : public ASTNode
 	{
+		Token _continue_token;
+		const Loop* _backloop = nullptr;
+
 	public:
-		void pre_analyse(ResolutionContext& ctx) const override {}
-		void post_analyse(ResolutionContext& ctx) const override {}
+		ContinueStatement(Token&& continue_token);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+
+	protected:
+		UpflowInfo impl_upflow() override;
+
+	public:
+		void attach_loop(const Loop* loop);
+		ScriptSegment segment() const;
 	};
 
 	class LogStatement : public ASTNode
 	{
-		std::vector<const Expression*> _args;
+		std::vector<Expression*> _args;
 
 	public:
-		LogStatement(std::vector<const Expression*>&& args);
-		void pre_analyse(ResolutionContext& ctx) const override {}
-		void post_analyse(ResolutionContext& ctx) const override {}
+		LogStatement(std::vector<Expression*>&& args);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class HighlightStatement : public ASTNode
 	{
 		bool _clear;
-		const Expression* _highlightable;
+		Expression* _highlightable;
 		std::optional<Token> _color_token;
 		BuiltinSymbol _color;
 
 	public:
-		HighlightStatement(bool clear, const Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class DeletePattern : public ASTNode
@@ -493,8 +536,8 @@ namespace lx
 
 	public:
 		DeletePattern(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternDeclaration : public ASTNode
@@ -503,8 +546,8 @@ namespace lx
 
 	public:
 		PatternDeclaration(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternExpression : public ASTNode
@@ -513,13 +556,13 @@ namespace lx
 
 	class PatternSubexpression : public PatternExpression
 	{
-		const Expression& _expr;
+		Expression& _expr;
 
 	public:
-		PatternSubexpression(const Expression& expr);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternSubexpression(Expression& expr);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PatternLiteral : public PatternExpression
@@ -528,8 +571,8 @@ namespace lx
 
 	public:
 		PatternLiteral(Token&& literal);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternIdentifier : public PatternExpression
@@ -538,8 +581,8 @@ namespace lx
 
 	public:
 		PatternIdentifier(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternBuiltin : public PatternExpression
@@ -549,44 +592,44 @@ namespace lx
 
 	public:
 		PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternAs : public PatternExpression
 	{
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 		Token _type;
 
 	public:
-		PatternAs(const PatternExpression& expression, Token&& type);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternAs(PatternExpression& expression, Token&& type);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PatternRepeat : public PatternExpression
 	{
-		const PatternExpression& _expression;
-		const Expression& _range;
+		PatternExpression& _expression;
+		Expression& _range;
 
 	public:
-		PatternRepeat(const PatternExpression& expression, const Expression& range);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternRepeat(PatternExpression& expression, Expression& range);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PatternSimpleRepeat : public PatternExpression
 	{
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 		Token _op;
 
 	public:
-		PatternSimpleRepeat(const PatternExpression& expression, Token&& op);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 		PatternSimpleRepeatOperator op() const;
 	};
@@ -594,13 +637,13 @@ namespace lx
 	class PatternPrefixOperation : public PatternExpression
 	{
 		Token _op;
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 
 	public:
-		PatternPrefixOperation(Token&& op, const PatternExpression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternPrefixOperation(Token&& op, PatternExpression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 		PatternPrefixOperator op() const;
 	};
@@ -611,57 +654,57 @@ namespace lx
 
 	public:
 		PatternBackRef(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PatternBinaryOperation : public PatternExpression
 	{
 		Token _op;
-		const PatternExpression& _left;
-		const PatternExpression& _right;
+		PatternExpression& _left;
+		PatternExpression& _right;
 
 	public:
-		PatternBinaryOperation(Token&& op, const PatternExpression& left, const PatternExpression& right);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 
 		PatternBinaryOperator op() const;
 	};
 
 	class PatternLazy : public PatternExpression
 	{
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 
 	public:
-		PatternLazy(const PatternExpression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternLazy(PatternExpression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PatternCapture : public PatternExpression
 	{
 		Token _identifier;
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 
 	public:
-		PatternCapture(Token&& identifier, const PatternExpression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PatternCapture(Token&& identifier, PatternExpression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class AppendStatement : public ASTNode
 	{
-		const PatternExpression& _expression;
+		PatternExpression& _expression;
 
 	public:
-		AppendStatement(const PatternExpression& expression);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		AppendStatement(PatternExpression& expression);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class FindStatement : public ASTNode
@@ -670,8 +713,8 @@ namespace lx
 
 	public:
 		FindStatement(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class FilterStatement : public ASTNode
@@ -680,20 +723,20 @@ namespace lx
 
 	public:
 		FilterStatement(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class ReplaceStatement : public ASTNode
 	{
-		const Expression& _match;
-		const Expression& _string;
+		Expression& _match;
+		Expression& _string;
 
 	public:
-		ReplaceStatement(const Expression& match, const Expression& string);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		ReplaceStatement(Expression& match, Expression& string);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class ApplyStatement : public ASTNode
@@ -702,45 +745,45 @@ namespace lx
 
 	public:
 		ApplyStatement(Token&& identifier);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class ScopeStatement : public ASTNode
 	{
 		Token _symbol_token;
 		BuiltinSymbol _specifier;
-		const Expression& _range;
+		Expression& _range;
 
 	public:
-		ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, const Expression& range);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, Expression& range);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PagePush : public ASTNode
 	{ 
-		const Expression& _page;
+		Expression& _page;
 
 	public:
-		PagePush(const Expression& page);
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
-		void traverse(ASTVisitor& visitor) const override;
+		PagePush(Expression& page);
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
+		void traverse(ASTVisitor& visitor) override;
 	};
 
 	class PagePop : public ASTNode
 	{
 	public:
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 
 	class PageClearStack : public ASTNode
 	{
 	public:
-		void pre_analyse(ResolutionContext& ctx) const override;
-		void post_analyse(ResolutionContext& ctx) const override;
+		void pre_analyse(ResolutionContext& ctx) override;
+		void post_analyse(ResolutionContext& ctx) override;
 	};
 }

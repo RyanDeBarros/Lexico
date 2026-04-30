@@ -516,8 +516,9 @@ namespace lx
 			if (!peek_token_is(0, type))
 				return false;
 
+			auto& token = ref(0);
 			token_offset(1).submit();
-			append_to_context(std::make_unique<Node>());
+			append_to_context(std::make_unique<Node>(std::move(token)));
 			return true;
 		}
 
@@ -630,7 +631,7 @@ namespace lx
 
 			auto offset = token_offset(1);
 
-			std::vector<const Expression*> args;
+			std::vector<Expression*> args;
 			bool comma_ended = false;
 
 			while (continue_statement())
@@ -803,11 +804,11 @@ namespace lx
 			return _tree.add(std::make_unique<MethodCallExpression>(member, std::move(arglist), std::move(ref(-1))));
 		}
 
-		std::vector<const Expression*> parse_call_arglist(TokenOffset& offset)
+		std::vector<Expression*> parse_call_arglist(TokenOffset& offset)
 		{
 			offset.add(1);  // '('
 
-			std::vector<const Expression*> args;
+			std::vector<Expression*> args;
 			bool comma_ended = false;
 
 			while (continue_statement() && peek_token_is_not(0, TokenType::RParen))
@@ -858,7 +859,7 @@ namespace lx
 			auto& lbracket_token = parse_token(0, TokenType::LBracket, errors::EXPECTED_LBRACKET);
 			offset.add(1);  // '['
 
-			std::vector<const Expression*> elements;
+			std::vector<Expression*> elements;
 			bool comma_ended = false;
 			while (continue_statement() && !peek_token_is(0, TokenType::RBracket))
 			{
@@ -1069,6 +1070,11 @@ namespace lx
 	}
 
 	const AbstractSyntaxTree& Parser::tree() const
+	{
+		return _tree;
+	}
+
+	AbstractSyntaxTree& Parser::tree()
 	{
 		return _tree;
 	}

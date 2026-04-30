@@ -5,26 +5,34 @@
 
 namespace lx
 {
+	void UpflowInfo::merge_loop_control(const UpflowInfo& other)
+	{
+		may_break |= other.may_break;
+		may_continue |= other.may_continue;
+		breaks.insert(breaks.end(), other.breaks.begin(), other.breaks.end());
+		continues.insert(continues.end(), other.continues.begin(), other.continues.end());
+	}
+
 	bool ASTNode::validated() const
 	{
 		return _validated;
 	}
 
-	void ASTNode::accept(ASTVisitor& visitor) const
+	void ASTNode::accept(ASTVisitor& visitor)
 	{
 		visitor.pre_visit(*this);
 		traverse(visitor);
 		visitor.post_visit(*this);
 	}
 
-	UpflowInfo ASTNode::upflow() const
+	UpflowInfo ASTNode::upflow()
 	{
 		if (!_upflow)
 			_upflow = impl_upflow();
 		return *_upflow;
 	}
 
-	UpflowInfo ASTNode::impl_upflow() const
+	UpflowInfo ASTNode::impl_upflow()
 	{
 		return {};
 	}
@@ -46,34 +54,44 @@ namespace lx
 		return _root;
 	}
 
-	void Block::pre_analyse(ResolutionContext& ctx) const
+	void Block::pre_analyse(ResolutionContext& ctx)
 	{
 		ctx.push_local_scope(isolated());
 	}
 
-	void Block::post_analyse(ResolutionContext& ctx) const
+	void Block::post_analyse(ResolutionContext& ctx)
 	{
 		ctx.pop_local_scope();
 	}
 
-	void Block::traverse(ASTVisitor& visitor) const
+	void Block::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
-		for (const ASTNode* node : _children)
+		for (ASTNode* node : _children)
 			node->accept(visitor);
 	}
 
-	UpflowInfo Block::impl_upflow() const
+	UpflowInfo Block::impl_upflow()
 	{
 		UpflowInfo info;
+		bool livecode = true;
 
-		for (const ASTNode* node : _children)
+		for (ASTNode* node : _children)
 		{
 			auto subinfo = node->upflow();
-			if (subinfo.all_return)
+			info.dead_returns.insert(info.dead_returns.end(), subinfo.dead_returns.begin(), subinfo.dead_returns.end());
+			if (livecode)
 			{
-				info.all_return = true;
-				info.returns.insert(info.returns.end(), subinfo.returns.begin(), subinfo.returns.end());
+				info.live_returns.insert(info.live_returns.end(), subinfo.live_returns.begin(), subinfo.live_returns.end());
+				info.always_returns |= subinfo.always_returns;
+				info.merge_loop_control(subinfo);
+
+				livecode = !info.always_returns; // TODO not the best indicator
+			}
+			else
+			{
+				info.dead_returns.insert(info.dead_returns.end(), subinfo.live_returns.begin(), subinfo.live_returns.end());
+				// TODO warning -> gather line numbers than print all lines in batch instead of doing underline
 			}
 		}
 
@@ -83,6 +101,24 @@ namespace lx
 	void Block::append(ASTNode& child)
 	{
 		_children.push_back(&child);
+	}
+
+	void ASTRoot::pre_analyse(ResolutionContext& ctx)
+	{
+		Block::pre_analyse(ctx);
+
+		_validated = true;
+	}
+
+	void ASTRoot::post_analyse(ResolutionContext& ctx)
+	{
+		auto flow = upflow();
+		for (BreakStatement* b : flow.breaks)
+			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
+		for (ContinueStatement* c : flow.continues)
+			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
+
+		Block::post_analyse(ctx);
 	}
 
 	bool ASTRoot::isolated() const
@@ -115,12 +151,12 @@ namespace lx
 		return false;
 	}
 
-	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, const Expression& expression)
+	VariableDeclaration::VariableDeclaration(bool global, Token&& identifier, Expression& expression)
 		: _global(global), _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
-	void VariableDeclaration::pre_analyse(ResolutionContext& ctx) const
+	void VariableDeclaration::pre_analyse(ResolutionContext& ctx)
 	{
 		if (_global && ctx.scope_depth() > 0)
 			ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
@@ -130,12 +166,12 @@ namespace lx
 			_validated = true;
 	}
 
-	void VariableDeclaration::post_analyse(ResolutionContext& ctx) const
+	void VariableDeclaration::post_analyse(ResolutionContext& ctx)
 	{
 		ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
 	}
 
-	void VariableDeclaration::traverse(ASTVisitor& visitor) const
+	void VariableDeclaration::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
@@ -146,12 +182,12 @@ namespace lx
 		return _global;
 	}
 
-	VariableAssignment::VariableAssignment(Token&& identifier, const Expression& expression)
+	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
 		: _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
-	void VariableAssignment::pre_analyse(ResolutionContext& ctx) const
+	void VariableAssignment::pre_analyse(ResolutionContext& ctx)
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			_validated = true;
@@ -159,7 +195,7 @@ namespace lx
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableAssignment::post_analyse(ResolutionContext& ctx) const
+	void VariableAssignment::post_analyse(ResolutionContext& ctx)
 	{
 		auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown);
 		if (var->type != _expression.evaltype(ctx))
@@ -170,7 +206,7 @@ namespace lx
 		}
 	}
 
-	void VariableAssignment::traverse(ASTVisitor& visitor) const
+	void VariableAssignment::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
@@ -181,12 +217,12 @@ namespace lx
 	{
 	}
 
-	void LiteralExpression::pre_analyse(ResolutionContext& ctx) const
+	void LiteralExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void LiteralExpression::post_analyse(ResolutionContext& ctx) const
+	void LiteralExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -217,17 +253,17 @@ namespace lx
 		return _literal.segment;
 	}
 
-	ListExpression::ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<const Expression*>&& elements)
+	ListExpression::ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements)
 		: _lbracket_token(std::move(lbracket_token)), _rbracket_token(std::move(rbracket_token)), _elements(std::move(elements))
 	{
 	}
 	
-	void ListExpression::pre_analyse(ResolutionContext& ctx) const
+	void ListExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 	
-	void ListExpression::post_analyse(ResolutionContext& ctx) const
+	void ListExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -242,22 +278,22 @@ namespace lx
 		return _lbracket_token.segment.combined_right(_rbracket_token.segment);
 	}
 
-	BinaryExpression::BinaryExpression(Token&& op, const Expression& left, const Expression& right)
+	BinaryExpression::BinaryExpression(Token&& op, Expression& left, Expression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
 	}
 
-	void BinaryExpression::pre_analyse(ResolutionContext& ctx) const
+	void BinaryExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void BinaryExpression::post_analyse(ResolutionContext& ctx) const
+	void BinaryExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
 
-	void BinaryExpression::traverse(ASTVisitor& visitor) const
+	void BinaryExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_left.accept(visitor);
@@ -287,17 +323,17 @@ namespace lx
 		return standard_binary_operator(_op.type);
 	}
 
-	MemberAccessExpression::MemberAccessExpression(const Expression& object, Token&& member)
+	MemberAccessExpression::MemberAccessExpression(Expression& object, Token&& member)
 		: _object(object), _member(std::move(member))
 	{
 	}
 
-	void MemberAccessExpression::pre_analyse(ResolutionContext& ctx) const
+	void MemberAccessExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void MemberAccessExpression::post_analyse(ResolutionContext& ctx) const
+	void MemberAccessExpression::post_analyse(ResolutionContext& ctx)
 	{
 		try
 		{
@@ -309,7 +345,7 @@ namespace lx
 		}
 	}
 
-	void MemberAccessExpression::traverse(ASTVisitor& visitor) const
+	void MemberAccessExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_object.accept(visitor);
@@ -337,22 +373,22 @@ namespace lx
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 
-	PrefixExpression::PrefixExpression(Token&& op, const Expression& expr)
+	PrefixExpression::PrefixExpression(Token&& op, Expression& expr)
 		: _op(std::move(op)), _expr(expr)
 	{
 	}
 
-	void PrefixExpression::pre_analyse(ResolutionContext& ctx) const
+	void PrefixExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PrefixExpression::post_analyse(ResolutionContext& ctx) const
+	void PrefixExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
 
-	void PrefixExpression::traverse(ASTVisitor& visitor) const
+	void PrefixExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expr.accept(visitor);
@@ -381,22 +417,22 @@ namespace lx
 		return standard_prefix_operator(_op.type);
 	}
 
-	AsExpression::AsExpression(const Expression& expr, Token&& type)
+	AsExpression::AsExpression(Expression& expr, Token&& type)
 		: _expr(expr), _type(std::move(type))
 	{
 	}
 
-	void AsExpression::pre_analyse(ResolutionContext& ctx) const
+	void AsExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void AsExpression::post_analyse(ResolutionContext& ctx) const
+	void AsExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
 
-	void AsExpression::traverse(ASTVisitor& visitor) const
+	void AsExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expr.accept(visitor);
@@ -421,17 +457,17 @@ namespace lx
 		return _expr.segment().combined_right(_type.segment);
 	}
 
-	SubscriptExpression::SubscriptExpression(const Expression& container, const Expression& subscript)
+	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
 		: _container(container), _subscript(subscript)
 	{
 	}
 
-	void SubscriptExpression::pre_analyse(ResolutionContext& ctx) const
+	void SubscriptExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void SubscriptExpression::post_analyse(ResolutionContext& ctx) const
+	void SubscriptExpression::post_analyse(ResolutionContext& ctx)
 	{
 		try
 		{
@@ -443,7 +479,7 @@ namespace lx
 		}
 	}
 
-	void SubscriptExpression::traverse(ASTVisitor& visitor) const
+	void SubscriptExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_container.accept(visitor);
@@ -477,7 +513,7 @@ namespace lx
 	{
 	}
 
-	void VariableExpression::pre_analyse(ResolutionContext& ctx) const
+	void VariableExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			_validated = true;
@@ -485,7 +521,7 @@ namespace lx
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableExpression::post_analyse(ResolutionContext& ctx) const
+	void VariableExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -512,12 +548,12 @@ namespace lx
 	{
 	}
 
-	void BuiltinSymbolExpression::pre_analyse(ResolutionContext& ctx) const
+	void BuiltinSymbolExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void BuiltinSymbolExpression::post_analyse(ResolutionContext& ctx) const
+	void BuiltinSymbolExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -532,12 +568,12 @@ namespace lx
 		return _symbol_token.segment;
 	}
 
-	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<const Expression*>&& args, Token&& closing_paren)
+	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren)
 		: _identifier(std::move(identifier)), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
 	}
 
-	void FunctionCallExpression::pre_analyse(ResolutionContext& ctx) const
+	void FunctionCallExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		if (ctx.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
 			ctx.add_semantic_error(_identifier, "function not declared in scope");
@@ -545,7 +581,7 @@ namespace lx
 			_validated = true;
 	}
 
-	void FunctionCallExpression::post_analyse(ResolutionContext& ctx) const
+	void FunctionCallExpression::post_analyse(ResolutionContext& ctx)
 	{
 		auto argtypes = arg_types(ctx);
 		if (!ctx.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
@@ -563,10 +599,10 @@ namespace lx
 		}
 	}
 
-	void FunctionCallExpression::traverse(ASTVisitor& visitor) const
+	void FunctionCallExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
-		for (const Expression* arg : _args)
+		for (Expression* arg : _args)
 			arg->accept(visitor);
 	}
 
@@ -595,17 +631,17 @@ namespace lx
 		return args;
 	}
 
-	MethodCallExpression::MethodCallExpression(const MemberAccessExpression& member, std::vector<const Expression*>&& args, Token&& closing_paren)
+	MethodCallExpression::MethodCallExpression(MemberAccessExpression& member, std::vector<Expression*>&& args, Token&& closing_paren)
 		: _member(member), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
 	}
 
-	void MethodCallExpression::pre_analyse(ResolutionContext& ctx) const
+	void MethodCallExpression::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void MethodCallExpression::post_analyse(ResolutionContext& ctx) const
+	void MethodCallExpression::post_analyse(ResolutionContext& ctx)
 	{
 		try
 		{
@@ -617,11 +653,11 @@ namespace lx
 		}
 	}
 
-	void MethodCallExpression::traverse(ASTVisitor& visitor) const
+	void MethodCallExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_member.accept(visitor);
-		for (const Expression* arg : _args)
+		for (Expression* arg : _args)
 			arg->accept(visitor);
 	}
 
@@ -636,7 +672,7 @@ namespace lx
 		if (m.is_method())
 		{
 			std::vector<DataType> arg_types;
-			for (const Expression* arg : _args)
+			for (Expression* arg : _args)
 				arg_types.push_back(arg->evaltype(ctx));
 
 			if (auto r = m.return_type(arg_types))
@@ -671,7 +707,7 @@ namespace lx
 	{
 	}
 
-	void FunctionDefinition::pre_analyse(ResolutionContext& ctx) const
+	void FunctionDefinition::pre_analyse(ResolutionContext& ctx)
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 		{
@@ -707,14 +743,14 @@ namespace lx
 		_validated = true;
 	}
 
-	void FunctionDefinition::post_analyse(ResolutionContext& ctx) const
+	void FunctionDefinition::post_analyse(ResolutionContext& ctx)
 	{
 		auto flow = Block::impl_upflow();
 
-		if (return_type() != DataType::Void && !flow.all_return)
+		if (return_type() != DataType::Void && !flow.always_returns)
 			ctx.add_semantic_error(_identifier, "not all control paths return a value");
 
-		for (const ReturnStatement* r : flow.returns)
+		for (const ReturnStatement* r : flow.live_returns)
 		{
 			if (r->evaltype(ctx) != return_type())
 			{
@@ -724,10 +760,27 @@ namespace lx
 			}
 		}
 
+		for (const ReturnStatement* r : flow.dead_returns)
+		{
+			if (r->evaltype(ctx) != return_type())
+			{
+				std::stringstream ss;
+				ss << "function should return " << return_type() << " but (unreachable) statement returns " << r->evaltype(ctx);
+				// TODO should be warning?
+				ctx.add_semantic_error(r->segment(), ss.str());
+			}
+		}
+
+		for (BreakStatement* b : flow.breaks)
+			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
+
+		for (ContinueStatement* c : flow.continues)
+			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
+
 		Block::post_analyse(ctx);
 	}
 
-	UpflowInfo FunctionDefinition::impl_upflow() const
+	UpflowInfo FunctionDefinition::impl_upflow()
 	{
 		return {};
 	}
@@ -758,29 +811,29 @@ namespace lx
 		return _return_type ? data_type(_return_type->type) : DataType::Void;
 	}
 
-	ReturnStatement::ReturnStatement(Token&& return_token, const Expression* expression)
+	ReturnStatement::ReturnStatement(Token&& return_token, Expression* expression)
 		: _return_token(std::move(return_token)), _expression(expression)
 	{
 	}
 
-	void ReturnStatement::pre_analyse(ResolutionContext& ctx) const
+	void ReturnStatement::pre_analyse(ResolutionContext& ctx)
 	{
 	}
 
-	void ReturnStatement::post_analyse(ResolutionContext& ctx) const
+	void ReturnStatement::post_analyse(ResolutionContext& ctx)
 	{
 	}
 
-	void ReturnStatement::traverse(ASTVisitor& visitor) const
+	void ReturnStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		if (_expression)
 			_expression->accept(visitor);
 	}
 
-	UpflowInfo ReturnStatement::impl_upflow() const
+	UpflowInfo ReturnStatement::impl_upflow()
 	{
-		return { .all_return = true, .returns = { this } };
+		return { .always_returns = true, .live_returns = { this } };
 	}
 
 	DataType ReturnStatement::evaltype(const ResolutionContext& ctx) const
@@ -793,7 +846,7 @@ namespace lx
 		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
-	void IfConditional::set_fallback(const IfFallbackBlock* fallback)
+	void IfConditional::set_fallback(IfFallbackBlock* fallback)
 	{
 		if (_fallback)
 		{
@@ -805,39 +858,39 @@ namespace lx
 			_fallback = fallback;
 	}
 
-	UpflowInfo IfConditional::impl_upflow() const
+	UpflowInfo IfConditional::impl_upflow()
 	{
 		auto info = Block::impl_upflow();
 		if (_fallback)
 		{
 			auto fallback_info = _fallback->upflow();
-			if (!fallback_info.all_return)
-				info.all_return = false;
-
-			info.returns.insert(info.returns.end(), fallback_info.returns.begin(), fallback_info.returns.end());
+			info.live_returns.insert(info.live_returns.end(), fallback_info.live_returns.begin(), fallback_info.live_returns.end());
+			info.dead_returns.insert(info.dead_returns.end(), fallback_info.dead_returns.begin(), fallback_info.dead_returns.end());
+			info.always_returns &= fallback_info.always_returns;
+			info.merge_loop_control(fallback_info);
 		}
 		return info;
 	}
 
-	IfStatement::IfStatement(const Expression& condition)
+	IfStatement::IfStatement(Expression& condition)
 		: _condition(condition)
 	{
 	}
 
-	void IfStatement::pre_analyse(ResolutionContext& ctx) const
+	void IfStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void IfStatement::post_analyse(ResolutionContext& ctx) const
+	void IfStatement::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
 			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(ctx);
 	}
 
-	void IfStatement::traverse(ASTVisitor& visitor) const
+	void IfStatement::traverse(ASTVisitor& visitor)
 	{
 		_condition.accept(visitor);
 		Block::traverse(visitor);
@@ -845,7 +898,7 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo IfStatement::impl_upflow() const
+	UpflowInfo IfStatement::impl_upflow()
 	{
 		return IfConditional::impl_upflow();
 	}
@@ -855,25 +908,25 @@ namespace lx
 		return false;
 	}
 
-	ElifStatement::ElifStatement(const Expression& condition)
+	ElifStatement::ElifStatement(Expression& condition)
 		: _condition(condition)
 	{
 	}
 
-	void ElifStatement::pre_analyse(ResolutionContext& ctx) const
+	void ElifStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void ElifStatement::post_analyse(ResolutionContext& ctx) const
+	void ElifStatement::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
 			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
 		Block::post_analyse(ctx);
 	}
 
-	void ElifStatement::traverse(ASTVisitor& visitor) const
+	void ElifStatement::traverse(ASTVisitor& visitor)
 	{
 		_condition.accept(visitor);
 		Block::traverse(visitor);
@@ -881,7 +934,7 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo ElifStatement::impl_upflow() const
+	UpflowInfo ElifStatement::impl_upflow()
 	{
 		return IfConditional::impl_upflow();
 	}
@@ -895,26 +948,54 @@ namespace lx
 	{
 		return false;
 	}
+
+	void Loop::pre_analyse(ResolutionContext& ctx)
+	{
+		Block::pre_analyse(ctx);
+
+		_validated = true;
+	}
+
+	void Loop::post_analyse(ResolutionContext& ctx)
+	{
+		auto subflow = Block::impl_upflow();
+		for (BreakStatement* b : subflow.breaks)
+			b->attach_loop(this);
+		for (ContinueStatement* c : subflow.continues)
+			c->attach_loop(this);
+
+		Block::post_analyse(ctx);
+	}
+
+	UpflowInfo Loop::impl_upflow()
+	{
+		auto info = Block::impl_upflow();
+		info.always_returns &= !info.may_break;
+		info.may_break = false;
+		info.may_continue = false;
+		info.breaks.clear();
+		info.continues.clear();
+		return info;
+	}
 	
-	WhileLoop::WhileLoop(const Expression& condition)
+	WhileLoop::WhileLoop(Expression& condition)
 		: _condition(condition)
 	{
 	}
 
-	void WhileLoop::pre_analyse(ResolutionContext& ctx) const
+	void WhileLoop::pre_analyse(ResolutionContext& ctx)
 	{
-		Block::pre_analyse(ctx);
-		_validated = true;
+		Loop::pre_analyse(ctx);
 	}
 
-	void WhileLoop::post_analyse(ResolutionContext& ctx) const
+	void WhileLoop::post_analyse(ResolutionContext& ctx)
 	{
 		if (_condition.evaltype(ctx) != DataType::Bool)
 			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to a 'bool'");
-		Block::post_analyse(ctx);
+		Loop::post_analyse(ctx);
 	}
 
-	void WhileLoop::traverse(ASTVisitor& visitor) const
+	void WhileLoop::traverse(ASTVisitor& visitor)
 	{
 		_condition.accept(visitor);
 		Block::traverse(visitor);
@@ -925,19 +1006,18 @@ namespace lx
 		return false;
 	}
 
-	ForLoop::ForLoop(Token&& iterator, const Expression& iterable)
+	ForLoop::ForLoop(Token&& iterator, Expression& iterable)
 		: _iterator(std::move(iterator)), _iterable(iterable)
 	{
 	}
 
-	void ForLoop::pre_analyse(ResolutionContext& ctx) const
+	void ForLoop::pre_analyse(ResolutionContext& ctx)
 	{
-		Block::pre_analyse(ctx);
+		Loop::pre_analyse(ctx);
 		ctx.registered_variable(_iterator.lexeme, Namespace::Local);
-		_validated = true;
 	}
 
-	void ForLoop::post_analyse(ResolutionContext& ctx) const
+	void ForLoop::post_analyse(ResolutionContext& ctx)
 	{
 		if (!is_iterable(_iterable.evaltype(ctx)))
 		{
@@ -945,10 +1025,11 @@ namespace lx
 			ss << _iterable.evaltype(ctx) << " is not iterable";
 			ctx.add_semantic_error(_iterable.segment(), ss.str());
 		}
-		Block::post_analyse(ctx);
+
+		Loop::post_analyse(ctx);
 	}
 
-	void ForLoop::traverse(ASTVisitor& visitor) const
+	void ForLoop::traverse(ASTVisitor& visitor)
 	{
 		_iterable.accept(visitor);
 		Block::traverse(visitor);
@@ -959,17 +1040,101 @@ namespace lx
 		return false;
 	}
 
-	LogStatement::LogStatement(std::vector<const Expression*>&& args)
+	BreakStatement::BreakStatement(Token&& break_token)
+		: _break_token(std::move(break_token))
+	{
+	}
+
+	void BreakStatement::pre_analyse(ResolutionContext& ctx)
+	{
+		_validated = true;
+	}
+
+	void BreakStatement::post_analyse(ResolutionContext& ctx)
+	{
+		// NOP
+	}
+
+	UpflowInfo BreakStatement::impl_upflow()
+	{
+		return { .may_break = true, .breaks = { this } };
+	}
+
+	void BreakStatement::attach_loop(const Loop* loop)
+	{
+		if (_backloop)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": loop is already attached";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+
+		_backloop = loop;
+	}
+
+	ScriptSegment BreakStatement::segment() const
+	{
+		return _break_token.segment;
+	}
+
+	ContinueStatement::ContinueStatement(Token&& continue_token)
+		: _continue_token(std::move(continue_token))
+	{
+	}
+
+	void ContinueStatement::pre_analyse(ResolutionContext& ctx)
+	{
+		_validated = true;
+	}
+
+	void ContinueStatement::post_analyse(ResolutionContext& ctx)
+	{
+		// NOP
+	}
+
+	UpflowInfo ContinueStatement::impl_upflow()
+	{
+		return { .may_continue = true, .continues = { this } };
+	}
+
+	void ContinueStatement::attach_loop(const Loop* loop)
+	{
+		if (_backloop)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": loop is already attached";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+
+		_backloop = loop;
+	}
+
+	ScriptSegment ContinueStatement::segment() const
+	{
+		return _continue_token.segment;
+	}
+
+	LogStatement::LogStatement(std::vector<Expression*>&& args)
 		: _args(std::move(args))
 	{
 	}
-	
-	HighlightStatement::HighlightStatement(bool clear, const Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color)
+
+	void LogStatement::pre_analyse(ResolutionContext& ctx)
+	{
+		_validated = true;
+	}
+
+	void LogStatement::post_analyse(ResolutionContext& ctx)
+	{
+		// NOP
+	}
+
+	HighlightStatement::HighlightStatement(bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color)
 		: _clear(clear), _highlightable(highlightable), _color_token(std::move(color_token)), _color(color)
 	{
 	}
 
-	void HighlightStatement::pre_analyse(ResolutionContext& ctx) const
+	void HighlightStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		if (!_color_token || data_type(_color) == DataType::_Color)
 			_validated = true;
@@ -977,7 +1142,7 @@ namespace lx
 			ctx.add_semantic_error(*_color_token, "symbol is not a color");
 	}
 
-	void HighlightStatement::post_analyse(ResolutionContext& ctx) const
+	void HighlightStatement::post_analyse(ResolutionContext& ctx)
 	{
 		if (_highlightable && !is_highlightable(_highlightable->evaltype(ctx)))
 		{
@@ -987,7 +1152,7 @@ namespace lx
 		}
 	}
 
-	void HighlightStatement::traverse(ASTVisitor& visitor) const
+	void HighlightStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		if (_highlightable)
@@ -999,12 +1164,12 @@ namespace lx
 	{
 	}
 
-	void DeletePattern::pre_analyse(ResolutionContext& ctx) const
+	void DeletePattern::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void DeletePattern::post_analyse(ResolutionContext& ctx) const
+	void DeletePattern::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
@@ -1014,32 +1179,32 @@ namespace lx
 	{
 	}
 
-	void PatternDeclaration::pre_analyse(ResolutionContext& ctx) const
+	void PatternDeclaration::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternDeclaration::post_analyse(ResolutionContext& ctx) const
+	void PatternDeclaration::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	PatternSubexpression::PatternSubexpression(const Expression& expr)
+	PatternSubexpression::PatternSubexpression(Expression& expr)
 		: _expr(expr)
 	{
 	}
 
-	void PatternSubexpression::pre_analyse(ResolutionContext& ctx) const
+	void PatternSubexpression::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternSubexpression::post_analyse(ResolutionContext& ctx) const
+	void PatternSubexpression::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternSubexpression::traverse(ASTVisitor& visitor) const
+	void PatternSubexpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expr.accept(visitor);
@@ -1050,12 +1215,12 @@ namespace lx
 	{
 	}
 
-	void PatternLiteral::pre_analyse(ResolutionContext& ctx) const
+	void PatternLiteral::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternLiteral::post_analyse(ResolutionContext& ctx) const
+	void PatternLiteral::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
@@ -1065,12 +1230,12 @@ namespace lx
 	{
 	}
 
-	void PatternIdentifier::pre_analyse(ResolutionContext& ctx) const
+	void PatternIdentifier::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternIdentifier::post_analyse(ResolutionContext& ctx) const
+	void PatternIdentifier::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
@@ -1080,75 +1245,75 @@ namespace lx
 	{
 	}
 
-	void PatternBuiltin::pre_analyse(ResolutionContext& ctx) const
+	void PatternBuiltin::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternBuiltin::post_analyse(ResolutionContext& ctx) const
+	void PatternBuiltin::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	PatternAs::PatternAs(const PatternExpression& expression, Token&& type)
+	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
 		: _expression(expression), _type(std::move(type))
 	{
 	}
 
-	void PatternAs::pre_analyse(ResolutionContext& ctx) const
+	void PatternAs::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternAs::post_analyse(ResolutionContext& ctx) const
+	void PatternAs::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternAs::traverse(ASTVisitor& visitor) const
+	void PatternAs::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
 
-	PatternRepeat::PatternRepeat(const PatternExpression& expression, const Expression& range)
+	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
 		: _expression(expression), _range(range)
 	{
 	}
 
-	void PatternRepeat::pre_analyse(ResolutionContext& ctx) const
+	void PatternRepeat::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternRepeat::post_analyse(ResolutionContext& ctx) const
+	void PatternRepeat::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternRepeat::traverse(ASTVisitor& visitor) const
+	void PatternRepeat::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 		_range.accept(visitor);
 	}
 	
-	PatternSimpleRepeat::PatternSimpleRepeat(const PatternExpression& expression, Token&& op)
+	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
 		: _expression(expression), _op(std::move(op))
 	{
 	}
 
-	void PatternSimpleRepeat::pre_analyse(ResolutionContext& ctx) const
+	void PatternSimpleRepeat::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternSimpleRepeat::post_analyse(ResolutionContext& ctx) const
+	void PatternSimpleRepeat::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternSimpleRepeat::traverse(ASTVisitor& visitor) const
+	void PatternSimpleRepeat::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
@@ -1159,22 +1324,22 @@ namespace lx
 		return pattern_simple_repeat_operator(_op.type);
 	}
 
-	PatternPrefixOperation::PatternPrefixOperation(Token&& op, const PatternExpression& expression)
+	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
 		: _op(std::move(op)), _expression(expression)
 	{
 	}
 
-	void PatternPrefixOperation::pre_analyse(ResolutionContext& ctx) const
+	void PatternPrefixOperation::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternPrefixOperation::post_analyse(ResolutionContext& ctx) const
+	void PatternPrefixOperation::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternPrefixOperation::traverse(ASTVisitor& visitor) const
+	void PatternPrefixOperation::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
@@ -1190,32 +1355,32 @@ namespace lx
 	{
 	}
 
-	void PatternBackRef::pre_analyse(ResolutionContext& ctx) const
+	void PatternBackRef::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternBackRef::post_analyse(ResolutionContext& ctx) const
+	void PatternBackRef::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	PatternBinaryOperation::PatternBinaryOperation(Token&& op, const PatternExpression& left, const PatternExpression& right)
+	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
 		: _op(std::move(op)), _left(left), _right(right)
 	{
 	}
 
-	void PatternBinaryOperation::pre_analyse(ResolutionContext& ctx) const
+	void PatternBinaryOperation::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternBinaryOperation::post_analyse(ResolutionContext& ctx) const
+	void PatternBinaryOperation::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternBinaryOperation::traverse(ASTVisitor& visitor) const
+	void PatternBinaryOperation::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_left.accept(visitor);
@@ -1227,64 +1392,64 @@ namespace lx
 		return pattern_binary_operator(_op.type);
 	}
 	
-	PatternLazy::PatternLazy(const PatternExpression& expression)
+	PatternLazy::PatternLazy(PatternExpression& expression)
 		: _expression(expression)
 	{
 	}
 
-	void PatternLazy::pre_analyse(ResolutionContext& ctx) const
+	void PatternLazy::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternLazy::post_analyse(ResolutionContext& ctx) const
+	void PatternLazy::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternLazy::traverse(ASTVisitor& visitor) const
+	void PatternLazy::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
 	
-	PatternCapture::PatternCapture(Token&& identifier, const PatternExpression& expression)
+	PatternCapture::PatternCapture(Token&& identifier, PatternExpression& expression)
 		: _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
 
-	void PatternCapture::pre_analyse(ResolutionContext& ctx) const
+	void PatternCapture::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternCapture::post_analyse(ResolutionContext& ctx) const
+	void PatternCapture::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternCapture::traverse(ASTVisitor& visitor) const
+	void PatternCapture::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
 
-	AppendStatement::AppendStatement(const PatternExpression& expression)
+	AppendStatement::AppendStatement(PatternExpression& expression)
 		: _expression(expression)
 	{
 	}
 
-	void AppendStatement::pre_analyse(ResolutionContext& ctx) const
+	void AppendStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void AppendStatement::post_analyse(ResolutionContext& ctx) const
+	void AppendStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void AppendStatement::traverse(ASTVisitor& visitor) const
+	void AppendStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
@@ -1295,12 +1460,12 @@ namespace lx
 	{
 	}
 
-	void FindStatement::pre_analyse(ResolutionContext& ctx) const
+	void FindStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void FindStatement::post_analyse(ResolutionContext& ctx) const
+	void FindStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
@@ -1310,32 +1475,32 @@ namespace lx
 	{
 	}
 
-	void FilterStatement::pre_analyse(ResolutionContext& ctx) const
+	void FilterStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void FilterStatement::post_analyse(ResolutionContext& ctx) const
+	void FilterStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	ReplaceStatement::ReplaceStatement(const Expression& match, const Expression& string)
+	ReplaceStatement::ReplaceStatement(Expression& match, Expression& string)
 		: _match(match), _string(string)
 	{
 	}
 
-	void ReplaceStatement::pre_analyse(ResolutionContext& ctx) const
+	void ReplaceStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void ReplaceStatement::post_analyse(ResolutionContext& ctx) const
+	void ReplaceStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void ReplaceStatement::traverse(ASTVisitor& visitor) const
+	void ReplaceStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_match.accept(visitor);
@@ -1347,22 +1512,22 @@ namespace lx
 	{
 	}
 
-	void ApplyStatement::pre_analyse(ResolutionContext& ctx) const
+	void ApplyStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void ApplyStatement::post_analyse(ResolutionContext& ctx) const
+	void ApplyStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	ScopeStatement::ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, const Expression& range)
+	ScopeStatement::ScopeStatement(Token&& symbol_token, BuiltinSymbol specifier, Expression& range)
 		: _symbol_token(std::move(symbol_token)), _specifier(specifier), _range(range)
 	{
 	}
 
-	void ScopeStatement::pre_analyse(ResolutionContext& ctx) const
+	void ScopeStatement::pre_analyse(ResolutionContext& ctx)
 	{
 		if (data_type(_specifier) == DataType::_Scope)
 			_validated = true;
@@ -1370,30 +1535,30 @@ namespace lx
 			ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
 	}
 
-	void ScopeStatement::post_analyse(ResolutionContext& ctx) const
+	void ScopeStatement::post_analyse(ResolutionContext& ctx)
 	{
 		const auto range_type = _range.evaltype(ctx);
 		if (!can_cast(range_type, DataType::IRange))
 			ctx.add_semantic_error(_range.segment(), "cannot convert to 'irange'");
 	}
 
-	void ScopeStatement::traverse(ASTVisitor& visitor) const
+	void ScopeStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_range.accept(visitor);
 	}
 	
-	PagePush::PagePush(const Expression& page)
+	PagePush::PagePush(Expression& page)
 		: _page(page)
 	{
 	}
 
-	void PagePush::pre_analyse(ResolutionContext& ctx) const
+	void PagePush::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PagePush::post_analyse(ResolutionContext& ctx) const
+	void PagePush::post_analyse(ResolutionContext& ctx)
 	{
 		if (!is_pageable(_page.evaltype(ctx)))
 		{
@@ -1403,28 +1568,28 @@ namespace lx
 		}
 	}
 
-	void PagePush::traverse(ASTVisitor& visitor) const
+	void PagePush::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_page.accept(visitor);
 	}
 
-	void PagePop::pre_analyse(ResolutionContext& ctx) const
+	void PagePop::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PagePop::post_analyse(ResolutionContext& ctx) const
+	void PagePop::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
 	}
 
-	void PageClearStack::pre_analyse(ResolutionContext& ctx) const
+	void PageClearStack::pre_analyse(ResolutionContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PageClearStack::post_analyse(ResolutionContext& ctx) const
+	void PageClearStack::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
 	}
