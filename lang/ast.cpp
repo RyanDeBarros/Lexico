@@ -119,6 +119,36 @@ namespace lx
 		_children.push_back(&child);
 	}
 
+	void IsolationBlock::post_analyse(ResolutionContext& ctx)
+	{
+		auto flow = block_upflow(ctx);
+
+		for (BreakStatement* b : flow.breaks)
+			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
+
+		for (ContinueStatement* c : flow.continues)
+			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
+
+		Block::post_analyse(ctx);
+	}
+
+	bool IsolationBlock::isolated() const
+	{
+		return true;
+	}
+
+	UpflowInfo IsolationBlock::impl_upflow(const ResolutionContext& ctx)
+	{
+		return {};
+	}
+
+	UpflowInfo IsolationBlock::block_upflow(const ResolutionContext& ctx)
+	{
+		if (!_block_upflow)
+			_block_upflow = Block::impl_upflow(ctx);
+		return *_block_upflow;
+	}
+
 	ASTRoot::ASTRoot(Token&& start_token)
 		: _start_token(std::move(start_token))
 	{
@@ -126,25 +156,9 @@ namespace lx
 
 	void ASTRoot::pre_analyse(ResolutionContext& ctx)
 	{
-		Block::pre_analyse(ctx);
+		IsolationBlock::pre_analyse(ctx);
 
 		_validated = true;
-	}
-
-	void ASTRoot::post_analyse(ResolutionContext& ctx)
-	{
-		auto flow = upflow(ctx);
-		for (BreakStatement* b : flow.breaks)
-			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
-		for (ContinueStatement* c : flow.continues)
-			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
-
-		Block::post_analyse(ctx);
-	}
-
-	bool ASTRoot::isolated() const
-	{
-		return true;
 	}
 
 	ScriptSegment ASTRoot::impl_segment() const
@@ -754,7 +768,7 @@ namespace lx
 
 		ctx.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line, ctx.scope_depth() == 0 ? Namespace::Global : Namespace::Local);
 
-		Block::pre_analyse(ctx);
+		IsolationBlock::pre_analyse(ctx);
 
 		for (size_t i = 0; i < _arglist.size(); ++i)
 			ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
@@ -764,7 +778,7 @@ namespace lx
 
 	void FunctionDefinition::post_analyse(ResolutionContext& ctx)
 	{
-		auto flow = Block::impl_upflow(ctx);
+		auto flow = block_upflow(ctx);
 
 		if (return_type() != DataType::Void && !flow.always_returns)
 			ctx.add_semantic_error(_identifier, "not all control paths return a value");
@@ -789,13 +803,7 @@ namespace lx
 			}
 		}
 
-		for (BreakStatement* b : flow.breaks)
-			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
-
-		for (ContinueStatement* c : flow.continues)
-			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
-
-		Block::post_analyse(ctx);
+		IsolationBlock::post_analyse(ctx);
 	}
 
 	UpflowInfo FunctionDefinition::impl_upflow(const ResolutionContext& ctx)
@@ -806,11 +814,6 @@ namespace lx
 	ScriptSegment FunctionDefinition::impl_segment() const
 	{
 		return _fn_token.segment.combined_right(_identifier.segment);
-	}
-
-	bool FunctionDefinition::isolated() const
-	{
-		return true;
 	}
 
 	std::vector<DataType> FunctionDefinition::arg_types() const
@@ -883,7 +886,7 @@ namespace lx
 
 	UpflowInfo IfConditional::impl_upflow(const ResolutionContext& ctx)
 	{
-		auto info = Block::impl_upflow(ctx);
+		auto info = block_upflow(ctx);
 		if (_fallback)
 		{
 			auto fallback_info = _fallback->upflow(ctx);
@@ -893,6 +896,13 @@ namespace lx
 			info.merge_loop_control(fallback_info);
 		}
 		return info;
+	}
+
+	UpflowInfo IfConditional::block_upflow(const ResolutionContext& ctx)
+	{
+		if (!_block_upflow)
+			_block_upflow = Block::impl_upflow(ctx);
+		return *_block_upflow;
 	}
 
 	IfStatement::IfStatement(Token&& if_token, Expression& condition)
@@ -1006,9 +1016,11 @@ namespace lx
 
 	void Loop::post_analyse(ResolutionContext& ctx)
 	{
-		auto subflow = Block::impl_upflow(ctx);
+		auto subflow = block_upflow(ctx);
+
 		for (BreakStatement* b : subflow.breaks)
 			b->attach_loop(this);
+
 		for (ContinueStatement* c : subflow.continues)
 			c->attach_loop(this);
 
@@ -1017,7 +1029,7 @@ namespace lx
 
 	UpflowInfo Loop::impl_upflow(const ResolutionContext& ctx)
 	{
-		auto info = Block::impl_upflow(ctx);
+		auto info = block_upflow(ctx);
 		info.always_returns &= !info.may_break;
 		info.may_break = false;
 		info.may_continue = false;
@@ -1030,7 +1042,14 @@ namespace lx
 	{
 		return _loop_token.segment;
 	}
-	
+
+	UpflowInfo Loop::block_upflow(const ResolutionContext& ctx)
+	{
+		if (!_block_upflow)
+			_block_upflow = Block::impl_upflow(ctx);
+		return *_block_upflow;
+	}
+
 	WhileLoop::WhileLoop(Token&& loop_token, Expression& condition)
 		: Loop(std::move(loop_token)), _condition(condition)
 	{
@@ -1262,6 +1281,8 @@ namespace lx
 		return _pattern_token.segment.combined_right(_identifier.segment);
 	}
 
+	// TODO remove PatternExpression entirely? Make sub-grammar just a subset of the normal expression grammar that's used for `string` and `pattern` data types.
+
 	PatternSubexpression::PatternSubexpression(Expression& expr)
 		: _expr(expr)
 	{
@@ -1300,13 +1321,7 @@ namespace lx
 
 	void PatternLiteral::post_analyse(ResolutionContext& ctx)
 	{
-		DataType type = literal_type(_literal.type);
-		if (type != DataType::Pattern && type != DataType::String)
-		{
-			std::stringstream ss;
-			ss << "literal type " << type << " is not implicitly convertible to " << DataType::Pattern << " or " << DataType::String;
-			ctx.add_semantic_error(_literal.segment, ss.str());
-		}
+		// NOP
 	}
 
 	ScriptSegment PatternLiteral::impl_segment() const
@@ -1585,7 +1600,7 @@ namespace lx
 
 	void AppendStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO assert expression type is pattern or string or srange (convertible to pattern)
 	}
 
 	void AppendStatement::traverse(ASTVisitor& visitor)
@@ -1606,12 +1621,14 @@ namespace lx
 
 	void FindStatement::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void FindStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO if abolishing separate pattern expressions, can pass pattern expressions directly to Find instead of only using pattern identifiers
+		// TODO in ASTRoot::post_analyse, check that all seen patterns are declared *somewhere* - look at control flow - or don't bother for now: just check if declared somewhere
+		//ctx.add_seen_pattern(_identifier.lexeme);
 	}
 
 	ScriptSegment FindStatement::impl_segment() const

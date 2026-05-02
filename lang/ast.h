@@ -82,17 +82,29 @@ namespace lx
 		void append(ASTNode& child);
 	};
 
-	class ASTRoot : public Block
+	class IsolationBlock : public Block
+	{
+		std::optional<UpflowInfo> _block_upflow;
+
+	public:
+		virtual void post_analyse(ResolutionContext& ctx) override;
+
+	protected:
+		bool isolated() const override;
+		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
+		UpflowInfo block_upflow(const ResolutionContext& ctx);
+	};
+
+	class ASTRoot : public IsolationBlock
 	{
 		Token _start_token;
 
 	public:
 		ASTRoot(Token&& start_token);
 
-	protected:
 		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-		bool isolated() const override;
+
+	protected:
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -369,7 +381,7 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class FunctionDefinition : public Block
+	class FunctionDefinition : public IsolationBlock
 	{
 		Token _fn_token;
 		Token _identifier;
@@ -385,7 +397,6 @@ namespace lx
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
 		ScriptSegment impl_segment() const override;
-		bool isolated() const override;
 
 	public:
 		std::vector<DataType> arg_types() const;
@@ -419,6 +430,8 @@ namespace lx
 	
 	class IfConditional : public virtual Block
 	{
+		std::optional<UpflowInfo> _block_upflow;
+
 	protected:
 		IfFallbackBlock* _fallback = nullptr;
 
@@ -427,6 +440,9 @@ namespace lx
 
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
+
+	private:
+		UpflowInfo block_upflow(const ResolutionContext& ctx);
 	};
 
 	class IfStatement : public IfConditional
@@ -480,6 +496,7 @@ namespace lx
 	class Loop : public Block
 	{
 		Token _loop_token;
+		std::optional<UpflowInfo> _block_upflow;
 
 	public:
 		Loop(Token&& loop_token);
@@ -490,6 +507,9 @@ namespace lx
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
 		ScriptSegment impl_segment() const override;
+
+	private:
+		UpflowInfo block_upflow(const ResolutionContext& ctx);
 	};
 
 	class WhileLoop : public Loop
