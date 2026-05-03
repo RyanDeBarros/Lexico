@@ -345,9 +345,9 @@ namespace lx
 		return _left.segment().combined_right(_right.segment());
 	}
 
-	StandardBinaryOperator BinaryExpression::op() const
+	BinaryOperator BinaryExpression::op() const
 	{
-		return standard_binary_operator(_op.type);
+		return binary_operator(_op.type);
 	}
 
 	MemberAccessExpression::MemberAccessExpression(Expression& object, Token&& member)
@@ -444,9 +444,9 @@ namespace lx
 		return _op.segment.combined_right(_expr.segment());
 	}
 
-	StandardPrefixOperator PrefixExpression::op() const
+	PrefixOperator PrefixExpression::op() const
 	{
-		return standard_prefix_operator(_op.type);
+		return prefix_operator(_op.type);
 	}
 
 	AsExpression::AsExpression(Expression& expr, Token&& type)
@@ -1281,209 +1281,76 @@ namespace lx
 		return _pattern_token.segment.combined_right(_identifier.segment);
 	}
 
-	// TODO remove PatternExpression entirely? Make sub-grammar just a subset of the normal expression grammar that's used for `string` and `pattern` data types.
-
-	PatternSubexpression::PatternSubexpression(Expression& expr)
-		: _expr(expr)
-	{
-	}
-
-	void PatternSubexpression::pre_analyse(ResolutionContext& ctx)
-	{
-		_expr.pre_analyse(ctx);
-	}
-
-	void PatternSubexpression::post_analyse(ResolutionContext& ctx)
-	{
-		_expr.post_analyse(ctx);
-	}
-
-	void PatternSubexpression::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_expr.accept(visitor);
-	}
-
-	ScriptSegment PatternSubexpression::impl_segment() const
-	{
-		return _expr.segment();
-	}
-
-	PatternLiteral::PatternLiteral(Token&& literal)
-		: _literal(std::move(literal))
-	{
-	}
-
-	void PatternLiteral::pre_analyse(ResolutionContext& ctx)
-	{
-		_validated = true;
-	}
-
-	void PatternLiteral::post_analyse(ResolutionContext& ctx)
-	{
-		// NOP
-	}
-
-	ScriptSegment PatternLiteral::impl_segment() const
-	{
-		return _literal.segment;
-	}
-
-	PatternIdentifier::PatternIdentifier(Token&& identifier)
-		: _identifier(std::move(identifier))
-	{
-	}
-
-	void PatternIdentifier::pre_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternIdentifier::post_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	ScriptSegment PatternIdentifier::impl_segment() const
-	{
-		return _identifier.segment;
-	}
-
-	PatternBuiltin::PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol)
-		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
-	{
-	}
-
-	void PatternBuiltin::pre_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternBuiltin::post_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	ScriptSegment PatternBuiltin::impl_segment() const
-	{
-		return _symbol_token.segment;
-	}
-
-	PatternAs::PatternAs(PatternExpression& expression, Token&& type)
-		: _expression(expression), _type(std::move(type))
-	{
-	}
-
-	void PatternAs::pre_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternAs::post_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternAs::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_expression.accept(visitor);
-	}
-
-	ScriptSegment PatternAs::impl_segment() const
-	{
-		return _expression.segment().combined_right(_type.segment);
-	}
-
-	PatternRepeat::PatternRepeat(PatternExpression& expression, Expression& range)
+	RepeatOperation::RepeatOperation(Expression& expression, Expression& range)
 		: _expression(expression), _range(range)
 	{
 	}
 
-	void PatternRepeat::pre_analyse(ResolutionContext& ctx)
+	void RepeatOperation::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternRepeat::post_analyse(ResolutionContext& ctx)
+	void RepeatOperation::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO try-catch evaltype()
 	}
 
-	void PatternRepeat::traverse(ASTVisitor& visitor)
+	void RepeatOperation::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 		_range.accept(visitor);
 	}
 
-	ScriptSegment PatternRepeat::impl_segment() const
+	DataType RepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		return DataType::Pattern;
+	}
+	
+	ScriptSegment RepeatOperation::impl_segment() const
 	{
 		return _expression.segment().combined_right(_range.segment());
 	}
 
-	PatternSimpleRepeat::PatternSimpleRepeat(PatternExpression& expression, Token&& op)
+	SimpleRepeatOperation::SimpleRepeatOperation(Expression& expression, Token&& op)
 		: _expression(expression), _op(std::move(op))
 	{
 	}
 
-	void PatternSimpleRepeat::pre_analyse(ResolutionContext& ctx)
+	void SimpleRepeatOperation::pre_analyse(ResolutionContext& ctx)
 	{
 		// TODO
 	}
 
-	void PatternSimpleRepeat::post_analyse(ResolutionContext& ctx)
+	void SimpleRepeatOperation::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO try-catch evaltype()
 	}
 
-	void PatternSimpleRepeat::traverse(ASTVisitor& visitor)
+	void SimpleRepeatOperation::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
 		_expression.accept(visitor);
 	}
 
-	ScriptSegment PatternSimpleRepeat::impl_segment() const
+	DataType SimpleRepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		return DataType::Pattern;
+	}
+
+	ScriptSegment SimpleRepeatOperation::impl_segment() const
 	{
 		return _expression.segment().combined_right(_op.segment);
 	}
 
-	PatternSimpleRepeatOperator PatternSimpleRepeat::op() const
+	PatternSimpleRepeatOperator SimpleRepeatOperation::op() const
 	{
 		return pattern_simple_repeat_operator(_op.type);
 	}
 
-	PatternPrefixOperation::PatternPrefixOperation(Token&& op, PatternExpression& expression)
-		: _op(std::move(op)), _expression(expression)
-	{
-	}
-
-	void PatternPrefixOperation::pre_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternPrefixOperation::post_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternPrefixOperation::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_expression.accept(visitor);
-	}
-
-	ScriptSegment PatternPrefixOperation::impl_segment() const
-	{
-		return _op.segment.combined_right(_expression.segment());
-	}
-
-	PatternPrefixOperator PatternPrefixOperation::op() const
-	{
-		return pattern_prefix_operator(_op.type);
-	}
-	
 	PatternBackRef::PatternBackRef(Token&& ref_token, Token&& identifier)
 		: _ref_token(std::move(ref_token)), _identifier(std::move(identifier))
 	{
@@ -1496,7 +1363,13 @@ namespace lx
 
 	void PatternBackRef::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO try-catch evaltype()
+	}
+
+	DataType PatternBackRef::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		return DataType::Pattern;
 	}
 
 	ScriptSegment PatternBackRef::impl_segment() const
@@ -1504,39 +1377,7 @@ namespace lx
 		return _ref_token.segment.combined_right(_identifier.segment);
 	}
 
-	PatternBinaryOperation::PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right)
-		: _op(std::move(op)), _left(left), _right(right)
-	{
-	}
-
-	void PatternBinaryOperation::pre_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternBinaryOperation::post_analyse(ResolutionContext& ctx)
-	{
-		// TODO
-	}
-
-	void PatternBinaryOperation::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_left.accept(visitor);
-		_right.accept(visitor);
-	}
-
-	ScriptSegment PatternBinaryOperation::impl_segment() const
-	{
-		return _left.segment().combined_right(_right.segment());
-	}
-
-	PatternBinaryOperator PatternBinaryOperation::op() const
-	{
-		return pattern_binary_operator(_op.type);
-	}
-	
-	PatternLazy::PatternLazy(Token&& lazy_token, PatternExpression& expression)
+	PatternLazy::PatternLazy(Token&& lazy_token, Expression& expression)
 		: _lazy_token(std::move(lazy_token)), _expression(expression)
 	{
 	}
@@ -1548,7 +1389,7 @@ namespace lx
 
 	void PatternLazy::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO try-catch evaltype()
 	}
 
 	void PatternLazy::traverse(ASTVisitor& visitor)
@@ -1557,12 +1398,18 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
+	DataType PatternLazy::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		return DataType::Pattern;
+	}
+
 	ScriptSegment PatternLazy::impl_segment() const
 	{
 		return _lazy_token.segment.combined_right(_expression.segment());
 	}
 
-	PatternCapture::PatternCapture(Token&& capture_token, Token&& identifier, PatternExpression& expression)
+	PatternCapture::PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression)
 		: _capture_token(std::move(capture_token)), _identifier(std::move(identifier)), _expression(expression)
 	{
 	}
@@ -1574,7 +1421,7 @@ namespace lx
 
 	void PatternCapture::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO try-catch evaltype()
 	}
 
 	void PatternCapture::traverse(ASTVisitor& visitor)
@@ -1583,12 +1430,18 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
+	DataType PatternCapture::impl_evaltype(const ResolutionContext& ctx) const
+	{
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		return DataType::Pattern;
+	}
+
 	ScriptSegment PatternCapture::impl_segment() const
 	{
 		return _capture_token.segment.combined_right(_expression.segment());
 	}
 
-	AppendStatement::AppendStatement(Token&& append_token, PatternExpression& expression)
+	AppendStatement::AppendStatement(Token&& append_token, Expression& expression)
 		: _append_token(std::move(append_token)), _expression(expression)
 	{
 	}
@@ -1600,7 +1453,7 @@ namespace lx
 
 	void AppendStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO assert expression type is pattern or string or srange (convertible to pattern)
+		// TODO check that _expression.evaltype() is convertible to 'pattern'
 	}
 
 	void AppendStatement::traverse(ASTVisitor& visitor)

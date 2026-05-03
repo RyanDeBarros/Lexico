@@ -228,7 +228,7 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		StandardBinaryOperator op() const;
+		BinaryOperator op() const;
 	};
 
 	class MemberAccessExpression : public Expression
@@ -270,7 +270,7 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		StandardPrefixOperator op() const;
+		PrefixOperator op() const;
 	};
 
 	class AsExpression : public Expression
@@ -645,139 +645,44 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternExpression : public ASTNode
+	class RepeatOperation : public Expression
 	{
-	};
-
-	class PatternSubexpression : public PatternExpression
-	{
-		Expression& _expr;
-
-	public:
-		PatternSubexpression(Expression& expr);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternLiteral : public PatternExpression
-	{
-		Token _literal;
-
-	public:
-		PatternLiteral(Token&& literal);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternIdentifier : public PatternExpression
-	{
-		Token _identifier;
-
-	public:
-		PatternIdentifier(Token&& identifier);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternBuiltin : public PatternExpression
-	{
-		Token _symbol_token;
-		BuiltinSymbol _builtin_symbol;
-
-	public:
-		PatternBuiltin(Token&& symbol_token, BuiltinSymbol builtin_symbol);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternAs : public PatternExpression
-	{
-		PatternExpression& _expression;
-		Token _type;
-
-	public:
-		PatternAs(PatternExpression& expression, Token&& type);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternRepeat : public PatternExpression
-	{
-		PatternExpression& _expression;
+		Expression& _expression;
 		Expression& _range;
 
 	public:
-		PatternRepeat(PatternExpression& expression, Expression& range);
+		RepeatOperation(Expression& expression, Expression& range);
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternSimpleRepeat : public PatternExpression
+	class SimpleRepeatOperation : public Expression
 	{
-		PatternExpression& _expression;
+		Expression& _expression;
 		Token _op;
 
 	public:
-		PatternSimpleRepeat(PatternExpression& expression, Token&& op);
+		SimpleRepeatOperation(Expression& expression, Token&& op);
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
 	public:
 		PatternSimpleRepeatOperator op() const;
 	};
 
-	class PatternPrefixOperation : public PatternExpression
-	{
-		Token _op;
-		PatternExpression& _expression;
-
-	public:
-		PatternPrefixOperation(Token&& op, PatternExpression& expression);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-
-	public:
-		PatternPrefixOperator op() const;
-	};
-
-	class PatternBackRef : public PatternExpression
+	class PatternBackRef : public Expression
 	{
 		Token _ref_token;
 		Token _identifier;
@@ -789,69 +694,52 @@ namespace lx
 		void post_analyse(ResolutionContext& ctx) override;
 
 	protected:
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternBinaryOperation : public PatternExpression
-	{
-		Token _op;
-		PatternExpression& _left;
-		PatternExpression& _right;
-
-	public:
-		PatternBinaryOperation(Token&& op, PatternExpression& left, PatternExpression& right);
-
-		void pre_analyse(ResolutionContext& ctx) override;
-		void post_analyse(ResolutionContext& ctx) override;
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-
-	public:
-		PatternBinaryOperator op() const;
-	};
-
-	class PatternLazy : public PatternExpression
+	class PatternLazy : public Expression
 	{
 		Token _lazy_token;
-		PatternExpression& _expression;
+		Expression& _expression;
 
 	public:
-		PatternLazy(Token&& lazy_token, PatternExpression& expression);
+		PatternLazy(Token&& lazy_token, Expression& expression);
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternCapture : public PatternExpression
+	class PatternCapture : public Expression
 	{
 		Token _capture_token;
 		Token _identifier;
-		PatternExpression& _expression;
+		Expression& _expression;
 
 	public:
-		PatternCapture(Token&& capture_token, Token&& identifier, PatternExpression& expression);
+		PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression);
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
+		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
 
 	class AppendStatement : public ASTNode
 	{
 		Token _append_token;
-		PatternExpression& _expression;
+		Expression& _expression;
 
 	public:
-		AppendStatement(Token&& append_token, PatternExpression& expression);
+		AppendStatement(Token&& append_token, Expression& expression);
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;

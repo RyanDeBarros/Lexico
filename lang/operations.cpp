@@ -354,38 +354,44 @@ namespace lx
 		}
 	}
 
-	StandardBinaryOperator standard_binary_operator(TokenType type)
+	BinaryOperator binary_operator(TokenType type)
 	{
 		switch (type)
 		{
 		case TokenType::And:
-			return StandardBinaryOperator::And;
+			return BinaryOperator::And;
 		case TokenType::Asterisk:
-			return StandardBinaryOperator::Asterisk;
+			return BinaryOperator::Asterisk;
+		case TokenType::Comma:
+			return BinaryOperator::Comma;
 		case TokenType::EqualTo:
-			return StandardBinaryOperator::EqualTo;
+			return BinaryOperator::EqualTo;
+		case TokenType::Except:
+			return BinaryOperator::Except;
 		case TokenType::GreaterThan:
-			return StandardBinaryOperator::GreaterThan;
+			return BinaryOperator::GreaterThan;
 		case TokenType::GreaterThanOrEqualTo:
-			return StandardBinaryOperator::GreaterThanOrEqualTo;
+			return BinaryOperator::GreaterThanOrEqualTo;
 		case TokenType::LessThan:
-			return StandardBinaryOperator::LessThan;
+			return BinaryOperator::LessThan;
 		case TokenType::LessThanOrEqualTo:
-			return StandardBinaryOperator::LessThanOrEqualTo;
+			return BinaryOperator::LessThanOrEqualTo;
 		case TokenType::Minus:
-			return StandardBinaryOperator::Minus;
+			return BinaryOperator::Minus;
 		case TokenType::Mod:
-			return StandardBinaryOperator::Mod;
+			return BinaryOperator::Mod;
 		case TokenType::NotEqualTo:
-			return StandardBinaryOperator::NotEqualTo;
+			return BinaryOperator::NotEqualTo;
 		case TokenType::Or:
-			return StandardBinaryOperator::Or;
+			return BinaryOperator::Or;
 		case TokenType::Plus:
-			return StandardBinaryOperator::Plus;
+			return BinaryOperator::Plus;
+		case TokenType::Repeat:
+			return BinaryOperator::Repeat;
 		case TokenType::Slash:
-			return StandardBinaryOperator::Slash;
+			return BinaryOperator::Slash;
 		case TokenType::To:
-			return StandardBinaryOperator::To;
+			return BinaryOperator::To;
 		default:
 		{
 			std::stringstream ss;
@@ -395,64 +401,81 @@ namespace lx
 		}
 	}
 
-	std::optional<DataType> evaltype(StandardBinaryOperator op, DataType lhs, DataType rhs)
+	std::optional<DataType> evaltype(BinaryOperator op, DataType lhs, DataType rhs)
 	{
 		switch (op)
 		{
-		case StandardBinaryOperator::And:
-		case StandardBinaryOperator::Or:
+		case BinaryOperator::And:
+		case BinaryOperator::Or:
 			if (lhs == DataType::Bool && rhs == DataType::Bool)
 				return DataType::Bool;
 			break;
 
-		case StandardBinaryOperator::Asterisk:
-		case StandardBinaryOperator::Minus:
-		case StandardBinaryOperator::Mod:
-		case StandardBinaryOperator::Plus:
-		case StandardBinaryOperator::Slash:
+		case BinaryOperator::Asterisk:
+		case BinaryOperator::Minus:
+		case BinaryOperator::Mod:
+		case BinaryOperator::Plus:
+		case BinaryOperator::Slash:
 			if (lhs == DataType::Int && rhs == DataType::Int)
 				return DataType::Int;
 			else if ((lhs == DataType::Int || lhs == DataType::Float) && (rhs == DataType::Int || rhs == DataType::Float))
 				return DataType::Float;
 			break;
 		
-		case StandardBinaryOperator::EqualTo:
-		case StandardBinaryOperator::NotEqualTo:
+		case BinaryOperator::EqualTo:
+		case BinaryOperator::NotEqualTo:
 			if (lhs == rhs && lhs != DataType::Void)
 				return DataType::Bool;
 			break;
 		
-		case StandardBinaryOperator::GreaterThan:
-		case StandardBinaryOperator::GreaterThanOrEqualTo:
-		case StandardBinaryOperator::LessThan:
-		case StandardBinaryOperator::LessThanOrEqualTo:
+		case BinaryOperator::GreaterThan:
+		case BinaryOperator::GreaterThanOrEqualTo:
+		case BinaryOperator::LessThan:
+		case BinaryOperator::LessThanOrEqualTo:
 			if ((lhs == DataType::Int || lhs == DataType::Float) && (rhs == DataType::Int || rhs == DataType::Float))
 				return DataType::Bool;
 			break;
 
-		case StandardBinaryOperator::To:
+		case BinaryOperator::To:
 			if (lhs == DataType::Int && rhs == DataType::Int)
 				return DataType::IRange;
 			else if (lhs == DataType::String && rhs == DataType::String)
 				return DataType::SRange;
 			break;
+
+		case BinaryOperator::Comma:
+		case BinaryOperator::Except:
+		case BinaryOperator::Repeat:
+			break; // TODO if lhs and rhs are both convertible to pattern, return pattern
 		}
 
 		return std::nullopt;
 	}
 
-	StandardPrefixOperator standard_prefix_operator(TokenType type)
+	PrefixOperator prefix_operator(TokenType type)
 	{
 		switch (type)
 		{
+		case TokenType::Ahead:
+			return PrefixOperator::Ahead;
+		case TokenType::Behind:
+			return PrefixOperator::Behind;
 		case TokenType::Max:
-			return StandardPrefixOperator::Max;
+			return PrefixOperator::Max;
 		case TokenType::Min:
-			return StandardPrefixOperator::Min;
+			return PrefixOperator::Min;
 		case TokenType::Minus:
-			return StandardPrefixOperator::Minus;
+			return PrefixOperator::Minus;
 		case TokenType::Not:
-			return StandardPrefixOperator::Not;
+			return PrefixOperator::Not;
+		case TokenType::NotAhead:
+			return PrefixOperator::NotAhead;
+		case TokenType::NotBehind:
+			return PrefixOperator::NotBehind;
+		case TokenType::Optional:
+			return PrefixOperator::Optional;
+		case TokenType::Ref:
+			return PrefixOperator::Ref;
 		default:
 		{
 			std::stringstream ss;
@@ -462,24 +485,32 @@ namespace lx
 		}
 	}
 
-	std::optional<DataType> evaltype(StandardPrefixOperator op, DataType type)
+	std::optional<DataType> evaltype(PrefixOperator op, DataType type)
 	{
 		switch (op)
 		{
-		case StandardPrefixOperator::Max:
-		case StandardPrefixOperator::Min:
+		case PrefixOperator::Ahead:
+		case PrefixOperator::Behind:
+		case PrefixOperator::NotAhead:
+		case PrefixOperator::NotBehind:
+		case PrefixOperator::Optional:
+		case PrefixOperator::Ref:
+			break;  // TODO if type is convertible to pattern, return pattern
+
+		case PrefixOperator::Max:
+		case PrefixOperator::Min:
 			if (type == DataType::Int)
 				return DataType::IRange;
 			else if (type == DataType::String)
 				return DataType::SRange;
 			break;
 
-		case StandardPrefixOperator::Minus:
+		case PrefixOperator::Minus:
 			if (type == DataType::Int || type == DataType::Float)
 				return type;
 			break;
 
-		case StandardPrefixOperator::Not:
+		case PrefixOperator::Not:
 			if (type == DataType::Bool)
 				return type;
 			break;
@@ -496,60 +527,6 @@ namespace lx
 			return PatternSimpleRepeatOperator::Asterisk;
 		case TokenType::Plus:
 			return PatternSimpleRepeatOperator::Plus;
-		default:
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		}
-	}
-
-	PatternPrefixOperator pattern_prefix_operator(TokenType type)
-	{
-		switch (type)
-		{
-		case TokenType::Ahead:
-			return PatternPrefixOperator::Ahead;
-		case TokenType::Behind:
-			return PatternPrefixOperator::Behind;
-		case TokenType::Max:
-			return PatternPrefixOperator::Max;
-		case TokenType::Min:
-			return PatternPrefixOperator::Min;
-		case TokenType::Not:
-			return PatternPrefixOperator::Not;
-		case TokenType::NotAhead:
-			return PatternPrefixOperator::NotAhead;
-		case TokenType::NotBehind:
-			return PatternPrefixOperator::NotBehind;
-		case TokenType::Optional:
-			return PatternPrefixOperator::Optional;
-		case TokenType::Ref:
-			return PatternPrefixOperator::Ref;
-		default:
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		}
-	}
-
-	PatternBinaryOperator pattern_binary_operator(TokenType type)
-	{
-		switch (type)
-		{
-		case TokenType::Comma:
-			return PatternBinaryOperator::Comma;
-		case TokenType::Except:
-			return PatternBinaryOperator::Except;
-		case TokenType::Or:
-			return PatternBinaryOperator::Or;
-		case TokenType::Repeat:
-			return PatternBinaryOperator::Repeat;
-		case TokenType::To:
-			return PatternBinaryOperator::To;
 		default:
 		{
 			std::stringstream ss;

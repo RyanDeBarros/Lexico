@@ -76,11 +76,13 @@ namespace lx
 	extern bool is_highlightable(DataType type);
 	extern bool is_pageable(DataType type);
 
-	enum class StandardBinaryOperator
+	enum class BinaryOperator
 	{
 		And,
 		Asterisk,
+		Comma,
 		EqualTo,
+		Except,
 		GreaterThan,
 		GreaterThanOrEqualTo,
 		LessThan,
@@ -90,25 +92,32 @@ namespace lx
 		NotEqualTo,
 		Or,
 		Plus,
+		Repeat,
 		Slash,
 		To,
 	};
 
-	extern StandardBinaryOperator standard_binary_operator(TokenType type);
+	extern BinaryOperator binary_operator(TokenType type);
 
-	extern std::optional<DataType> evaltype(StandardBinaryOperator op, DataType lhs, DataType rhs);
+	extern std::optional<DataType> evaltype(BinaryOperator op, DataType lhs, DataType rhs);
 
-	enum class StandardPrefixOperator
+	enum class PrefixOperator
 	{
+		Ahead,
+		Behind,
 		Max,
 		Min,
 		Minus,
 		Not,
+		NotAhead,
+		NotBehind,
+		Optional,
+		Ref,
 	};
 
-	extern StandardPrefixOperator standard_prefix_operator(TokenType type);
+	extern PrefixOperator prefix_operator(TokenType type);
 
-	extern std::optional<DataType> evaltype(StandardPrefixOperator op, DataType type);
+	extern std::optional<DataType> evaltype(PrefixOperator op, DataType type);
 
 	enum class PatternSimpleRepeatOperator
 	{
@@ -117,30 +126,4 @@ namespace lx
 	};
 
 	extern PatternSimpleRepeatOperator pattern_simple_repeat_operator(TokenType type);
-
-	enum class PatternPrefixOperator
-	{
-		Ahead,
-		Behind,
-		Max,
-		Min,
-		Not,
-		NotAhead,
-		NotBehind,
-		Optional,
-		Ref,
-	};
-
-	extern PatternPrefixOperator pattern_prefix_operator(TokenType type);
-
-	enum class PatternBinaryOperator
-	{
-		Comma,
-		Except,
-		Or,
-		Repeat,
-		To,
-	};
-
-	extern PatternBinaryOperator pattern_binary_operator(TokenType type);
 }

@@ -306,7 +306,7 @@ namespace lx
 			assert_tokens_exist(1, errors::EXPECTED_PATTERN_EXPRESSION);
 			auto& append_token = ref(0);
 			auto offset = token_offset(1);
-			PatternExpression& expr = parse_pattern_expression(offset);
+			Expression& expr = parse_expression(offset);
 			offset.submit();
 			append_to_context(std::make_unique<AppendStatement>(std::move(append_token), expr));
 			return true;
@@ -759,23 +759,73 @@ namespace lx
 			if (!continue_statement())
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
-			Expression* lhs = &parse_primary_expression(offset);
-			parse_binary_expressions(lhs, offset, min_precedence);
-			return parse_postfix_expression(*lhs, offset);
-		}
-
-		PatternExpression& parse_pattern_expression(TokenOffset& offset, Precedence min_precedence = Precedence::Lowest)
-		{
-			if (!continue_statement())
-				throw_error(errors::EXPECTED_EXPRESSION, 0);
-
-			PatternExpression* lhs = parse_wrapper_pattern_expression(offset);
+			Expression* lhs = parse_wrapper_pattern_expression(offset);
 			if (lhs)
 				return *lhs;
 
-			lhs = &parse_primary_pattern_expression(offset);
-			parse_binary_pattern_expressions(lhs, offset, min_precedence);
-			parse_postfix_pattern_expressions(lhs, offset);
+			lhs = &parse_primary_expression(offset);
+
+			while (continue_statement())
+			{
+				if (peek_token_is(0, TokenType::LBracket))
+				{
+					lhs = &parse_subscript_expression(*lhs, offset);
+					continue;
+				}
+				
+				if (peek_token_is(0, TokenType::Dot))
+				{
+					offset.add(1);
+					auto& member = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+					offset.add(1);
+					MemberAccessExpression& expr = _tree.add(std::make_unique<MemberAccessExpression>(*lhs, std::move(member)));
+
+					if (peek_token_is(0, TokenType::LParen))
+						lhs = &parse_method_call_expression(expr, offset);
+					else
+						lhs = &expr;
+
+					continue;
+				}
+				
+				if (peek(0).is_postfix_operator())
+				{
+					if (!peek(0).is_binary_operator() || !(
+						peek_token_is(1, TokenType::Identifier) ||
+						peek_token_is(1, TokenType::BuiltinSymbol) ||
+						peek_token_is(1, TokenType::Percent) ||
+						peek_token_is(1, TokenType::LParen) ||
+						peek_token_is(1, TokenType::LBracket) ||
+						peek(1).is_literal() ||
+						peek(1).is_prefix_operator()))
+					{
+						if (peek_token_is(0, TokenType::As))
+							lhs = &parse_as_expression(*lhs, offset);
+						else
+							lhs = &parse_simple_repeat_expression(*lhs, offset);
+
+						continue;
+					}
+				}
+				
+				if (peek(0).is_binary_operator())
+				{
+					Precedence precedence = peek(0).precedence();
+					if (precedence < min_precedence)
+						break;
+
+					auto& op = ref(0);
+					offset.add(1);
+					Precedence next_min_precedence = precedence + (op.is_right_associative() ? 0 : 1);
+					Expression& rhs = parse_expression(offset, next_min_precedence);
+					lhs = &_tree.add(std::make_unique<BinaryExpression>(std::move(op), *lhs, rhs));
+
+					continue;
+				}
+
+				break;
+			}
+
 			return *lhs;
 		}
 
@@ -784,9 +834,9 @@ namespace lx
 			if (peek_token_is(0, TokenType::Identifier))
 				return parse_identifier_expression(offset);
 			else if (peek_token_is(0, TokenType::BuiltinSymbol) || peek_token_is(0, TokenType::Percent))
-				return parse_symbol_expression<BuiltinSymbolExpression>(offset);
+				return parse_symbol_expression(offset);
 			else if (peek(0).is_literal())
-				return parse_literal_expression<LiteralExpression>(offset);
+				return parse_literal_expression(offset);
 			else if (peek_token_is(0, TokenType::LParen))
 				return parse_group_expression(offset);
 			else if (peek(0).is_prefix_operator())
@@ -851,23 +901,21 @@ namespace lx
 			return args;
 		}
 
-		template<typename T>
-		T& parse_symbol_expression(TokenOffset& offset) requires (std::is_same_v<T, BuiltinSymbolExpression> || std::is_same_v<T, PatternBuiltin>)
+		Expression& parse_symbol_expression(TokenOffset& offset)
 		{
 			auto symbol = parse_builtin_symbol(peek(0).lexeme);
 			if (!symbol)
 				throw_error(errors::UNRECOGNIZED_SYMBOL, 0);
 			auto& symbol_token = ref(0);
 			offset.add(1);
-			return _tree.add(std::make_unique<T>(std::move(symbol_token), *symbol));
+			return _tree.add(std::make_unique<BuiltinSymbolExpression>(std::move(symbol_token), *symbol));
 		}
 
-		template<typename T>
-		T& parse_literal_expression(TokenOffset& offset) requires (std::is_same_v<T, LiteralExpression> || std::is_same_v<T, PatternLiteral>)
+		Expression& parse_literal_expression(TokenOffset& offset)
 		{
 			auto& literal = ref(0);
 			offset.add(1);
-			return _tree.add(std::make_unique<T>(std::move(literal)));
+			return _tree.add(std::make_unique<LiteralExpression>(std::move(literal)));
 		}
 
 		Expression& parse_list_expression(TokenOffset& offset)
@@ -929,59 +977,22 @@ namespace lx
 			return _tree.add(std::make_unique<PrefixExpression>(std::move(op), rhs));
 		}
 
-		void parse_binary_expressions(Expression*& lhs, TokenOffset& offset, Precedence min_precedence)
-		{
-			while (continue_statement() && (peek(0).is_binary_operator() || peek_token_is(0, TokenType::Dot)
-				|| peek_token_is(0, TokenType::LParen) || peek_token_is(0, TokenType::LBracket)))
-			{
-				if (peek_token_is(0, TokenType::LBracket))
-					lhs = &parse_subscript_expression(*lhs, offset);
-				else if (peek_token_is(0, TokenType::Dot))
-				{
-					offset.add(1);
-					auto& member = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
-					offset.add(1);
-					MemberAccessExpression& expr = _tree.add(std::make_unique<MemberAccessExpression>(*lhs, std::move(member)));
-
-					if (peek_token_is(0, TokenType::LParen))
-						lhs = &parse_method_call_expression(expr, offset);
-					else
-						lhs = &expr;
-				}
-				else
-				{
-					Precedence precedence = peek(0).precedence();
-					if (precedence < min_precedence)
-						break;
-
-					auto& op = ref(0);
-					offset.add(1);
-
-					Precedence next_min_precedence = precedence + (op.is_right_associative() ? 0 : 1);
-					Expression& rhs = parse_expression(offset, next_min_precedence);
-					lhs = &_tree.add(std::make_unique<BinaryExpression>(std::move(op), *lhs, rhs));
-				}
-			}
-		}
-
-		Expression& parse_postfix_expression(Expression& lhs, TokenOffset& offset)
-		{
-			if (peek_token_is(0, TokenType::As))
-				return parse_as_expression<AsExpression>(lhs, offset);
-			else
-				return lhs;
-		}
-
-		template<typename T, typename Expr>
-		Expr& parse_as_expression(Expr& lhs, TokenOffset& offset) requires (std::is_same_v<T, AsExpression> || std::is_same_v<T, PatternAs>)
+		Expression& parse_as_expression(Expression& lhs, TokenOffset& offset)
 		{
 			offset.add(1);
 			auto& datatype = parse_datatype(0);
 			offset.add(1);
-			return _tree.add(std::make_unique<T>(lhs, std::move(datatype)));
+			return _tree.add(std::make_unique<AsExpression>(lhs, std::move(datatype)));
 		}
 
-		PatternExpression* parse_wrapper_pattern_expression(TokenOffset& offset)
+		Expression& parse_simple_repeat_expression(Expression& lhs, TokenOffset& offset)
+		{
+			auto& op = ref(0);
+			offset.add(1);
+			return _tree.add(std::make_unique<SimpleRepeatOperation>(lhs, std::move(op)));
+		}
+
+		Expression* parse_wrapper_pattern_expression(TokenOffset& offset)
 		{
 			if (peek_token_is(0, TokenType::Capture))
 			{
@@ -989,96 +1000,16 @@ namespace lx
 				offset.add(1);
 				auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_pattern_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset, Precedence::Lowest)));
 			}
 			else if (peek_token_is(0, TokenType::Lazy))
 			{
 				auto& lazy_token = ref(0);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_pattern_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset, Precedence::Lowest)));
 			}
 			else
 				return nullptr;
-		}
-
-		PatternExpression& parse_primary_pattern_expression(TokenOffset& offset)
-		{
-			if (peek_token_is(0, TokenType::Identifier))
-				return parse_identifier_pattern_expression(offset);
-			else if (peek_token_is(0, TokenType::BuiltinSymbol) || peek_token_is(0, TokenType::Percent))
-				return parse_symbol_expression<PatternBuiltin>(offset);
-			else if (peek(0).is_literal())
-				return parse_literal_expression<PatternLiteral>(offset);
-			else if (peek_token_is(0, TokenType::LParen))
-				return parse_group_pattern_expression(offset);
-			else if (peek(0).is_prefix_pattern_operator())
-				return parse_prefix_pattern_expression(offset);
-			else
-				return _tree.add(std::make_unique<PatternSubexpression>(parse_expression(offset, Precedence::Lowest)));
-		}
-
-		PatternExpression& parse_identifier_pattern_expression(TokenOffset& offset)
-		{
-			auto& identifier = ref(0);
-			offset.add(1);
-
-			if (!peek_token_is(0, TokenType::LParen))
-				return _tree.add(std::make_unique<PatternIdentifier>(std::move(identifier)));
-			else
-				return _tree.add(std::make_unique<PatternSubexpression>(parse_function_call_expression(std::move(identifier), offset)));
-		}
-
-		PatternExpression& parse_group_pattern_expression(TokenOffset& offset)
-		{
-			offset.add(1);  // '('
-			PatternExpression& expr = parse_pattern_expression(offset, Precedence::Lowest);
-			if (!peek_token_is(0, TokenType::RParen))
-				throw_error(errors::EXPECTED_RPAREN, 0);
-			offset.add(1);  // ')'
-			return expr;
-		}
-
-		PatternExpression& parse_prefix_pattern_expression(TokenOffset& offset)
-		{
-			auto& op = ref(0);
-			offset.add(1);
-			PatternExpression& rhs = parse_pattern_expression(offset, Precedence::Prefix);
-			return _tree.add(std::make_unique<PatternPrefixOperation>(std::move(op), rhs));
-		}
-
-		void parse_binary_pattern_expressions(PatternExpression*& lhs, TokenOffset& offset, Precedence min_precedence)
-		{
-			while (continue_statement() && peek(0).is_binary_pattern_operator())
-			{
-				Precedence precedence = peek(0).pattern_precedence();
-				if (precedence < min_precedence)
-					break;
-
-				auto& op = ref(0);
-				offset.add(1);
-
-				Precedence next_min_precedence = precedence + (op.is_pattern_right_associative() ? 0 : 1);
-				PatternExpression& rhs = parse_pattern_expression(offset, next_min_precedence);
-				lhs = &_tree.add(std::make_unique<PatternBinaryOperation>(std::move(op), *lhs, rhs));
-			}
-		}
-
-		void parse_postfix_pattern_expressions(PatternExpression*& lhs, TokenOffset& offset)
-		{
-			while (continue_statement() && peek(0).is_postfix_pattern_operator())
-			{
-				if (peek_token_is(0, TokenType::As))
-					lhs = &parse_as_expression<PatternAs>(*lhs, offset);
-				else
-					lhs = &parse_simple_repeat_expression(*lhs, offset);
-			}
-		}
-
-		PatternExpression& parse_simple_repeat_expression(PatternExpression& lhs, TokenOffset& offset)
-		{
-			auto& op = ref(0);
-			offset.add(1);
-			return _tree.add(std::make_unique<PatternSimpleRepeat>(lhs, std::move(op)));
 		}
 	};
 

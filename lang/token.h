@@ -118,13 +118,12 @@ namespace lx
 		And,
 		Equality,
 		Compare,
-		NormalTo,
 		Except,
 		Sum,
 		Mult,
 		Prefix,
 		Repeat,
-		PatternTo,
+		To,
 		Dot,
 	};
 
@@ -166,16 +165,10 @@ namespace lx
 
 		bool is_binary_operator() const;
 		bool is_prefix_operator() const;
+		bool is_postfix_operator() const;
 
 		Precedence precedence() const;
 		bool is_right_associative() const;
-
-		bool is_binary_pattern_operator() const;
-		bool is_postfix_pattern_operator() const;
-		bool is_prefix_pattern_operator() const;
-
-		Precedence pattern_precedence() const;
-		bool is_pattern_right_associative() const;
 	};
 
 	class TokenStream

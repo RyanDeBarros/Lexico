@@ -162,7 +162,9 @@ namespace lx
 		{
 		case TokenType::And:
 		case TokenType::Asterisk:
+		case TokenType::Comma:
 		case TokenType::EqualTo:
+		case TokenType::Except:
 		case TokenType::GreaterThan:
 		case TokenType::GreaterThanOrEqualTo:
 		case TokenType::LessThan:
@@ -172,6 +174,7 @@ namespace lx
 		case TokenType::NotEqualTo:
 		case TokenType::Or:
 		case TokenType::Plus:
+		case TokenType::Repeat:
 		case TokenType::Slash:
 		case TokenType::To:
 			return true;
@@ -184,10 +187,29 @@ namespace lx
 	{
 		switch (type)
 		{
+		case TokenType::Ahead:
+		case TokenType::Behind:
 		case TokenType::Max:
 		case TokenType::Min:
 		case TokenType::Minus:
 		case TokenType::Not:
+		case TokenType::NotAhead:
+		case TokenType::NotBehind:
+		case TokenType::Optional:
+		case TokenType::Ref:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool Token::is_postfix_operator() const
+	{
+		switch (type)
+		{
+		case TokenType::As:
+		case TokenType::Asterisk:
+		case TokenType::Plus:
 			return true;
 		default:
 			return false;
@@ -207,9 +229,6 @@ namespace lx
 		case TokenType::Minus:
 			return Precedence::Sum;
 
-		case TokenType::To:
-			return Precedence::NormalTo;
-
 		case TokenType::LessThan:
 		case TokenType::LessThanOrEqualTo:
 		case TokenType::GreaterThan:
@@ -226,87 +245,24 @@ namespace lx
 		case TokenType::Or:
 			return Precedence::Or;
 
+		case TokenType::To:
+			return Precedence::To;
+
+		case TokenType::Repeat:
+			return Precedence::Repeat;
+
+		case TokenType::Except:
+			return Precedence::Except;
+
+		case TokenType::Comma:
+			return Precedence::Comma;
+
 		default:
 			return Precedence::None;
 		}
 	}
 
 	bool Token::is_right_associative() const
-	{
-		switch (type)
-		{
-		default:
-			return false;
-		}
-	}
-
-	bool Token::is_binary_pattern_operator() const
-	{
-		switch (type)
-		{
-		case TokenType::Comma:
-		case TokenType::Except:
-		case TokenType::Or:
-		case TokenType::Repeat:
-		case TokenType::To:
-			return true;
-		default:
-			return false;
-		}
-	}
-	
-	bool Token::is_postfix_pattern_operator() const
-	{
-		switch (type)
-		{
-		case TokenType::As:
-		case TokenType::Asterisk:
-		case TokenType::Plus:
-			return true;
-		default:
-			return false;
-		}
-	}
-	
-	bool Token::is_prefix_pattern_operator() const
-	{
-		switch (type)
-		{
-		case TokenType::Ahead:
-		case TokenType::Behind:
-		case TokenType::Max:
-		case TokenType::Min:
-		case TokenType::Not:
-		case TokenType::NotAhead:
-		case TokenType::NotBehind:
-		case TokenType::Optional:
-		case TokenType::Ref:
-			return true;
-		default:
-			return false;
-		}
-	}
-
-	Precedence Token::pattern_precedence() const
-	{
-		switch (type)
-		{
-		case TokenType::To:
-			return Precedence::PatternTo;
-		case TokenType::Repeat:
-			return Precedence::Repeat;
-		case TokenType::Except:
-			return Precedence::Except;
-		case TokenType::Or:
-			return Precedence::Or;
-		case TokenType::Comma:
-			return Precedence::Comma;
-		default:
-			return Precedence::None;
-		}
-	}
-	
-	bool Token::is_pattern_right_associative() const
 	{
 		switch (type)
 		{
