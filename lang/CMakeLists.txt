@@ -10,6 +10,7 @@ set(LANG_SOURCES
 	ast.cpp
 	operations.cpp
 	symbols.cpp
+	types.cpp
 	util.cpp
 )
 

@@ -1,0 +1,272 @@
+#pragma once
+
+#include "operations.h"
+#include "errors.h"
+
+namespace lx
+{
+#define LX_EXPAND_BY_TYPE(M, Sep) \
+	M(Int) Sep \
+	M(Float) Sep \
+	M(Bool) Sep \
+	M(String) Sep \
+	M(Void) Sep \
+	M(Pattern) Sep \
+	M(Match) Sep \
+	M(Matches) Sep \
+	M(CapId) Sep \
+	M(Cap) Sep \
+	M(IRange) Sep \
+	M(SRange) Sep \
+	M(List) Sep \
+	M(Unresolved) Sep \
+	M(Marker) Sep \
+	M(Scope) Sep \
+	M(Color)
+
+#define LX_EXPAND_BY_PUBLIC_TYPE(M) \
+	M(Int) \
+	M(Float) \
+	M(Bool) \
+	M(String) \
+	M(Void) \
+	M(Pattern) \
+	M(Match) \
+	M(Matches) \
+	M(CapId) \
+	M(Cap) \
+	M(IRange) \
+	M(SRange) \
+	M(List)
+
+#define LX_EXPAND_BY_INTERNAL_TYPE(M) \
+	M(Unresolved) \
+	M(Marker) \
+	M(Scope) \
+	M(Color)
+
+#define LX_FORWARD_DECLARE(U) class U;
+	LX_EXPAND_BY_TYPE(LX_FORWARD_DECLARE,)
+#undef LX_FORWARD_DECLARE
+
+	class Int
+	{
+
+	};
+
+	class Float
+	{
+
+	};
+
+	class Bool
+	{
+
+	};
+
+	class String
+	{
+
+	};
+
+	class Void
+	{
+	};
+
+	class Pattern
+	{
+	};
+
+	class Match
+	{
+	};
+
+	class Matches
+	{
+	};
+
+	class CapId
+	{
+	};
+
+	class Cap
+	{
+	};
+
+	class IRange
+	{
+	};
+
+	class SRange
+	{
+	};
+
+	class List
+	{
+	};
+
+	class Unresolved
+	{
+	};
+
+	class Marker
+	{
+	};
+
+	class Scope
+	{
+	};
+
+	class Color
+	{
+	};
+
+#define LX_IDENTITY(U) U
+#define LX_COMMA ,
+
+	using TypeVariant = std::variant<
+		LX_EXPAND_BY_TYPE(LX_IDENTITY, LX_COMMA)
+	>;
+
+#undef LX_IDENTITY
+#undef LX_COMMA
+
+#define LX_IS_SAME_V(U) std::is_same_v<T, U>
+#define LX_OR ||
+
+	template<typename T>
+	concept Type = LX_EXPAND_BY_TYPE(LX_IS_SAME_V, LX_OR);
+
+#undef LX_IS_SAME_V
+#undef LX_OR
+
+	template<typename>
+	constexpr bool deferred_false_v = false;
+
+	template<typename T>
+	struct ToEnum
+	{
+		static_assert(deferred_false_v<T>);
+	};
+
+#define LX_PUBLIC_TYPE_TO_ENUM_CLASS(U) \
+	template<> \
+	struct ToEnum<U> \
+	{ \
+		constexpr static DataType value = DataType::##U; \
+	};
+
+#define LX_INTERNAL_TYPE_TO_ENUM_CLASS(U) \
+	template<> \
+	struct ToEnum<U> \
+	{ \
+		constexpr static DataType value = DataType::_##U; \
+	};
+
+	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS);
+	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS);
+
+#undef LX_PUBLIC_TYPE_TO_ENUM_CLASS
+#undef LX_INTERNAL_TYPE_TO_ENUM_CLASS
+
+	template<typename T>
+	constexpr DataType to_enum = ToEnum<T>::value;
+
+	template<DataType T>
+	struct ToType
+	{
+		static_assert(deferred_false_v<T>);
+	};
+
+#define LX_PUBLIC_TYPE_TO_ENUM_CLASS(U) \
+	template<> \
+	struct ToType<DataType::##U> \
+	{ \
+		using type = U; \
+	};
+
+#define LX_INTERNAL_TYPE_TO_ENUM_CLASS(U) \
+	template<> \
+	struct ToType<DataType::_##U> \
+	{ \
+		using type = U; \
+	};
+
+	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS);
+	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS);
+
+#undef LX_ENUM_CLASS_TO_PUBLIC_TYPE
+#undef LX_ENUM_CLASS_TO_INTERNAL_TYPE
+
+	template<DataType T>
+	using to_type = typename ToType<T>::type;
+	
+	template<Type To, Type From>
+	To cast(From&& value)
+	{
+		using FromDecay = std::decay_t<From>;
+
+		if constexpr (requires { To::template make_from<FromDecay>(std::forward<From>(value)); })
+		{
+			return To::template make_from<FromDecay>(std::forward<From>(value));
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << "bad cast from " << to_enum<FromDecay> << " to " << to_enum<To>;
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	class DataPoint
+	{
+		TypeVariant _storage;
+
+	public:
+		template<Type T>
+		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
+
+		template<Type T>
+		static DataPoint make_from_literal(std::string_view resolved)
+		{
+			if constexpr (requires { T::make_from_literal(resolved); })
+			{
+				return DataPoint(T::make_from_literal(resolved));
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "cannot make " << to_enum<T> << " from literal string_view";
+				throw LxError(ErrorType::Internal, ss.str());
+			}
+		}
+
+		template<Type T>
+		const T& get() const
+		{
+			return std::get<T>(_storage);
+		}
+
+		template<Type T>
+		T& get()
+		{
+			return std::get<T>(_storage);
+		}
+
+		template<Type T>
+		void set(T&& obj)
+		{
+			std::visit([&](auto& v) {
+				using To = std::decay_t<decltype(v)>;
+				v = cast<To>(std::forward<T>(obj));
+			}, _storage);
+		}
+
+		bool can_cast_implicit(DataType to) const;
+		bool can_cast_explicit(DataType to) const;
+	};
+}
+
+#undef LX_EXPAND_BY_TYPE
+#undef LX_EXPAND_BY_PUBLIC_TYPE
+#undef LX_EXPAND_BY_INTERNAL_TYPE
