@@ -2,6 +2,7 @@
 
 #include "operations.h"
 #include "errors.h"
+#include "util.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -42,24 +43,9 @@ namespace lx
 
 	class SymbolTable
 	{
-		struct TransparentHash
-		{
-			using is_transparent = void;
-
-			size_t operator()(const std::string_view sv) const;
-			size_t operator()(const std::string& s) const;
-		};
-
-		struct TransparentEqual
-		{
-			using is_transparent = void;
-
-			bool operator()(std::string_view a, std::string_view b) const;
-		};
-
-		std::unordered_map<std::string, VariableSignature, TransparentHash, TransparentEqual> _variable_table;
+		StringMap<VariableSignature> _variable_table;
 		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _function_table;
-		std::unordered_map<std::string, FunctionCallSet, TransparentHash, TransparentEqual> _function_lut;
+		StringMap<FunctionCallSet> _function_lut;
 
 	public:
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier) const;

@@ -3,7 +3,6 @@
 #include "errors.h"
 
 #include <sstream>
-#include <unordered_map>
 
 namespace lx
 {
@@ -144,6 +143,7 @@ namespace lx
 			return "'srange'";
 		case DataType::List:
 			return "'list'";
+		case DataType::_Unresolved:
 		case DataType::_Marker:
 		case DataType::_Scope:
 		case DataType::_Color:
@@ -198,39 +198,44 @@ namespace lx
 		return std::nullopt;
 	}
 
-	static const std::unordered_map<DataType, std::vector<MemberSignature>> MEMBER_TABLE = {
+	static const std::unordered_map<DataType, StringMap<MemberSignature>> MEMBER_TABLE = {
 		{ DataType::String, {
-			MemberSignature::make_data("len", DataType::Int),
-			MemberSignature::make_method("[]", {
+			{ "len", MemberSignature::make_data("len", DataType::Int) },
+			{ "[]", MemberSignature::make_method("[]", {
 				{.return_type = DataType::String, .arg_types = { DataType::Int } },
 				{.return_type = DataType::String, .arg_types = { DataType::IRange } },
-			}),
+			}) },
 		} },
 		{ DataType::Match, {
-			MemberSignature::make_data("caps", DataType::List),
-			MemberSignature::make_data("start", DataType::Int),
-			MemberSignature::make_data("end", DataType::Int),
-			MemberSignature::make_data("len", DataType::Int),
-			MemberSignature::make_data("pos", DataType::IRange),
-			MemberSignature::make_data("str", DataType::String),
-			MemberSignature::make_method("[]", { {.return_type = DataType::Cap, .arg_types = { DataType::Int } } }),
+			{ "caps", MemberSignature::make_data("caps", DataType::List) },
+			{ "start", MemberSignature::make_data("start", DataType::Int) },
+			{ "end", MemberSignature::make_data("end", DataType::Int) },
+			{ "len", MemberSignature::make_data("len", DataType::Int) },
+			{ "pos", MemberSignature::make_data("pos", DataType::IRange) },
+			{ "str", MemberSignature::make_data("str", DataType::String) },
+			{ "[]", MemberSignature::make_method("[]", {
+				{ .return_type = DataType::Cap, .arg_types = { DataType::CapId } },
+				{ .return_type = DataType::Cap, .arg_types = { DataType::Int } },
+			}) },
 		} },
 		{ DataType::Cap, {
-			MemberSignature::make_data("exists", DataType::Bool),
-			MemberSignature::make_data("start", DataType::Int),
-			MemberSignature::make_data("end", DataType::Int),
-			MemberSignature::make_data("len", DataType::Int),
-			MemberSignature::make_data("pos", DataType::IRange),
-			MemberSignature::make_data("str", DataType::String),
-			MemberSignature::make_data("sub", DataType::Match),
+			{ "exists", MemberSignature::make_data("exists", DataType::Bool) },
+			{ "start", MemberSignature::make_data("start", DataType::Int) },
+			{ "end", MemberSignature::make_data("end", DataType::Int) },
+			{ "len", MemberSignature::make_data("len", DataType::Int) },
+			{ "pos", MemberSignature::make_data("pos", DataType::IRange) },
+			{ "str", MemberSignature::make_data("str", DataType::String) },
+			{ "sub", MemberSignature::make_data("sub", DataType::Match) },
 		} },
-		// TODO either 1. make list truly type mixing, in which case [] would return a new 'any'/'unresolved' type (it still can't change type dynamically, but it is an unknown type that should be casted when used). 2. make list templated, which introduces new syntax.
 		{ DataType::List, {
-			MemberSignature::make_data("len", DataType::Int),
+			{ "len", MemberSignature::make_data("len", DataType::Int)},
+			{ "[]", MemberSignature::make_method("[]", {
+				{ .return_type = DataType::_Unresolved, .arg_types = { DataType::Int } },
+			}) },
 		} },
 	};
 
-	const std::vector<MemberSignature>* data_type_members(DataType type)
+	const StringMap<MemberSignature>* data_type_members(DataType type)
 	{
 		auto it = MEMBER_TABLE.find(type);
 		if (it != MEMBER_TABLE.end())
@@ -241,7 +246,7 @@ namespace lx
 
 	bool can_cast_implicit(DataType from, DataType to)
 	{
-		if (to == DataType::Void || from == to)
+		if (to == DataType::Void || from == to || from == DataType::_Unresolved)
 			return true;
 
 		switch (from)
@@ -279,7 +284,7 @@ namespace lx
 
 	bool can_cast_explicit(DataType from, DataType to)
 	{
-		if (to == DataType::Void || from == to)
+		if (to == DataType::Void || from == to || from == DataType::_Unresolved)
 			return true;
 
 		switch (from)
@@ -319,6 +324,7 @@ namespace lx
 		case DataType::IRange:
 		case DataType::SRange:
 		case DataType::List:
+		case DataType::_Unresolved:
 			return true;
 
 		case DataType::Int:
@@ -344,6 +350,7 @@ namespace lx
 		case DataType::Match:
 		case DataType::Matches:
 		case DataType::IRange:
+		case DataType::_Unresolved:
 			return true;
 
 		case DataType::Float:
@@ -368,6 +375,7 @@ namespace lx
 		switch (type)
 		{
 		case DataType::String:
+		case DataType::_Unresolved:
 			return true;
 
 		case DataType::Int:
@@ -443,7 +451,7 @@ namespace lx
 		{
 		case BinaryOperator::And:
 		case BinaryOperator::Or:
-			if (lhs == DataType::Bool && rhs == DataType::Bool)
+			if (can_cast_implicit(lhs, DataType::Bool) && can_cast_implicit(rhs, DataType::Bool))
 				return DataType::Bool;
 			break;
 
@@ -452,15 +460,15 @@ namespace lx
 		case BinaryOperator::Mod:
 		case BinaryOperator::Plus:
 		case BinaryOperator::Slash:
-			if (lhs == DataType::Int && rhs == DataType::Int)
+			if (can_cast_implicit(lhs, DataType::Int) && can_cast_implicit(rhs, DataType::Int))
 				return DataType::Int;
-			else if ((lhs == DataType::Int || lhs == DataType::Float) && (rhs == DataType::Int || rhs == DataType::Float))
+			else if ((can_cast_implicit(lhs, DataType::Int) || can_cast_implicit(lhs, DataType::Float)) && (can_cast_implicit(rhs, DataType::Int) || can_cast_implicit(rhs, DataType::Float)))
 				return DataType::Float;
 			break;
 		
 		case BinaryOperator::EqualTo:
 		case BinaryOperator::NotEqualTo:
-			if (lhs == rhs && lhs != DataType::Void)
+			if (can_cast_implicit(lhs, rhs) || can_cast_implicit(rhs, lhs))
 				return DataType::Bool;
 			break;
 		
@@ -468,14 +476,14 @@ namespace lx
 		case BinaryOperator::GreaterThanOrEqualTo:
 		case BinaryOperator::LessThan:
 		case BinaryOperator::LessThanOrEqualTo:
-			if ((lhs == DataType::Int || lhs == DataType::Float) && (rhs == DataType::Int || rhs == DataType::Float))
+			if ((can_cast_implicit(lhs, DataType::Int) || can_cast_implicit(lhs, DataType::Float)) && (can_cast_implicit(rhs, DataType::Int) || can_cast_implicit(rhs, DataType::Float)))
 				return DataType::Bool;
 			break;
 
 		case BinaryOperator::To:
-			if (lhs == DataType::Int && rhs == DataType::Int)
+			if (can_cast_implicit(lhs, DataType::Int) && can_cast_implicit(rhs, DataType::Int))
 				return DataType::IRange;
-			else if (lhs == DataType::String && rhs == DataType::String)
+			else if (can_cast_implicit(lhs, DataType::String) && can_cast_implicit(rhs, DataType::String))
 				return DataType::SRange;
 			break;
 
@@ -539,19 +547,19 @@ namespace lx
 
 		case PrefixOperator::Max:
 		case PrefixOperator::Min:
-			if (type == DataType::Int)
+			if (can_cast_implicit(type, DataType::Int))
 				return DataType::IRange;
-			else if (type == DataType::String)
+			else if (can_cast_implicit(type, DataType::String))
 				return DataType::SRange;
 			break;
 
 		case PrefixOperator::Minus:
-			if (type == DataType::Int || type == DataType::Float)
+			if (can_cast_implicit(type, DataType::Int) || can_cast_implicit(type, DataType::Float))
 				return type;
 			break;
 
 		case PrefixOperator::Not:
-			if (type == DataType::Bool)
+			if (can_cast_implicit(type, DataType::Bool))
 				return type;
 			break;
 		}

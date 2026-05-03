@@ -10,6 +10,7 @@ set(LANG_SOURCES
 	ast.cpp
 	operations.cpp
 	symbols.cpp
+	util.cpp
 )
 
 add_library(lexico-lang ${LANG_SOURCES} "lang.h")

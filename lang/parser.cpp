@@ -487,7 +487,11 @@ namespace lx
 			auto offset = token_offset(2);
 			Expression& expr = parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<VariableAssignment>(std::move(identifier), expr));
+
+			if (identifier.type == TokenType::Percent)
+				append_to_context(std::make_unique<GlobalMatchesAssignment>(std::move(identifier), expr));
+			else
+				append_to_context(std::make_unique<VariableAssignment>(std::move(identifier), expr));
 			return true;
 		}
 

@@ -4,24 +4,36 @@ namespace lx
 {
 	class AnalysisVisitor : public ASTVisitor
 	{
-		ResolutionContext& _env;
+		ResolutionContext& _ctx;
 
 	public:
-		AnalysisVisitor(ResolutionContext& env)
-			: _env(env)
+		AnalysisVisitor(ResolutionContext& ctx)
+			: _ctx(ctx)
 		{
 		}
 
 		void pre_visit(ASTNode& node) override
 		{
 			if (!node.validated())
-				node.pre_analyse(_env);
+				node.pre_analyse(_ctx);
 		}
 
 		void post_visit(ASTNode& node) override
 		{
 			if (node.validated())
-				node.post_analyse(_env);
+			{
+				try
+				{
+					node.post_analyse(_ctx);
+				}
+				catch (const LxError& e)
+				{
+					// TODO better error propogation/ignoring/duplication handling
+					if (e.type() != ErrorType::Internal)
+						_ctx.errors().push_back(e);
+					// TODO v0.2 optional debug log for else branch
+				}
+			}
 		}
 	};
 

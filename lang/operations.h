@@ -2,6 +2,7 @@
 
 #include "token.h"
 #include "symbols.h"
+#include "util.h"
 
 #include <optional>
 #include <variant>
@@ -25,6 +26,7 @@ namespace lx
 		List,
 
 		// Internal
+		_Unresolved,
 		_Marker,
 		_Scope,
 		_Color,
@@ -69,7 +71,7 @@ namespace lx
 		std::optional<DataType> return_type(const std::vector<DataType>& arg_types) const;
 	};
 
-	extern const std::vector<MemberSignature>* data_type_members(DataType type);
+	extern const StringMap<MemberSignature>* data_type_members(DataType type);
 
 	extern bool can_cast_implicit(DataType from, DataType to);
 	extern bool can_cast_explicit(DataType from, DataType to);
@@ -127,4 +129,7 @@ namespace lx
 	};
 
 	extern PatternSimpleRepeatOperator pattern_simple_repeat_operator(TokenType type);
+
+	// TODO move to pattern implementation file
+	constexpr const char* UNNAMED_CAP_ID = "_";
 }

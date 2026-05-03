@@ -19,21 +19,6 @@ namespace lx
 		return a.identifier == b.identifier && a.arg_types == b.arg_types;
 	}
 
-	size_t SymbolTable::TransparentHash::operator()(const std::string_view sv) const
-	{
-		return std::hash<std::string_view>{}(sv);
-	}
-
-	size_t SymbolTable::TransparentHash::operator()(const std::string& s) const
-	{
-		return std::hash<std::string>{}(s);
-	}
-
-	bool SymbolTable::TransparentEqual::operator()(std::string_view a, std::string_view b) const
-	{
-		return a == b;
-	}
-
 	std::optional<VariableSignature> SymbolTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _variable_table.find(identifier);
@@ -268,8 +253,6 @@ namespace lx
 			{
 				if (auto ln = it->table.registered_function(identifier, arg_types))
 					return ln;
-				else if (it->isolated)
-					break;
 			}
 		}
 		catch (const LxError& error)
@@ -297,9 +280,6 @@ namespace lx
 				auto calls = it->table.registered_function_calls(identifier);
 				for (const auto& call : calls)
 					callset.insert(call);
-				
-				if (it->isolated)
-					break;
 			}
 
 			return callset;

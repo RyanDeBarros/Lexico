@@ -196,7 +196,7 @@ namespace lx
 		if (!_validated)
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": node is not _validated";
+			ss << __FUNCTION__ << ": node is not validated";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		if (!_evaltype)
@@ -252,7 +252,7 @@ namespace lx
 
 	void VariableAssignment::pre_analyse(ResolutionContext& ctx)
 	{
-		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
 			_validated = true;
 		else
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
@@ -261,11 +261,11 @@ namespace lx
 	void VariableAssignment::post_analyse(ResolutionContext& ctx)
 	{
 		auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown);
-		if (var->type != _expression.evaltype(ctx))
+		if (!can_cast_implicit(_expression.evaltype(ctx), var->type))
 		{
 			std::stringstream ss;
 			ss << "cannot assign variable of type " << var->type << " to expression of type " << _expression.evaltype(ctx);
-			ctx.add_semantic_error(_identifier.segment.combined_right(_expression.segment()), ss.str());
+			ctx.add_semantic_error(segment(), ss.str());
 		}
 	}
 
@@ -278,6 +278,37 @@ namespace lx
 	ScriptSegment VariableAssignment::impl_segment() const
 	{
 		return _identifier.segment.combined_right(_expression.segment());
+	}
+
+	GlobalMatchesAssignment::GlobalMatchesAssignment(Token&& percent_token, Expression& expression)
+		: _percent_token(std::move(percent_token)), _expression(expression)
+	{
+	}
+
+	void GlobalMatchesAssignment::pre_analyse(ResolutionContext& ctx)
+	{
+		_validated = true;
+	}
+
+	void GlobalMatchesAssignment::post_analyse(ResolutionContext& ctx)
+	{
+		if (!can_cast_implicit(_expression.evaltype(ctx), DataType::Matches))
+		{
+			std::stringstream ss;
+			ss << "cannot assign `%` to expression of type " << _expression.evaltype(ctx);
+			ctx.add_semantic_error(segment(), ss.str());
+		}
+	}
+
+	void GlobalMatchesAssignment::traverse(ASTVisitor& visitor)
+	{
+		ASTNode::traverse(visitor);
+		_expression.accept(visitor);
+	}
+
+	ScriptSegment GlobalMatchesAssignment::impl_segment() const
+	{
+		return _percent_token.segment.combined_right(_expression.segment());
 	}
 
 	LiteralExpression::LiteralExpression(Token&& literal)
@@ -387,14 +418,7 @@ namespace lx
 
 	void MemberAccessExpression::post_analyse(ResolutionContext& ctx)
 	{
-		try
-		{
-			evaltype(ctx);
-		}
-		catch (const LxError& e)
-		{
-			ctx.add_semantic_error(_member.segment, e.message());
-		}
+		evaltype(ctx);
 	}
 
 	void MemberAccessExpression::traverse(ASTVisitor& visitor)
@@ -416,13 +440,19 @@ namespace lx
 	const MemberSignature& MemberAccessExpression::member(const ResolutionContext& ctx) const
 	{
 		if (const auto members = data_type_members(_object.evaltype(ctx)))
-			for (const auto& member : *members)
-				if (member.identifier == _member.lexeme && (_callable ? member.is_method() : member.is_data()))
+		{
+			auto it = members->find(_member.lexeme);
+			if (it != members->end())
+			{
+				const auto& member = it->second;
+				if (_callable ? member.is_method() : member.is_data())
 					return member;
+			}
+		}
 
 		std::stringstream ss;
 		ss << "data member " << _member.lexeme << " does not exist for type " << _object.evaltype(ctx);
-		throw LxError(ErrorType::Internal, ss.str());
+		throw LxError::segment_error(_member.segment, ErrorType::Semantic, ss.str());
 	}
 
 	void MemberAccessExpression::set_callable(bool callable)
@@ -526,14 +556,7 @@ namespace lx
 
 	void SubscriptExpression::post_analyse(ResolutionContext& ctx)
 	{
-		try
-		{
-			evaltype(ctx);
-		}
-		catch (const LxError& e)
-		{
-			ctx.add_semantic_error(segment(), e.message());
-		}
+		evaltype(ctx);
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor)
@@ -556,13 +579,19 @@ namespace lx
 	const MemberSignature& SubscriptExpression::member(const ResolutionContext& ctx) const
 	{
 		if (const auto members = data_type_members(_container.evaltype(ctx)))
-			for (const auto& member : *members)
-				if (member.identifier == "[]" && member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
+		{
+			auto it = members->find("[]");
+			if (it != members->end())
+			{
+				const auto& member = it->second;
+				if (member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
 					return member;
+			}
+		}
 
 		std::stringstream ss;
 		ss << _container.evaltype(ctx) << " does not support [] with index type " << _subscript.evaltype(ctx);
-		throw LxError(ErrorType::Internal, ss.str());
+		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -572,7 +601,7 @@ namespace lx
 
 	void VariableExpression::pre_analyse(ResolutionContext& ctx)
 	{
-		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
 			_validated = true;
 		else
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
@@ -580,7 +609,14 @@ namespace lx
 
 	void VariableExpression::post_analyse(ResolutionContext& ctx)
 	{
-		evaltype(ctx);
+		try
+		{
+			evaltype(ctx);
+		}
+		catch (const LxError& e)
+		{
+			ctx.add_semantic_error(_identifier.segment, e.message());
+		}
 	}
 
 	DataType VariableExpression::impl_evaltype(const ResolutionContext& ctx) const
@@ -728,7 +764,7 @@ namespace lx
 
 	DataType MethodCallExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		const auto m = _member.member(ctx);
+		const auto& m = _member.member(ctx);
 		if (m.is_method())
 		{
 			std::vector<DataType> arg_types;
@@ -922,6 +958,8 @@ namespace lx
 			info.always_returns &= fallback_info.always_returns;
 			info.merge_loop_control(fallback_info);
 		}
+		else
+			info.always_returns = false;
 		return info;
 	}
 
@@ -1459,11 +1497,25 @@ namespace lx
 
 	void PatternCapture::pre_analyse(ResolutionContext& ctx)
 	{
-		_validated = true;
+		if (_identifier.lexeme != UNNAMED_CAP_ID)
+		{
+			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+			{
+				std::stringstream ss;
+				ss << "variable already declared on line " << var->decl_line_number;
+				ctx.add_semantic_error(_identifier.segment, ss.str());
+			}
+			else
+				_validated = true;
+		}
+		else
+			_validated = true;
 	}
 
 	void PatternCapture::post_analyse(ResolutionContext& ctx)
 	{
+		ctx.register_variable(_identifier.lexeme, DataType::CapId, _identifier.segment.start_line, Namespace::Global);
+
 		try
 		{
 			evaltype(ctx);
@@ -1584,7 +1636,6 @@ namespace lx
 
 	void ReplaceStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO replace all direct datatype equality checks with can_cast_implicit
 		validate_implicitly_casts(ctx, _match, DataType::Match);
 		validate_implicitly_casts(ctx, _string, DataType::String);
 	}
