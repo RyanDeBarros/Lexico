@@ -14,6 +14,8 @@ namespace lx
 			return "[Syntax Error] ";
 		case lx::ErrorType::Semantic:
 			return "[Semantic Error] ";
+		case lx::ErrorType::Runtime:
+			return "[Runtime Error] ";
 		case lx::ErrorType::Internal:
 			return "[Internal Error] ";
 		default:
@@ -29,6 +31,8 @@ namespace lx
 			return "[Syntax Warning] ";
 		case lx::ErrorType::Semantic:
 			return "[Semantic Warning] ";
+		case lx::ErrorType::Runtime:
+			return "[Runtime Warning] ";
 		case lx::ErrorType::Internal:
 			return "[Internal Warning] ";
 		default:

@@ -46,87 +46,15 @@ namespace lx
 	M(Color)
 
 #define LX_FORWARD_DECLARE(U) class U;
-	LX_EXPAND_BY_TYPE(LX_FORWARD_DECLARE,)
+	LX_EXPAND_BY_TYPE(LX_FORWARD_DECLARE, )
 #undef LX_FORWARD_DECLARE
-
-	class Int
-	{
-
-	};
-
-	class Float
-	{
-
-	};
-
-	class Bool
-	{
-
-	};
-
-	class String
-	{
-
-	};
-
-	class Void
-	{
-	};
-
-	class Pattern
-	{
-	};
-
-	class Match
-	{
-	};
-
-	class Matches
-	{
-	};
-
-	class CapId
-	{
-	};
-
-	class Cap
-	{
-	};
-
-	class IRange
-	{
-	};
-
-	class SRange
-	{
-	};
-
-	class List
-	{
-	};
-
-	class Unresolved
-	{
-	};
-
-	class Marker
-	{
-	};
-
-	class Scope
-	{
-	};
-
-	class Color
-	{
-	};
 
 #define LX_IDENTITY(U) U
 #define LX_COMMA ,
 
-	using TypeVariant = std::variant<
+		using TypeVariant = std::variant<
 		LX_EXPAND_BY_TYPE(LX_IDENTITY, LX_COMMA)
-	>;
+		>;
 
 #undef LX_IDENTITY
 #undef LX_COMMA
@@ -200,7 +128,7 @@ namespace lx
 
 	template<DataType T>
 	using to_type = typename ToType<T>::type;
-	
+
 	template<Type To, Type From>
 	To cast(From&& value)
 	{
@@ -217,54 +145,6 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 	}
-
-	class DataPoint
-	{
-		TypeVariant _storage;
-
-	public:
-		template<Type T>
-		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
-
-		template<Type T>
-		static DataPoint make_from_literal(std::string_view resolved)
-		{
-			if constexpr (requires { T::make_from_literal(resolved); })
-			{
-				return DataPoint(T::make_from_literal(resolved));
-			}
-			else
-			{
-				std::stringstream ss;
-				ss << "cannot make " << to_enum<T> << " from literal string_view";
-				throw LxError(ErrorType::Internal, ss.str());
-			}
-		}
-
-		template<Type T>
-		const T& get() const
-		{
-			return std::get<T>(_storage);
-		}
-
-		template<Type T>
-		T& get()
-		{
-			return std::get<T>(_storage);
-		}
-
-		template<Type T>
-		void set(T&& obj)
-		{
-			std::visit([&](auto& v) {
-				using To = std::decay_t<decltype(v)>;
-				v = cast<To>(std::forward<T>(obj));
-			}, _storage);
-		}
-
-		bool can_cast_implicit(DataType to) const;
-		bool can_cast_explicit(DataType to) const;
-	};
 }
 
 #undef LX_EXPAND_BY_TYPE

@@ -10,6 +10,7 @@ namespace lx
 	{
 		Syntax,
 		Semantic,
+		Runtime,
 		Internal,
 	};
 

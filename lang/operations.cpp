@@ -268,7 +268,11 @@ namespace lx
 		case DataType::CapId:
 		case DataType::Cap:
 		case DataType::IRange:
+			return false;
+
 		case DataType::SRange:
+			return to == DataType::Pattern;
+
 		case DataType::List:
 			return false;
 
@@ -284,18 +288,20 @@ namespace lx
 
 	bool can_cast_explicit(DataType from, DataType to)
 	{
-		if (to == DataType::Void || from == to || from == DataType::_Unresolved)
+		if (can_cast_implicit(from, to))
 			return true;
 
 		switch (from)
 		{
 		case DataType::Int:
-			return to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern || to == DataType::IRange;
+			return to == DataType::String || to == DataType::Pattern;
 
 		case DataType::Float:
 		case DataType::Bool:
+			return to == DataType::String || to == DataType::Pattern;
+
 		case DataType::String:
-			return to == DataType::Int || to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern;
+			return to == DataType::Int || to == DataType::Float || to == DataType::Bool;
 
 		case DataType::Pattern:
 		case DataType::Void:
@@ -304,7 +310,11 @@ namespace lx
 		case DataType::CapId:
 		case DataType::Cap:
 		case DataType::IRange:
+			return false;
+
 		case DataType::SRange:
+			return to == DataType::String;
+
 		case DataType::List:
 		case DataType::_Marker:
 		case DataType::_Scope:
