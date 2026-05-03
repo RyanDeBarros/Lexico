@@ -243,13 +243,34 @@ namespace lx
 	SRange::SRange(std::optional<std::string> min, std::optional<std::string> max)
 		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
 	{
-		// TODO throw LxErrorList that batches multiple errors
+		std::vector<LxError> errors;
 
 		if (min)
-			assert_valid_srange_char(*min);
+		{
+			try
+			{
+				assert_valid_srange_char(*min);
+			}
+			catch (LxError& e)
+			{
+				errors.push_back(std::move(e));
+			}
+		}
 
 		if (max)
-			assert_valid_srange_char(*max);
+		{
+			try
+			{
+				assert_valid_srange_char(*max);
+			}
+			catch (LxError& e)
+			{
+				errors.push_back(std::move(e));
+			}
+		}
+
+		if (!errors.empty())
+			throw LxErrorList(errors);
 	}
 
 	SRange SRange::make_from(const SRange& v)

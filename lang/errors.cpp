@@ -104,6 +104,11 @@ namespace lx
 	{
 	}
 
+	LxError::LxError(ErrorType type, std::string&& message, DirectCtor)
+		: LxStatusMessage(type, message), std::runtime_error(std::move(message))
+	{
+	}
+
 	const char* LxError::what() const
 	{
 		return std::runtime_error::what();
@@ -156,5 +161,30 @@ namespace lx
 		}
 
 		return LxWarning(type, ss.str());
+	}
+
+	static ErrorType common_type(const std::vector<LxError>& errors)
+	{
+		ErrorType type = ErrorType::Internal;
+		for (const LxError& error : errors)
+			type = std::max(type, error.type());
+		return type;
+	}
+
+	static std::string common_message(const std::vector<LxError>& errors)
+	{
+		std::stringstream ss;
+		for (size_t i = 0; i < errors.size(); ++i)
+		{
+			ss << errors[i].what();
+			if (i + 1 < errors.size())
+				ss << "\n\n";
+		}
+		return ss.str();
+	}
+
+	LxErrorList::LxErrorList(const std::vector<LxError>& errors)
+		: LxError(common_type(errors), common_message(errors), DirectCtor{})
+	{
 	}
 }

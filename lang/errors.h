@@ -8,10 +8,10 @@ namespace lx
 {
 	enum class ErrorType
 	{
+		Internal,
 		Syntax,
 		Semantic,
 		Runtime,
-		Internal,
 	};
 
 	class LxStatusMessage
@@ -37,6 +37,14 @@ namespace lx
 	public:
 		LxError(ErrorType type, std::string&& message = "");
 
+	protected:
+		struct DirectCtor
+		{
+		};
+
+		LxError(ErrorType type, std::string&& message, DirectCtor);
+
+	public:
 		const char* what() const override;
 
 		static LxError segment_error(const ScriptSegment& segment, ErrorType type, const std::string_view cause);
@@ -53,5 +61,11 @@ namespace lx
 
 		static LxWarning segment_warning(const ScriptSegment& segment, ErrorType type, const std::string_view cause);
 		static LxWarning batch_warning(const std::vector<ScriptSegment>& segments, ErrorType type, const std::string_view cause);
+	};
+
+	class LxErrorList : public LxError
+	{
+	public:
+		LxErrorList(const std::vector<LxError>& errors);
 	};
 }
