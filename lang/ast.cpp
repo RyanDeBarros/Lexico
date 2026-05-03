@@ -5,6 +5,31 @@
 
 namespace lx
 {
+	namespace errors
+	{
+		static const char* DOES_NOT_RESOLVE = "expression does not resolve to";
+	}
+
+	static DataType assert_implicitly_casts(const ResolutionContext& ctx, const Expression& expr, DataType to)
+	{
+		if (can_cast_implicit(expr.evaltype(ctx), to))
+			return to;
+
+		std::stringstream ss;
+		ss << errors::DOES_NOT_RESOLVE << to;
+		throw LxError::segment_error(expr.segment(), ErrorType::Internal, ss.str());
+	}
+
+	static void validate_implicitly_casts(const ResolutionContext& ctx, const Expression& expr, DataType to)
+	{
+		if (!can_cast_implicit(expr.evaltype(ctx), to))
+		{
+			std::stringstream ss;
+			ss << errors::DOES_NOT_RESOLVE << to;
+			ctx.add_semantic_error(expr.segment(), ss.str());
+		}
+	}
+
 	void UpflowInfo::merge_loop_control(const UpflowInfo& other)
 	{
 		may_break |= other.may_break;
@@ -600,6 +625,8 @@ namespace lx
 		return _symbol_token.segment;
 	}
 
+	// TODO v0.2 function forward declaration node without implementation. In analysis, register function and add to list of declared function signatures. FunctionDefinition analysis should remove signature from that list. In IsolationNode, check that no declared+unimplemented signatures remain.
+
 	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren)
 		: _identifier(std::move(identifier)), _args(std::move(args)), _closing_paren(std::move(closing_paren))
 	{
@@ -918,8 +945,7 @@ namespace lx
 
 	void IfStatement::post_analyse(ResolutionContext& ctx)
 	{
-		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
+		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
 	}
 
@@ -959,8 +985,7 @@ namespace lx
 
 	void ElifStatement::post_analyse(ResolutionContext& ctx)
 	{
-		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
+		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
 	}
 
@@ -1062,8 +1087,7 @@ namespace lx
 
 	void WhileLoop::post_analyse(ResolutionContext& ctx)
 	{
-		if (_condition.evaltype(ctx) != DataType::Bool)
-			ctx.add_semantic_error(_condition.segment(), "condition expression does not resolve to " + friendly_name(DataType::Bool));
+		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Loop::post_analyse(ctx);
 	}
 
@@ -1293,12 +1317,7 @@ namespace lx
 
 	void RepeatOperation::post_analyse(ResolutionContext& ctx)
 	{
-		if (!can_cast_implicit(_range.evaltype(ctx), DataType::IRange))
-		{
-			std::stringstream ss;
-			ss << "expression does not resolve to " << DataType::IRange;
-			ctx.add_semantic_error(_range.segment(), ss.str());
-		}
+		validate_implicitly_casts(ctx, _range, DataType::IRange);
 
 		try
 		{
@@ -1319,12 +1338,7 @@ namespace lx
 
 	DataType RepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
-			return DataType::Pattern;
-
-		std::stringstream ss;
-		ss << "expression does not resolve to " << DataType::Pattern;
-		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 	
 	ScriptSegment RepeatOperation::impl_segment() const
@@ -1362,12 +1376,7 @@ namespace lx
 
 	DataType SimpleRepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
-			return DataType::Pattern;
-
-		std::stringstream ss;
-		ss << "expression does not resolve to " << DataType::Pattern;
-		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 
 	ScriptSegment SimpleRepeatOperation::impl_segment() const
@@ -1435,12 +1444,7 @@ namespace lx
 
 	DataType PatternLazy::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
-			return DataType::Pattern;
-
-		std::stringstream ss;
-		ss << "expression does not resolve to " << DataType::Pattern;
-		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 
 	ScriptSegment PatternLazy::impl_segment() const
@@ -1478,12 +1482,7 @@ namespace lx
 
 	DataType PatternCapture::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
-			return DataType::Pattern;
-
-		std::stringstream ss;
-		ss << "expression does not resolve to " << DataType::Pattern;
-		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 
 	ScriptSegment PatternCapture::impl_segment() const
@@ -1503,12 +1502,7 @@ namespace lx
 
 	void AppendStatement::post_analyse(ResolutionContext& ctx)
 	{
-		if (!can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
-		{
-			std::stringstream ss;
-			ss << "expression does not resolve to " << DataType::Pattern;
-			ctx.add_semantic_error(_expression.segment(), ss.str());
-		}
+		validate_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 
 	void AppendStatement::traverse(ASTVisitor& visitor)
@@ -1534,12 +1528,7 @@ namespace lx
 
 	void FindStatement::post_analyse(ResolutionContext& ctx)
 	{
-		if (!can_cast_implicit(_pattern.evaltype(ctx), DataType::Pattern))
-		{
-			std::stringstream ss;
-			ss << "expression does not resolve to " << DataType::Pattern;
-			ctx.add_semantic_error(_pattern.segment(), ss.str());
-		}
+		validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
 	}
 
 	ScriptSegment FindStatement::impl_segment() const
@@ -1554,12 +1543,28 @@ namespace lx
 
 	void FilterStatement::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
+		{
+			if (fn->return_type == DataType::Bool)
+				_validated = true;
+			else
+			{
+				std::stringstream ss;
+				ss << "function on line " << fn->decl_line_number << " is not a match predicate: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+				ctx.add_semantic_error(_identifier.segment, ss.str());
+			}
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << "no matching predicate function: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+			ctx.add_semantic_error(_identifier.segment, ss.str());
+		}
 	}
 
 	void FilterStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// NOP
 	}
 
 	ScriptSegment FilterStatement::impl_segment() const
@@ -1574,12 +1579,14 @@ namespace lx
 
 	void ReplaceStatement::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void ReplaceStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// TODO replace all direct datatype equality checks with can_cast_implicit
+		validate_implicitly_casts(ctx, _match, DataType::Match);
+		validate_implicitly_casts(ctx, _string, DataType::String);
 	}
 
 	void ReplaceStatement::traverse(ASTVisitor& visitor)
@@ -1601,12 +1608,28 @@ namespace lx
 
 	void ApplyStatement::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
+		{
+			if (fn->return_type == DataType::String)
+				_validated = true;
+			else
+			{
+				std::stringstream ss;
+				ss << "found function on line " << fn->decl_line_number << ": expected signature (" << DataType::Match << ") -> " << DataType::String;
+				ctx.add_semantic_error(_identifier.segment, ss.str());
+			}
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << "no matching function: expected signature (" << DataType::Match << ") -> " << DataType::String;
+			ctx.add_semantic_error(_identifier.segment, ss.str());
+		}
 	}
 
 	void ApplyStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		// NOP
 	}
 
 	ScriptSegment ApplyStatement::impl_segment() const
