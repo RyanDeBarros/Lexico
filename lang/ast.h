@@ -752,10 +752,10 @@ namespace lx
 	class FindStatement : public ASTNode
 	{
 		Token _find_token;
-		Token _identifier;
+		Expression& _pattern;
 
 	public:
-		FindStatement(Token&& find_token, Token&& identifier);
+		FindStatement(Token&& find_token, Expression& pattern);
 		
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;

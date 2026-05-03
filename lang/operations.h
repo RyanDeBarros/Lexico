@@ -71,7 +71,8 @@ namespace lx
 
 	extern const std::vector<MemberSignature>* data_type_members(DataType type);
 
-	extern bool can_cast(DataType from, DataType to);
+	extern bool can_cast_implicit(DataType from, DataType to);
+	extern bool can_cast_explicit(DataType from, DataType to);
 	extern bool is_iterable(DataType type);
 	extern bool is_highlightable(DataType type);
 	extern bool is_pageable(DataType type);

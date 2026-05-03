@@ -473,7 +473,7 @@ namespace lx
 	DataType AsExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		DataType return_type = data_type(_type.type);
-		if (can_cast(_expr.evaltype(ctx), return_type))
+		if (can_cast_explicit(_expr.evaltype(ctx), return_type))
 			return return_type;
 		else
 		{
@@ -1288,12 +1288,26 @@ namespace lx
 
 	void RepeatOperation::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void RepeatOperation::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO try-catch evaltype()
+		if (!can_cast_implicit(_range.evaltype(ctx), DataType::IRange))
+		{
+			std::stringstream ss;
+			ss << "expression does not resolve to " << DataType::IRange;
+			ctx.add_semantic_error(_range.segment(), ss.str());
+		}
+
+		try
+		{
+			evaltype(ctx);
+		}
+		catch (const LxError& e)
+		{
+			ctx.add_semantic_error(_expression.segment(), e.message());
+		}
 	}
 
 	void RepeatOperation::traverse(ASTVisitor& visitor)
@@ -1305,8 +1319,12 @@ namespace lx
 
 	DataType RepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
-		return DataType::Pattern;
+		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
+			return DataType::Pattern;
+
+		std::stringstream ss;
+		ss << "expression does not resolve to " << DataType::Pattern;
+		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
 	}
 	
 	ScriptSegment RepeatOperation::impl_segment() const
@@ -1321,12 +1339,19 @@ namespace lx
 
 	void SimpleRepeatOperation::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void SimpleRepeatOperation::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO try-catch evaltype()
+		try
+		{
+			evaltype(ctx);
+		}
+		catch (const LxError& e)
+		{
+			ctx.add_semantic_error(_expression.segment(), e.message());
+		}
 	}
 
 	void SimpleRepeatOperation::traverse(ASTVisitor& visitor)
@@ -1337,8 +1362,12 @@ namespace lx
 
 	DataType SimpleRepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
-		return DataType::Pattern;
+		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
+			return DataType::Pattern;
+
+		std::stringstream ss;
+		ss << "expression does not resolve to " << DataType::Pattern;
+		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
 	}
 
 	ScriptSegment SimpleRepeatOperation::impl_segment() const
@@ -1358,17 +1387,16 @@ namespace lx
 
 	void PatternBackRef::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PatternBackRef::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO try-catch evaltype()
+		// NOP
 	}
 
 	DataType PatternBackRef::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
 		return DataType::Pattern;
 	}
 
@@ -1384,12 +1412,19 @@ namespace lx
 
 	void PatternLazy::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PatternLazy::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO try-catch evaltype()
+		try
+		{
+			evaltype(ctx);
+		}
+		catch (const LxError& e)
+		{
+			ctx.add_semantic_error(_expression.segment(), e.message());
+		}
 	}
 
 	void PatternLazy::traverse(ASTVisitor& visitor)
@@ -1400,8 +1435,12 @@ namespace lx
 
 	DataType PatternLazy::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
-		return DataType::Pattern;
+		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
+			return DataType::Pattern;
+
+		std::stringstream ss;
+		ss << "expression does not resolve to " << DataType::Pattern;
+		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
 	}
 
 	ScriptSegment PatternLazy::impl_segment() const
@@ -1416,12 +1455,19 @@ namespace lx
 
 	void PatternCapture::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void PatternCapture::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO try-catch evaltype()
+		try
+		{
+			evaltype(ctx);
+		}
+		catch (const LxError& e)
+		{
+			ctx.add_semantic_error(_expression.segment(), e.message());
+		}
 	}
 
 	void PatternCapture::traverse(ASTVisitor& visitor)
@@ -1432,8 +1478,12 @@ namespace lx
 
 	DataType PatternCapture::impl_evaltype(const ResolutionContext& ctx) const
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
-		return DataType::Pattern;
+		if (can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
+			return DataType::Pattern;
+
+		std::stringstream ss;
+		ss << "expression does not resolve to " << DataType::Pattern;
+		throw LxError::segment_error(_expression.segment(), ErrorType::Internal, ss.str());
 	}
 
 	ScriptSegment PatternCapture::impl_segment() const
@@ -1448,12 +1498,17 @@ namespace lx
 
 	void AppendStatement::pre_analyse(ResolutionContext& ctx)
 	{
-		// TODO
+		_validated = true;
 	}
 
 	void AppendStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO check that _expression.evaltype() is convertible to 'pattern'
+		if (!can_cast_implicit(_expression.evaltype(ctx), DataType::Pattern))
+		{
+			std::stringstream ss;
+			ss << "expression does not resolve to " << DataType::Pattern;
+			ctx.add_semantic_error(_expression.segment(), ss.str());
+		}
 	}
 
 	void AppendStatement::traverse(ASTVisitor& visitor)
@@ -1467,8 +1522,8 @@ namespace lx
 		return _append_token.segment;
 	}
 
-	FindStatement::FindStatement(Token&& find_token, Token&& identifier)
-		: _find_token(std::move(find_token)), _identifier(std::move(identifier))
+	FindStatement::FindStatement(Token&& find_token, Expression& pattern)
+		: _find_token(std::move(find_token)), _pattern(pattern)
 	{
 	}
 
@@ -1479,14 +1534,17 @@ namespace lx
 
 	void FindStatement::post_analyse(ResolutionContext& ctx)
 	{
-		// TODO if abolishing separate pattern expressions, can pass pattern expressions directly to Find instead of only using pattern identifiers
-		// TODO in ASTRoot::post_analyse, check that all seen patterns are declared *somewhere* - look at control flow - or don't bother for now: just check if declared somewhere
-		//ctx.add_seen_pattern(_identifier.lexeme);
+		if (!can_cast_implicit(_pattern.evaltype(ctx), DataType::Pattern))
+		{
+			std::stringstream ss;
+			ss << "expression does not resolve to " << DataType::Pattern;
+			ctx.add_semantic_error(_pattern.segment(), ss.str());
+		}
 	}
 
 	ScriptSegment FindStatement::impl_segment() const
 	{
-		return _find_token.segment.combined_right(_identifier.segment);
+		return _find_token.segment.combined_right(_pattern.segment());
 	}
 
 	FilterStatement::FilterStatement(Token&& filter_token, Token&& identifier)
@@ -1572,7 +1630,7 @@ namespace lx
 	void ScopeStatement::post_analyse(ResolutionContext& ctx)
 	{
 		const auto range_type = _range.evaltype(ctx);
-		if (!can_cast(range_type, DataType::IRange))
+		if (!can_cast_explicit(range_type, DataType::IRange))
 			ctx.add_semantic_error(_range.segment(), "cannot convert to 'irange'");
 	}
 

@@ -239,7 +239,45 @@ namespace lx
 			return nullptr;
 	}
 
-	bool can_cast(DataType from, DataType to)
+	bool can_cast_implicit(DataType from, DataType to)
+	{
+		if (to == DataType::Void || from == to)
+			return true;
+
+		switch (from)
+		{
+		case DataType::Int:
+			return to == DataType::Float || to == DataType::Bool || to == DataType::IRange;
+
+		case DataType::Float:
+		case DataType::Bool:
+			return to == DataType::Int || to == DataType::Float || to == DataType::Bool;
+
+		case DataType::String:
+			return to == DataType::Pattern;
+
+		case DataType::Pattern:
+		case DataType::Void:
+		case DataType::Match:
+		case DataType::Matches:
+		case DataType::CapId:
+		case DataType::Cap:
+		case DataType::IRange:
+		case DataType::SRange:
+		case DataType::List:
+			return false;
+
+		case DataType::_Marker:
+			return to == DataType::Pattern;
+
+		case DataType::_Scope:
+		case DataType::_Color:
+		default:
+			return false;
+		}
+	}
+
+	bool can_cast_explicit(DataType from, DataType to)
 	{
 		if (to == DataType::Void || from == to)
 			return true;
@@ -255,8 +293,6 @@ namespace lx
 			return to == DataType::Int || to == DataType::Float || to == DataType::Bool || to == DataType::String || to == DataType::Pattern;
 
 		case DataType::Pattern:
-			return to == DataType::String || to == DataType::Pattern;
-
 		case DataType::Void:
 		case DataType::Match:
 		case DataType::Matches:
@@ -446,7 +482,9 @@ namespace lx
 		case BinaryOperator::Comma:
 		case BinaryOperator::Except:
 		case BinaryOperator::Repeat:
-			break; // TODO if lhs and rhs are both convertible to pattern, return pattern
+			if (can_cast_implicit(lhs, DataType::Pattern) && can_cast_implicit(rhs, DataType::Pattern))
+				return DataType::Pattern;
+			break;
 		}
 
 		return std::nullopt;
@@ -495,7 +533,9 @@ namespace lx
 		case PrefixOperator::NotBehind:
 		case PrefixOperator::Optional:
 		case PrefixOperator::Ref:
-			break;  // TODO if type is convertible to pattern, return pattern
+			if (can_cast_implicit(type, DataType::Pattern))
+				return DataType::Pattern;
+			break;
 
 		case PrefixOperator::Max:
 		case PrefixOperator::Min:

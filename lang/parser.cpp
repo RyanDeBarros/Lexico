@@ -333,7 +333,15 @@ namespace lx
 
 		bool parse_find_statement()
 		{
-			return parse_declaration<FindStatement>(TokenType::Find);
+			if (!peek_token_is(0, TokenType::Find))
+				return false;
+
+			auto& find_token = ref(0);
+			auto offset = token_offset(1);
+			Expression& pattern = parse_expression(offset);
+			offset.submit();
+			append_to_context(std::make_unique<FindStatement>(std::move(find_token), pattern));
+			return true;
 		}
 
 		bool parse_filter_statement()
