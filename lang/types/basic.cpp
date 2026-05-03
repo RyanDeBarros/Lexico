@@ -7,6 +7,11 @@
 
 namespace lx
 {
+	static constexpr int LOWER_A = 'a';
+	static constexpr int LOWER_Z = 'z';
+	static constexpr int UPPER_A = 'A';
+	static constexpr int UPPER_Z = 'Z';
+
 	Int::Int(int value)
 		: _value(value)
 	{
@@ -179,6 +184,11 @@ namespace lx
 		return String(std::move(v._value));
 	}
 
+	String String::make_from(const SRange& v)
+	{
+		return String(v.string());
+	}
+
 	std::string_view String::value() const
 	{
 		return _value;
@@ -207,5 +217,87 @@ namespace lx
 	std::optional<int> IRange::max() const
 	{
 		return _max;
+	}
+
+	SRange::SRange(std::optional<char> min, std::optional<char> max)
+		: _min(min), _max(max)
+	{
+	}
+
+	static void assert_valid_srange_char(const std::string& m)
+	{
+		if (m.size() != 1)
+		{
+			std::stringstream ss;
+			ss << "\"" << m << "\" should only consist of one character";
+			throw LxError(ErrorType::Runtime, ss.str());
+		}
+		else if (m[0] < LOWER_A || (m[0] > LOWER_Z && m[0] < UPPER_A) || m[0] > UPPER_Z)
+		{
+			std::stringstream ss;
+			ss << "\"" << m[0] << "\" out of range \"a-z\" and \"A-Z\"";
+			throw LxError(ErrorType::Runtime, ss.str());
+		}
+	}
+	
+	SRange::SRange(std::optional<std::string> min, std::optional<std::string> max)
+		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
+	{
+		// TODO throw LxErrorList that batches multiple errors
+
+		if (min)
+			assert_valid_srange_char(*min);
+
+		if (max)
+			assert_valid_srange_char(*max);
+	}
+
+	SRange SRange::make_from(const SRange& v)
+	{
+		return SRange(v.min(), v.max());
+	}
+
+	std::optional<char> SRange::min() const
+	{
+		return _min;
+	}
+
+	std::optional<char> SRange::max() const
+	{
+		return _max;
+	}
+
+	static constexpr bool is_lower(char c)
+	{
+		return c <= LOWER_Z;
+	}
+
+	static std::stringstream& append_range(std::stringstream& ss, int min, int max)
+	{
+		for (int i = min; i <= max; ++i)
+			ss << i;
+		return ss;
+	}
+
+	std::string SRange::string() const
+	{
+		if (!_min && !_max)
+			return "";
+
+		std::stringstream ss;
+
+		if (_min && !_max)
+			return append_range(ss, *_min, is_lower(*_min) ? 'z' : 'Z').str();
+
+		if (_max && !_min)
+			return append_range(ss, is_lower(*_max) ? 'a' : 'A', *_max).str();
+
+		if (*_min <= *_max)
+			return append_range(ss, *_min, *_max).str();
+
+		if (is_lower(*_min))
+			return append_range(append_range(ss, *_min, 'z'), 'A', *_max).str();
+		else
+			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
 	}
 }

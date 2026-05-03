@@ -70,6 +70,7 @@ namespace lx
 		static String make_from(const Bool& v);
 		static String make_from(const String& v);
 		static String make_from(String&& v);
+		static String make_from(const SRange& v);
 
 		std::string_view value() const;
 	};
@@ -117,6 +118,18 @@ namespace lx
 
 	class SRange
 	{
+		std::optional<char> _min;
+		std::optional<char> _max;
+
+	public:
+		SRange(std::optional<char> min, std::optional<char> max);
+		SRange(std::optional<std::string> min, std::optional<std::string> max);
+
+		static SRange make_from(const SRange& v);
+
+		std::optional<char> min() const;
+		std::optional<char> max() const;
+		std::string string() const;
 	};
 
 	class List
