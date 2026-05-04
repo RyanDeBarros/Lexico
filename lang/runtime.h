@@ -56,6 +56,8 @@ namespace lx
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
+		DataPoint _global_matches;
+
 		StringMap<unsigned int> _capture_ids;
 
 	public:
@@ -69,6 +71,9 @@ namespace lx
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
 		const DataPoint& registered_variable(const std::string_view identifier, Namespace ns) const;
 		DataPoint& registered_variable(const std::string_view identifier, Namespace ns);
+
+		const DataPoint& global_matches() const;
+		DataPoint& global_matches();
 
 		CapId capture_id(const std::string_view id);
 	};

@@ -122,7 +122,7 @@ namespace lx
 			auto result = node->execute(env);
 			if (result.type != ExecutionFlow::Type::Normal)
 			{
-				flow = result;
+				flow = std::move(result);
 				break;
 			}
 		}
@@ -372,8 +372,7 @@ namespace lx
 
 	ExecutionFlow GlobalMatchesAssignment::execute(Runtime& env) const
 	{
-		// TODO
-		//env.global_matches().set(_expression.evaluate(env));
+		env.global_matches().set(_expression.evaluate(env));
 		return {};
 	}
 
@@ -627,8 +626,7 @@ namespace lx
 
 	DataPoint AsExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
-		return Void();
+		return _expr.evaluate(env).cast_copy(data_type(_type.type));
 	}
 
 	void AsExpression::traverse(ASTVisitor& visitor)
@@ -1065,8 +1063,10 @@ namespace lx
 
 	ExecutionFlow ReturnStatement::execute(Runtime& env) const
 	{
-		// TODO
-		return {};
+		if (_expression)
+			return { .type = ExecutionFlow::Type::Return, .data = std::make_unique<DataPoint>(_expression->evaluate(env)) };
+		else
+			return { .type = ExecutionFlow::Type::Return, .data = std::make_unique<DataPoint>(Void()) };
 	}
 
 	void ReturnStatement::traverse(ASTVisitor& visitor)
@@ -1091,6 +1091,21 @@ namespace lx
 		return _expression ? _expression->evaltype(ctx) : DataType::Void;
 	}
 
+	IfConditional::IfConditional(Expression& condition)
+		: _condition(condition)
+	{
+	}
+
+	const Expression& IfConditional::condition() const
+	{
+		return _condition;
+	}
+
+	Expression& IfConditional::condition()
+	{
+		return _condition;
+	}
+
 	void IfConditional::set_fallback(IfFallbackBlock* fallback)
 	{
 		if (_fallback)
@@ -1101,6 +1116,16 @@ namespace lx
 		}
 		else
 			_fallback = fallback;
+	}
+
+	ExecutionFlow IfConditional::execute(Runtime& env) const
+	{
+		if (_condition.evaluate(env).move_as<Bool>().value())
+			return Block::execute(env);
+		else if (_fallback)
+			return _fallback->execute(env);
+		else
+			return {};
 	}
 
 	UpflowInfo IfConditional::impl_upflow(const SemanticContext& ctx)
@@ -1139,7 +1164,7 @@ namespace lx
 	}
 
 	IfStatement::IfStatement(Token&& if_token, Expression& condition)
-		: _if_token(std::move(if_token)), _condition(condition)
+		: IfConditional(condition), _if_token(std::move(if_token))
 	{
 	}
 
@@ -1151,19 +1176,13 @@ namespace lx
 
 	void IfStatement::post_analyse(SemanticContext& ctx)
 	{
-		validate_implicitly_casts(ctx, _condition, DataType::Bool);
+		validate_implicitly_casts(ctx, condition(), DataType::Bool);
 		Block::post_analyse(ctx);
-	}
-
-	ExecutionFlow IfStatement::execute(Runtime& env) const
-	{
-		// TODO
-		return {};
 	}
 
 	void IfStatement::traverse(ASTVisitor& visitor)
 	{
-		_condition.accept(visitor);
+		condition().accept(visitor);
 		Block::traverse(visitor);
 		if (_fallback)
 			_fallback->accept(visitor);
@@ -1185,7 +1204,7 @@ namespace lx
 	}
 
 	ElifStatement::ElifStatement(Token&& elif_token, Expression& condition)
-		: _elif_token(std::move(elif_token)), _condition(condition)
+		: IfConditional(condition), _elif_token(std::move(elif_token))
 	{
 	}
 
@@ -1197,19 +1216,13 @@ namespace lx
 
 	void ElifStatement::post_analyse(SemanticContext& ctx)
 	{
-		validate_implicitly_casts(ctx, _condition, DataType::Bool);
+		validate_implicitly_casts(ctx, condition(), DataType::Bool);
 		Block::post_analyse(ctx);
-	}
-
-	ExecutionFlow ElifStatement::execute(Runtime& env) const
-	{
-		// TODO
-		return {};
 	}
 
 	void ElifStatement::traverse(ASTVisitor& visitor)
 	{
-		_condition.accept(visitor);
+		condition().accept(visitor);
 		Block::traverse(visitor);
 		if (_fallback)
 			_fallback->accept(visitor);
@@ -1383,8 +1396,7 @@ namespace lx
 
 	ExecutionFlow BreakStatement::execute(Runtime& env) const
 	{
-		// TODO
-		return {};
+		return { .type = ExecutionFlow::Type::Break };
 	}
 
 	UpflowInfo BreakStatement::impl_upflow(const SemanticContext& ctx)
@@ -1426,8 +1438,7 @@ namespace lx
 
 	ExecutionFlow ContinueStatement::execute(Runtime& env) const
 	{
-		// TODO
-		return {};
+		return { .type = ExecutionFlow::Type::Continue };
 	}
 
 	UpflowInfo ContinueStatement::impl_upflow(const SemanticContext& ctx)

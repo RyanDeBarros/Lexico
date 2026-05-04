@@ -210,8 +210,10 @@ namespace lx
 			return to == DataType::Float || to == DataType::Bool || to == DataType::IRange;
 
 		case DataType::Float:
+			return to == DataType::Int || to == DataType::Bool;
+
 		case DataType::Bool:
-			return to == DataType::Int || to == DataType::Float || to == DataType::Bool;
+			return to == DataType::Int || to == DataType::Float;
 
 		case DataType::String:
 			return to == DataType::Pattern;
@@ -249,11 +251,11 @@ namespace lx
 		switch (from)
 		{
 		case DataType::Int:
+		case DataType::Float:
 			return to == DataType::String || to == DataType::Pattern;
 
-		case DataType::Float:
 		case DataType::Bool:
-			return to == DataType::String || to == DataType::Pattern;
+			return to == DataType::String;
 
 		case DataType::String:
 			return to == DataType::Int || to == DataType::Float || to == DataType::Bool;

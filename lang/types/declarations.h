@@ -131,22 +131,7 @@ namespace lx
 	template<DataType T>
 	using to_type = typename ToType<T>::type;
 
-	template<Type To, typename From> requires Type<std::decay_t<From>>
-	To cast(From&& value)
-	{
-		using FromDecay = std::decay_t<From>;
-
-		if constexpr (requires { To::template make_from<FromDecay>(std::forward<From>(value)); })
-		{
-			return To::template make_from<FromDecay>(std::forward<From>(value));
-		}
-		else
-		{
-			std::stringstream ss;
-			ss << "bad cast from " << to_enum<FromDecay> << " to " << to_enum<To>;
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-	}
+	[[noreturn]] extern void throw_bad_cast(DataType from, DataType to);
 }
 
 #undef LX_EXPAND_BY_TYPE

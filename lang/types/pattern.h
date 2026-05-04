@@ -152,15 +152,11 @@ namespace lx
 		Pattern& operator=(const Pattern& other);
 		Pattern& operator=(Pattern&& other) noexcept = default;
 
-		static Pattern make_from(const Int& v);
-		static Pattern make_from(const Float& v);
-		static Pattern make_from(const Bool& v);
-		static Pattern make_from(const String& v);
-		static Pattern make_from(String&& v);
-		static Pattern make_from(const SRange& v);
-
 		const SubpatternRoot& root() const;
 		SubpatternRoot& root();
+
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 	private:
 		void impl_add(std::unique_ptr<SubpatternNode>&& node);

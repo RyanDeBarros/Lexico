@@ -50,6 +50,7 @@ namespace lx
 		};
 
 		Type type = Type::Normal;
+		std::unique_ptr<DataPoint> data = nullptr;
 	};
 
 	class ASTNode
@@ -513,13 +514,21 @@ namespace lx
 	
 	class IfConditional : public virtual Block
 	{
+		Expression& _condition;
 		std::optional<UpflowInfo> _block_upflow;
 
 	protected:
 		IfFallbackBlock* _fallback = nullptr;
 
+		IfConditional(Expression& condition);
+
+		const Expression& condition() const;
+		Expression& condition();
+
 	public:
 		void set_fallback(IfFallbackBlock* fallback);
+
+		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
@@ -532,15 +541,12 @@ namespace lx
 	class IfStatement : public IfConditional
 	{
 		Token _if_token;
-		Expression& _condition;
 
 	public:
 		IfStatement(Token&& if_token, Expression& condition);
 
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
-
-		ExecutionFlow execute(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -553,15 +559,12 @@ namespace lx
 	class ElifStatement : public IfConditional, public IfFallbackBlock
 	{
 		Token _elif_token;
-		Expression& _condition;
 
 	public:
 		ElifStatement(Token&& elif_token, Expression& condition);
 
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
-
-		ExecutionFlow execute(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 

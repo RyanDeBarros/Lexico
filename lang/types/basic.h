@@ -13,10 +13,8 @@ namespace lx
 
 		static Int make_from_literal(std::string_view resolved);
 
-		static Int make_from(const Int& v);
-		static Int make_from(const Float& v);
-		static Int make_from(const Bool& v);
-		static Int make_from(const String& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		int value() const;
 	};
@@ -30,10 +28,8 @@ namespace lx
 
 		static Float make_from_literal(std::string_view resolved);
 
-		static Float make_from(const Int& v);
-		static Float make_from(const Float& v);
-		static Float make_from(const Bool& v);
-		static Float make_from(const String& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		float value() const;
 	};
@@ -47,10 +43,8 @@ namespace lx
 
 		static Bool make_from_literal(std::string_view resolved);
 
-		static Bool make_from(const Int& v);
-		static Bool make_from(const Float& v);
-		static Bool make_from(const Bool& v);
-		static Bool make_from(const String& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		bool value() const;
 	};
@@ -65,33 +59,32 @@ namespace lx
 
 		static String make_from_literal(std::string_view resolved);
 
-		static String make_from(const Int& v);
-		static String make_from(const Float& v);
-		static String make_from(const Bool& v);
-		static String make_from(const String& v);
-		static String make_from(String&& v);
-		static String make_from(const SRange& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		std::string_view value() const;
-		std::string&& move_string();
 	};
 
 	class Void
 	{
 	public:
-		template<typename T>
-		static Void make_from(T&&)
-		{
-			return {};
-		}
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Match
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
+
 	};
 
 	class Matches
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class CapId
@@ -100,10 +93,16 @@ namespace lx
 
 	public:
 		CapId(unsigned int uid);
+
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Cap
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class IRange
@@ -114,8 +113,8 @@ namespace lx
 	public:
 		IRange(std::optional<int> min, std::optional<int> max);
 
-		static IRange make_from(const Int& v);
-		static IRange make_from(const IRange& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		std::optional<int> min() const;
 		std::optional<int> max() const;
@@ -130,7 +129,8 @@ namespace lx
 		SRange(std::optional<char> min, std::optional<char> max);
 		SRange(std::optional<std::string> min, std::optional<std::string> max);
 
-		static SRange make_from(const SRange& v);
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 
 		std::optional<char> min() const;
 		std::optional<char> max() const;
@@ -139,21 +139,36 @@ namespace lx
 
 	class List
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Unresolved
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Marker
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Scope
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 
 	class Color
 	{
+	public:
+		TypeVariant cast_copy(DataType type) const;
+		TypeVariant cast_move(DataType type);
 	};
 }

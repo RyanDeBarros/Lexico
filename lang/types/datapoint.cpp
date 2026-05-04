@@ -9,6 +9,16 @@ namespace lx
 	{
 	}
 
+	DataPoint::DataPoint(const TypeVariant& v)
+		: _storage(v)
+	{
+	}
+
+	DataPoint::DataPoint(TypeVariant&& v)
+		: _storage(std::move(v))
+	{
+	}
+
 	DataPoint DataPoint::make_from_literal(DataType type, std::string_view resolved)
 	{
 		switch (type)
@@ -28,6 +38,16 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		}
+	}
+
+	DataPoint DataPoint::cast_copy(DataType type) const
+	{
+		return std::visit([type](const auto& v) { return DataPoint(v.cast_copy(type)); }, _storage);
+	}
+
+	DataPoint DataPoint::cast_move(DataType type)
+	{
+		return std::visit([type](auto&& v) { return DataPoint(v.cast_move(type)); }, std::move(_storage));
 	}
 
 	void DataPoint::set(const DataPoint& other)

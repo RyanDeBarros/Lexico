@@ -60,7 +60,7 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input, std::stringstream& output, std::stringstream& log)
-		: _input(input), _output(output), _log(log)
+		: _input(input), _output(output), _log(log), _global_matches(Matches())
 	{
 	}
 
@@ -145,6 +145,16 @@ namespace lx
 	DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns)
 	{
 		return const_cast<DataPoint&>(const_cast<const Runtime*>(this)->registered_variable(identifier, ns));
+	}
+
+	const DataPoint& Runtime::global_matches() const
+	{
+		return _global_matches;
+	}
+
+	DataPoint& Runtime::global_matches()
+	{
+		return _global_matches;
 	}
 
 	CapId Runtime::capture_id(const std::string_view id)

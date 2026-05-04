@@ -205,45 +205,6 @@ namespace lx
 		return *this;
 	}
 
-	Pattern Pattern::make_from(const Int& v)
-	{
-		return Pattern::make_from(String::make_from(v));
-	}
-
-	Pattern Pattern::make_from(const Float & v)
-	{
-		return Pattern::make_from(String::make_from(v));
-	}
-
-	Pattern Pattern::make_from(const Bool& v)
-	{
-		return Pattern::make_from(String::make_from(v));
-	}
-
-	Pattern Pattern::make_from(const String& v)
-	{
-		Pattern ptn;
-		ptn.root().append(ptn.add(std::make_unique<SubpatternString>(std::string(v.value()))));
-		return ptn;
-	}
-	
-	Pattern Pattern::make_from(String&& v)
-	{
-		Pattern ptn;
-		ptn.root().append(ptn.add(std::make_unique<SubpatternString>(v.move_string())));
-		return ptn;
-	}
-
-	Pattern Pattern::make_from(const SRange& v)
-	{
-		Pattern ptn;
-		auto& sub = ptn.add(std::make_unique<SubpatternDisjunction>());
-		ptn.root().append(sub);
-		for (char c : v.string())
-			sub.append(ptn.add(std::make_unique<SubpatternString>(std::string{c})));
-		return ptn;
-	}
-
 	const SubpatternRoot& Pattern::root() const
 	{
 		return *_root;
@@ -252,6 +213,25 @@ namespace lx
 	SubpatternRoot& Pattern::root()
 	{
 		return *_root;
+	}
+
+	TypeVariant Pattern::cast_copy(DataType type) const
+	{
+		if (type == DataType::Pattern)
+			return Pattern(*this);
+		else if (type == DataType::Void)
+			return Void();
+		else
+			throw_bad_cast(DataType::Pattern, type);
+	}
+
+	TypeVariant Pattern::cast_move(DataType type)
+	{
+		(void*)this; // ignore const warning
+		if (type == DataType::Pattern)
+			return Pattern(std::move(*this));
+		else
+			return cast_copy(type);
 	}
 
 	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)
