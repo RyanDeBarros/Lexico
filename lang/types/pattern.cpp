@@ -6,9 +6,58 @@
 
 namespace lx
 {
+	static SubpatternNode& refer_node(const SubpatternNode& from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena)
+	{
+		auto it = conv.find(&from);
+		if (it != conv.end())
+			return *it->second;
+		else
+			return from.clone(conv, arena);
+	}
+
+	template<std::derived_from<SubpatternNode> T, typename... Args>
+	static T& clone_base(const T* from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena, Args&&... args)
+	{
+		auto cloned = std::make_unique<T>(std::forward<Args>(args)...);
+		T& base = *cloned;
+		arena.push_back(std::move(cloned));
+		conv[from] = &base;
+		return base;
+	}
+
 	void SubpatternArray::append(SubpatternNode& node)
 	{
 		_array.push_back(&node);
+	}
+
+	SubpatternNode& SubpatternArray::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		auto& array = clone_base<SubpatternArray>(this, conv, arena);
+		for (const SubpatternNode* el : _array)
+			array.append(refer_node(*el, conv, arena));
+		return array;
+	}
+
+	const std::vector<SubpatternNode*>& SubpatternArray::array() const
+	{
+		return _array;
+	}
+
+	SubpatternNode& SubpatternRoot::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		std::stringstream ss;
+		ss << __FUNCTION__ << ": cannot clone root node directly";
+		throw LxError(ErrorType::Internal, ss.str());
+	}
+
+	std::unique_ptr<SubpatternRoot> SubpatternRoot::clone_root(std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		NodeConvertMap conv;
+		auto cloned = std::make_unique<SubpatternRoot>();
+		conv[this] = cloned.get();
+		for (const SubpatternNode* el : array())
+			cloned->append(refer_node(*el, conv, arena));
+		return cloned;
 	}
 
 	SubpatternString::SubpatternString(const std::string& string)
@@ -21,9 +70,19 @@ namespace lx
 	{
 	}
 
+	SubpatternNode& SubpatternString::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternString>(this, conv, arena, _string);
+	}
+
 	SubpatternException::SubpatternException(SubpatternNode& exception)
 		: _exception(&exception)
 	{
+	}
+
+	SubpatternNode& SubpatternException::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternException>(this, conv, arena, refer_node(*_exception, conv, arena));
 	}
 
 	SubpatternRepetition::SubpatternRepetition(const IRange& range)
@@ -53,6 +112,11 @@ namespace lx
 	{
 	}
 
+	SubpatternNode& SubpatternRepetition::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternRepetition>(this, conv, arena, _range);
+	}
+
 	LookaroundMode lookaround_mode(PrefixOperator op)
 	{
 		switch (op)
@@ -79,9 +143,19 @@ namespace lx
 	{
 	}
 
+	SubpatternNode& SubpatternLookaround::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternLookaround>(this, conv, arena, _mode);
+	}
+
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
 		: _optional(&optional)
 	{
+	}
+
+	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternOptional>(this, conv, arena, refer_node(*_optional, conv, arena));
 	}
 
 	SubpatternBackRef::SubpatternBackRef(CapId capid)
@@ -89,9 +163,19 @@ namespace lx
 	{
 	}
 
+	SubpatternNode& SubpatternBackRef::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternBackRef>(this, conv, arena, _capid);
+	}
+
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
 		: _capid(capid), _captured(&captured)
 	{
+	}
+
+	SubpatternNode& SubpatternCapture::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternCapture>(this, conv, arena, _capid, refer_node(*_captured, conv, arena));
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -99,9 +183,26 @@ namespace lx
 	{
 	}
 
+	SubpatternNode& SubpatternLazy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternLazy>(this, conv, arena, refer_node(*_lazy, conv, arena));
+	}
+
 	Pattern::Pattern()
 		: _root(std::make_unique<SubpatternRoot>())
 	{
+	}
+
+	Pattern::Pattern(const Pattern& other)
+	{
+		_root = other._root->clone_root(_subnodes);
+	}
+
+	Pattern& Pattern::operator=(const Pattern& other)
+	{
+		if (this != &other)
+			*this = Pattern(other);
+		return *this;
 	}
 
 	Pattern Pattern::make_from(const Int& v)

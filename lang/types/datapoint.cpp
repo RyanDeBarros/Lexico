@@ -4,6 +4,11 @@
 
 namespace lx
 {
+	DataPoint::DataPoint(const DataPoint& other)
+		: _storage(other._storage)
+	{
+	}
+
 	DataPoint DataPoint::make_from_literal(DataType type, std::string_view resolved)
 	{
 		switch (type)

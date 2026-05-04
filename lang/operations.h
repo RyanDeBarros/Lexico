@@ -9,35 +9,9 @@
 
 namespace lx
 {
-	enum class DataType
-	{
-		Int,
-		Float,
-		Bool,
-		String,
-		Void,
-		Pattern,
-		Match,
-		Matches,
-		CapId,
-		Cap,
-		IRange,
-		SRange,
-		List,
-
-		// Internal
-		_Unresolved,
-		_Marker,
-		_Scope,
-		_Color,
-	};
-
 	extern DataType data_type(TokenType type);
 	extern DataType literal_type(TokenType type);
 	extern DataType data_type(BuiltinSymbol symbol);
-	extern std::string friendly_name(DataType type);
-
-	extern std::ostream& operator<<(std::ostream& os, DataType type);
 
 	struct MemberSignature
 	{

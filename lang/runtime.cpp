@@ -4,6 +4,61 @@
 
 namespace lx
 {
+	Variable::Variable(const DataPoint& dp)
+		: _dp(std::make_unique<DataPoint>(dp))
+	{
+	}
+	
+	Variable::Variable(DataPoint&& dp)
+		: _dp(std::make_unique<DataPoint>(std::move(dp)))
+	{
+	}
+
+	const DataPoint& Variable::ref() const
+	{
+		return *_dp;
+	}
+	
+	DataPoint& Variable::ref()
+	{
+		return *_dp;
+	}
+
+	void RuntimeSymbolTable::register_variable(const std::string_view identifier, DataPoint&& dp)
+	{
+		if (_variable_table.count(identifier))
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": variable already registered: " << identifier;
+			throw LxError(ErrorType::Runtime, ss.str());
+		}
+
+		_variable_table.try_emplace(std::string(identifier), std::move(dp));
+	}
+
+	const DataPoint* RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
+	{
+		auto it = _variable_table.find(identifier);
+		if (it != _variable_table.end())
+			return &it->second.ref();
+		else
+			return nullptr;
+	}
+
+	DataPoint* RuntimeSymbolTable::registered_variable(const std::string_view identifier)
+	{
+		auto it = _variable_table.find(identifier);
+		if (it != _variable_table.end())
+			return &it->second.ref();
+		else
+			return nullptr;
+	}
+
+	RuntimeScopeContext::RuntimeScopeContext(bool isolated)
+		: isolated(isolated)
+	{
+	}
+
 	Runtime::Runtime(const std::string_view input, std::stringstream& output, std::stringstream& log)
 		: _input(input), _output(output), _log(log)
 	{
@@ -11,27 +66,85 @@ namespace lx
 
 	void Runtime::push_local_scope(bool isolated)
 	{
-		// TODO
+		_scope_stack.emplace_back(isolated);
 	}
 
 	void Runtime::pop_local_scope()
 	{
-		// TODO
+		if (_scope_stack.empty())
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": scope stack is empty";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		_scope_stack.pop_back();
+	}
+
+	unsigned int Runtime::scope_depth() const
+	{
+		return _scope_stack.size();
 	}
 
 	void Runtime::register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns)
 	{
-		// TODO
+		switch (ns)
+		{
+		case lx::Namespace::Global:
+			_global_table.register_variable(identifier, std::move(dp));
+			break;
+		case lx::Namespace::Local:
+			if (!_scope_stack.empty())
+				_scope_stack.back().table.register_variable(identifier, std::move(dp));
+			else
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": local scope stack is empty";
+				throw LxError(ErrorType::Runtime, ss.str());
+			}
+			break;
+		default:
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": cannot register variable to unknown/isolated namespace";
+			throw LxError(ErrorType::Runtime, ss.str());
+		}
 	}
 
 	const DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
-		// TODO
+		if (ns == Namespace::Global)
+		{
+			if (auto dp = _global_table.registered_variable(identifier))
+				return *dp;
+			else
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": global variable \"" << identifier << "\" not present in global table";
+				throw LxError(ErrorType::Runtime, ss.str());
+			}
+		}
+
+		if (ns == Namespace::Unknown || scope_depth() == 0)
+		{
+			if (auto sig = _global_table.registered_variable(identifier))
+				return *sig;
+		}
+
+		for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
+		{
+			if (auto sig = it->table.registered_variable(identifier))
+				return *sig;
+			else if (it->isolated)
+				break;
+		}
+
+		std::stringstream ss;
+		ss << __FUNCTION__ << ": variable \"" << identifier << "\" not present in any table";
+		throw LxError(ErrorType::Runtime, ss.str());
 	}
 
 	DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns)
 	{
-		// TODO
+		return const_cast<DataPoint&>(const_cast<const Runtime*>(this)->registered_variable(identifier, ns));
 	}
 
 	CapId Runtime::capture_id(const std::string_view id)

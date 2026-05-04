@@ -11,6 +11,8 @@ namespace lx
 		TypeVariant _storage;
 
 	public:
+		DataPoint(const DataPoint&);
+
 		template<Type T>
 		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
 

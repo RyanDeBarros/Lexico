@@ -19,7 +19,7 @@ namespace lx
 		return a.identifier == b.identifier && a.arg_types == b.arg_types;
 	}
 
-	std::optional<VariableSignature> SymbolTable::registered_variable(const std::string_view identifier) const
+	std::optional<VariableSignature> SemanticSymbolTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _variable_table.find(identifier);
 		if (it != _variable_table.end())
@@ -28,7 +28,7 @@ namespace lx
 			return std::nullopt;
 	}
 
-	void SymbolTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
+	void SemanticSymbolTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
 	{
 		if (_variable_table.count(identifier))
 		{
@@ -40,7 +40,7 @@ namespace lx
 		_variable_table[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
 	}
 
-	std::optional<FunctionSignature> SymbolTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
+	std::optional<FunctionSignature> SemanticSymbolTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
 		auto it = _function_table.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
 		if (it != _function_table.end())
@@ -49,7 +49,7 @@ namespace lx
 			return std::nullopt;
 	}
 
-	FunctionCallSet SymbolTable::registered_function_calls(const std::string_view identifier) const
+	FunctionCallSet SemanticSymbolTable::registered_function_calls(const std::string_view identifier) const
 	{
 		auto it = _function_lut.find(identifier);
 		if (it != _function_lut.end())
@@ -58,7 +58,7 @@ namespace lx
 			return {};
 	}
 
-	void SymbolTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
+	void SemanticSymbolTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
 		if (!_function_lut.count(identifier))
 			_function_lut[std::string(identifier)] = {};
@@ -127,7 +127,7 @@ namespace lx
 		return _scope_stack.size();
 	}
 
-	static std::optional<unsigned int> first_line_number(const SymbolTable& table, const std::string_view identifier)
+	static std::optional<unsigned int> first_line_number(const SemanticSymbolTable& table, const std::string_view identifier)
 	{
 		std::optional<unsigned int> first_line_number = std::nullopt;
 

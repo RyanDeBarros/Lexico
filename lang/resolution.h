@@ -24,7 +24,7 @@ namespace lx
 		std::vector<DataType> arg_types;
 	};
 
-	class SymbolTable
+	class SemanticSymbolTable
 	{
 		StringMap<VariableSignature> _variable_table;
 		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _function_table;
@@ -39,16 +39,16 @@ namespace lx
 		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 	};
 
-	struct ScopeContext
+	struct SemanticScopeContext
 	{
-		SymbolTable table;
+		SemanticSymbolTable table;
 		bool isolated;
 	};
 
 	class SemanticContext
 	{
-		SymbolTable _global_table;
-		std::vector<ScopeContext> _scope_stack;
+		SemanticSymbolTable _global_table;
+		std::vector<SemanticScopeContext> _scope_stack;
 		mutable std::vector<LxError> _errors;
 		mutable std::vector<LxWarning> _warnings;
 
