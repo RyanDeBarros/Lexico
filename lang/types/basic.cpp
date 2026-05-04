@@ -425,7 +425,7 @@ namespace lx
 			auto& sub = ptn.add(std::make_unique<SubpatternDisjunction>());
 			ptn.root().append(sub);
 			for (char c : string())
-				sub.append(ptn.add(std::make_unique<SubpatternString>(std::string{ c })));
+				sub.append(ptn.add(std::make_unique<SubpatternChar>(c)));
 			return ptn;
 		}
 		case DataType::Void:
@@ -532,6 +532,11 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		}
+	}
+
+	Marker::Marker(MarkerIdentifier identifier)
+		: _identifier(identifier)
+	{
 	}
 
 	TypeVariant Marker::cast_copy(DataType type) const

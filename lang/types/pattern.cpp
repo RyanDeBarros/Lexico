@@ -61,6 +61,16 @@ namespace lx
 		return cloned;
 	}
 
+	SubpatternChar::SubpatternChar(char ch)
+		: _ch(ch)
+	{
+	}
+
+	SubpatternNode& SubpatternChar::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternChar>(this, conv, arena, _ch);
+	}
+
 	SubpatternString::SubpatternString(const std::string& string)
 		: _string(string)
 	{
@@ -233,6 +243,98 @@ namespace lx
 			return Pattern(std::move(*this));
 		else
 			return cast_copy(type);
+	}
+
+	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)
+	{
+		Pattern ptn;
+		switch (symbol)
+		{
+		case BuiltinSymbol::Alphanumeric:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = 'a'; i <= 'z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			for (int i = 'A'; i <= 'Z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			for (int i = '0'; i <= '9'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Digit:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = '0'; i <= '9'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Letter:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = 'a'; i <= 'z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			for (int i = 'A'; i <= 'Z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Lowercase:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = 'a'; i <= 'z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Newline:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Space:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			sub->append(ptn.add(std::make_unique<SubpatternChar>(' ')));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\t')));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		// TODO $whitespace symbol equivalent to `$newline or $space`
+		case BuiltinSymbol::Uppercase:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = 'A'; i <= 'Z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Varname:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			for (int i = 'a'; i <= 'z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			for (int i = 'A'; i <= 'Z'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			for (int i = '0'; i <= '9'; ++i)
+				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('_')));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		default:
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": unrecognized pattern symbol " << static_cast<int>(symbol);
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		}
+		return ptn;
 	}
 
 	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)

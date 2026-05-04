@@ -309,6 +309,7 @@ namespace lx
 		return _global;
 	}
 
+	// TODO allow assigning to a MemberAccessExpression/SubscriptExpression, not just identifier -> parser should parse expression up until first '='
 	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
 		: _identifier(std::move(identifier)), _expression(expression)
 	{
@@ -533,7 +534,7 @@ namespace lx
 
 	DataPoint MemberAccessExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
+		// TODO should return a reference to a DataPoint, not just a copy
 		return Void();
 	}
 
@@ -688,7 +689,7 @@ namespace lx
 
 	DataPoint SubscriptExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
+		// TODO should return a reference to a DataPoint, not just a copy
 		return Void();
 	}
 
@@ -792,8 +793,21 @@ namespace lx
 
 	DataPoint BuiltinSymbolExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
-		return Void();
+		switch (evaltype())
+		{
+		case DataType::Pattern:
+			return Pattern::make_from_symbol(_builtin_symbol);
+		case DataType::Matches:
+			return DataPoint(env.global_matches());
+		case DataType::_Marker:
+			return Marker(marker(_builtin_symbol));
+		case DataType::_Scope:
+			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unexpected scope symbol");
+		case DataType::_Color:
+			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unexpected color symbol");
+		default:
+			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unrecognized symbol");
+		}
 	}
 
 	DataType BuiltinSymbolExpression::impl_evaltype(const SemanticContext& ctx) const

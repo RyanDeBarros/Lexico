@@ -164,6 +164,8 @@ namespace lx
 		MarkerIdentifier _identifier;
 
 	public:
+		Marker(MarkerIdentifier identifier);
+
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 	};

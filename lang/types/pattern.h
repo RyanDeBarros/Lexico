@@ -39,6 +39,16 @@ namespace lx
 		std::unique_ptr<SubpatternRoot> clone_root(std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 	};
 
+	class SubpatternChar : public SubpatternNode
+	{
+		char _ch;
+
+	public:
+		SubpatternChar(char ch);
+
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+	};
+
 	class SubpatternString : public SubpatternNode
 	{
 		std::string _string;
@@ -140,6 +150,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
+	// TODO replace SubpatternRoot with just Pattern
 	class Pattern
 	{
 		std::vector<std::unique_ptr<SubpatternNode>> _subnodes;
@@ -157,6 +168,8 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+
+		static Pattern make_from_symbol(BuiltinSymbol symbol);
 
 	private:
 		void impl_add(std::unique_ptr<SubpatternNode>&& node);
