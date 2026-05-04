@@ -160,7 +160,11 @@ namespace lx
 
 	class Scope
 	{
+		std::optional<unsigned int> _lines;
+
 	public:
+		Scope(std::optional<unsigned int> lines);
+
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 	};

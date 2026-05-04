@@ -7,6 +7,8 @@
 
 namespace lx
 {
+	class DataPoint;
+
 #define LX_EXPAND_BY_TYPE(M, Sep) \
 	M(Int) Sep \
 	M(Float) Sep \

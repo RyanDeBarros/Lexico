@@ -323,11 +323,12 @@ namespace lx
 			if (!specifier)
 				throw_error(errors::EXPECTED_SYMBOL, 1);
 
-			assert_tokens_exist(2, errors::EXPECTED_EXPRESSION);
 			auto offset = token_offset(2);
-			Expression& expr = parse_expression(offset);
+			Expression* count = nullptr;
+			if (continue_statement())
+				count = &parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<ScopeStatement>(std::move(scope_token), std::move(symbol_token), *specifier, expr));
+			append_to_context(std::make_unique<ScopeStatement>(std::move(scope_token), std::move(symbol_token), *specifier, count));
 			return true;
 		}
 

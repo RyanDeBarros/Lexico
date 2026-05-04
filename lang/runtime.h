@@ -47,6 +47,8 @@ namespace lx
 		RuntimeScopeContext(RuntimeScopeContext&&) noexcept = default;
 	};
 
+	// TODO even in SemanticContext, functions should not be declared within one another. All functions should go into a global function table, and Runtime should load that table directly from the built SemanticContext. Stored functions should also store a const FunctionDefinition* node. Should do a full pass first to build the funciton table before normal analysis, so that functions can be declared in any order. So perhaps they should be separate from SemanticContext, and only have a reference to the FunctionTable in SemanticContext/Runtime.
+
 	class Runtime
 	{
 		const std::string_view _input;
@@ -56,7 +58,8 @@ namespace lx
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
-		DataPoint _global_matches;
+		Matches _global_matches;
+		Scope _search_scope;
 
 		StringMap<unsigned int> _capture_ids;
 
@@ -72,8 +75,11 @@ namespace lx
 		const DataPoint& registered_variable(const std::string_view identifier, Namespace ns) const;
 		DataPoint& registered_variable(const std::string_view identifier, Namespace ns);
 
-		const DataPoint& global_matches() const;
-		DataPoint& global_matches();
+		const Matches& global_matches() const;
+		Matches& global_matches();
+
+		const Scope& search_scope() const;
+		Scope& search_scope();
 
 		CapId capture_id(const std::string_view id);
 	};

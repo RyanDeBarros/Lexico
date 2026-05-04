@@ -60,7 +60,7 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input, std::stringstream& output, std::stringstream& log)
-		: _input(input), _output(output), _log(log), _global_matches(Matches())
+		: _input(input), _output(output), _log(log), _global_matches(Matches()), _search_scope(std::nullopt)
 	{
 	}
 
@@ -147,14 +147,26 @@ namespace lx
 		return const_cast<DataPoint&>(const_cast<const Runtime*>(this)->registered_variable(identifier, ns));
 	}
 
-	const DataPoint& Runtime::global_matches() const
+	const Matches& Runtime::global_matches() const
 	{
 		return _global_matches;
 	}
 
-	DataPoint& Runtime::global_matches()
+	Matches& Runtime::global_matches()
 	{
 		return _global_matches;
+	}
+
+	// TODO use search scope in find execution
+
+	const Scope& Runtime::search_scope() const
+	{
+		return _search_scope;
+	}
+
+	Scope& Runtime::search_scope()
+	{
+		return _search_scope;
 	}
 
 	CapId Runtime::capture_id(const std::string_view id)

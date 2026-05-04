@@ -954,10 +954,10 @@ namespace lx
 		Token _scope_token;
 		Token _symbol_token;
 		BuiltinSymbol _specifier;
-		Expression& _range;
+		Expression* _count;
 
 	public:
-		ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression& range);
+		ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression* count);
 
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
@@ -965,6 +965,9 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
+
+	private:
+		Scope scope(const Runtime& env) const;
 
 	protected:
 		ScriptSegment impl_segment() const override;

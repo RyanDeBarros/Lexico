@@ -529,7 +529,7 @@ You can limit the searching scope for `find` statements using `scope`:
 
 ```
 scope $line           # match must fit in single line (default)
-scope $lines <range>  # match must fit in line range
+scope $lines <count>  # match must fit in group of <count> lines
 scope $page           # match exists in whole page
 ```
 

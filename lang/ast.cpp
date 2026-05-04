@@ -372,7 +372,7 @@ namespace lx
 
 	ExecutionFlow GlobalMatchesAssignment::execute(Runtime& env) const
 	{
-		env.global_matches().set(_expression.evaluate(env));
+		env.global_matches() = _expression.evaluate(env).cast_move(DataType::Matches).get<Matches>();
 		return {};
 	}
 
@@ -788,8 +788,6 @@ namespace lx
 	{
 		return _symbol_token.segment;
 	}
-
-	// TODO v0.2 function forward declaration node without implementation. In analysis, register function and add to list of declared function signatures. FunctionDefinition analysis should remove signature from that list. In IsolationNode, check that no declared+unimplemented signatures remain.
 
 	FunctionCallExpression::FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren)
 		: _identifier(std::move(identifier)), _args(std::move(args)), _closing_paren(std::move(closing_paren))
@@ -1987,8 +1985,8 @@ namespace lx
 		return _apply_token.segment;
 	}
 
-	ScopeStatement::ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression& range)
-		: _scope_token(std::move(scope_token)), _symbol_token(std::move(symbol_token)), _specifier(specifier), _range(range)
+	ScopeStatement::ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression* count)
+		: _scope_token(std::move(scope_token)), _symbol_token(std::move(symbol_token)), _specifier(specifier), _count(count)
 	{
 	}
 
@@ -2002,21 +2000,62 @@ namespace lx
 
 	void ScopeStatement::post_analyse(SemanticContext& ctx)
 	{
-		const auto range_type = _range.evaltype(ctx);
-		if (!can_cast_explicit(range_type, DataType::IRange))
-			ctx.add_semantic_error(_range.segment(), "cannot convert to 'irange'");
+		if (_count)
+		{
+			const auto range_type = _count->evaltype(ctx);
+			if (!can_cast_explicit(range_type, DataType::Int))
+				ctx.add_semantic_error(_count->segment(), "cannot convert to " + friendly_name(DataType::Int));
+		}
 	}
 
 	ExecutionFlow ScopeStatement::execute(Runtime& env) const
 	{
-		// TODO
+		env.search_scope() = scope(env);
 		return {};
 	}
 
 	void ScopeStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
-		_range.accept(visitor);
+		if (_count)
+			_count->accept(visitor);
+	}
+
+	Scope ScopeStatement::scope(const Runtime& env) const
+	{
+		if (_specifier == BuiltinSymbol::Page)
+		{
+			if (_count)
+				throw LxError::segment_error(_count->segment(), ErrorType::Runtime, "unexpected operand for $page scope");
+			else
+				return Scope(std::nullopt);
+		}
+		else if (_specifier == BuiltinSymbol::Line)
+		{
+			if (_count)
+				throw LxError::segment_error(_count->segment(), ErrorType::Runtime, "unexpected operand for $line scope");
+			else
+				return Scope(1u);
+		}
+		else if (_specifier == BuiltinSymbol::Lines)
+		{
+			if (_count)
+			{
+				int c = _count->evaluate(env).move_as<Int>().value();
+				if (c > 0)
+					return Scope(c);
+				else
+				{
+					std::stringstream ss;
+					ss << "'count' evaluated to " << c << ": but should be a positive " << DataType::Int;
+					throw LxError::segment_error(_count->segment(), ErrorType::Runtime, ss.str());
+				}
+			}
+			else
+				throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "expected 'count' operand for $lines scope");
+		}
+		else
+			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unrecognized scope specifier");
 	}
 
 	ScriptSegment ScopeStatement::impl_segment() const

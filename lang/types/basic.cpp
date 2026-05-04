@@ -523,10 +523,15 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	Scope::Scope(std::optional<unsigned int> lines)
+		: _lines(lines)
+	{
+	}
+
 	TypeVariant Scope::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Scope)
-			return Scope(); // TODO
+			return Scope(*this);
 		else if (type == DataType::Void)
 			return Void();
 		else
