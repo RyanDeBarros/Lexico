@@ -194,14 +194,6 @@ pattern $cap
 
 ### Negation
 
-To not allow a pattern, use `not`:
-
-```
-pattern singularCat
-append "cat"
-append not "s"
-```
-
 You can also negate subpatterns with `except`:
 
 ```

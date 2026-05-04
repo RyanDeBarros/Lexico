@@ -500,7 +500,7 @@ namespace lx
 		case BinaryOperator::Comma:
 		case BinaryOperator::Except:
 		case BinaryOperator::Repeat:
-			if (can_cast_implicit(lhs, DataType::Pattern) && can_cast_implicit(rhs, DataType::Pattern))
+			if (can_cast_implicit(lhs, DataType::Pattern) && can_cast_implicit(rhs, DataType::IRange))
 				return DataType::Pattern;
 			break;
 		}

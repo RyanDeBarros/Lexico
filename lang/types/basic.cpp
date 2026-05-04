@@ -181,7 +181,7 @@ namespace lx
 
 	String String::make_from(String&& v)
 	{
-		return String(std::move(v._value));
+		return String(v.move_string());
 	}
 
 	String String::make_from(const SRange& v)
@@ -192,6 +192,11 @@ namespace lx
 	std::string_view String::value() const
 	{
 		return _value;
+	}
+
+	std::string&& String::move_string()
+	{
+		return std::move(_value);
 	}
 
 	IRange::IRange(std::optional<int> min, std::optional<int> max)

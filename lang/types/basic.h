@@ -73,6 +73,7 @@ namespace lx
 		static String make_from(const SRange& v);
 
 		std::string_view value() const;
+		std::string&& move_string();
 	};
 
 	class Void
