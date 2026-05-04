@@ -28,25 +28,25 @@ namespace lx
 	M(Scope) Sep \
 	M(Color)
 
-#define LX_EXPAND_BY_PUBLIC_TYPE(M) \
-	M(Int) \
-	M(Float) \
-	M(Bool) \
-	M(String) \
-	M(Void) \
-	M(Pattern) \
-	M(Match) \
-	M(Matches) \
-	M(CapId) \
-	M(Cap) \
-	M(IRange) \
-	M(SRange) \
+#define LX_EXPAND_BY_PUBLIC_TYPE(M, Sep) \
+	M(Int) Sep \
+	M(Float) Sep \
+	M(Bool) Sep \
+	M(String) Sep \
+	M(Void) Sep \
+	M(Pattern) Sep \
+	M(Match) Sep \
+	M(Matches) Sep \
+	M(CapId) Sep \
+	M(Cap) Sep \
+	M(IRange) Sep \
+	M(SRange) Sep \
 	M(List)
 
-#define LX_EXPAND_BY_INTERNAL_TYPE(M) \
-	M(Unresolved) \
-	M(Marker) \
-	M(Scope) \
+#define LX_EXPAND_BY_INTERNAL_TYPE(M, Sep) \
+	M(Unresolved) Sep \
+	M(Marker) Sep \
+	M(Scope) Sep \
 	M(Color)
 
 #define LX_FORWARD_DECLARE(U) class U;
@@ -56,9 +56,18 @@ namespace lx
 #define LX_IDENTITY(U) U
 #define LX_COMMA ,
 
-		using TypeVariant = std::variant<
+	// TODO make TypeVariant a wrapper around variants to ensure that type never changes after instantiation
+
+	using TypeVariant = std::variant<
 		LX_EXPAND_BY_TYPE(LX_IDENTITY, LX_COMMA)
-		>;
+	>;
+
+	using PublicTypeVariant = std::variant<
+		LX_EXPAND_BY_PUBLIC_TYPE(LX_IDENTITY, LX_COMMA)
+	>;
+
+	extern PublicTypeVariant to_public(const TypeVariant& v);
+	extern PublicTypeVariant to_public(TypeVariant&& v);
 
 #undef LX_IDENTITY
 #undef LX_COMMA
@@ -68,6 +77,9 @@ namespace lx
 
 	template<typename T>
 	concept Type = LX_EXPAND_BY_TYPE(LX_IS_SAME_V, LX_OR);
+
+	template<typename T>
+	concept PublicType = LX_EXPAND_BY_PUBLIC_TYPE(LX_IS_SAME_V, LX_OR);
 
 #undef LX_IS_SAME_V
 #undef LX_OR
@@ -95,13 +107,13 @@ namespace lx
 		constexpr static DataType value = DataType::_##U; \
 	};
 
-	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS);
-	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS);
+	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS,);
+	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS,);
 
 #undef LX_PUBLIC_TYPE_TO_ENUM_CLASS
 #undef LX_INTERNAL_TYPE_TO_ENUM_CLASS
 
-	template<typename T>
+	template<Type T>
 	constexpr DataType to_enum = ToEnum<T>::value;
 
 	template<DataType T>
@@ -124,8 +136,8 @@ namespace lx
 		using type = U; \
 	};
 
-	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS);
-	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS);
+	LX_EXPAND_BY_PUBLIC_TYPE(LX_PUBLIC_TYPE_TO_ENUM_CLASS,);
+	LX_EXPAND_BY_INTERNAL_TYPE(LX_INTERNAL_TYPE_TO_ENUM_CLASS,);
 
 #undef LX_ENUM_CLASS_TO_PUBLIC_TYPE
 #undef LX_ENUM_CLASS_TO_INTERNAL_TYPE

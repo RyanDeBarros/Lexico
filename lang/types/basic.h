@@ -137,15 +137,28 @@ namespace lx
 		std::string string() const;
 	};
 
-	class List
+	class Unresolved
 	{
+		std::unique_ptr<PublicTypeVariant> _v;
+
 	public:
+		Unresolved();
+		Unresolved(const PublicTypeVariant& v);
+		Unresolved(PublicTypeVariant&& v);
+
+		Unresolved(const Unresolved&);
+		Unresolved(Unresolved&&) noexcept;
+		Unresolved& operator=(const Unresolved&);
+		Unresolved& operator=(Unresolved&&) noexcept;
+
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 	};
 
-	class Unresolved
+	class List
 	{
+		std::vector<Unresolved> _elements;
+
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
