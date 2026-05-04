@@ -96,6 +96,10 @@ namespace lx
 
 	class CapId
 	{
+		unsigned int _uid;
+
+	public:
+		CapId(unsigned int uid);
 	};
 
 	class Cap

@@ -51,7 +51,7 @@ namespace lx
 			if (log_errors_and_warnings(analyser.errors(), analyser.warnings(), log))
 				return false;
 
-			Executor executor;
+			Executor executor(parser.tree().root());
 			executor.execute(analyser, input);
 
 			output << executor.output().str();

@@ -57,6 +57,18 @@ namespace lx
 		return *_upflow;
 	}
 
+	UpflowInfo ASTNode::upflow() const
+	{
+		if (!_upflow)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": upflow not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_upflow;
+	}
+
 	UpflowInfo ASTNode::impl_upflow(const ResolutionContext& ctx)
 	{
 		return {};
@@ -99,6 +111,16 @@ namespace lx
 	void Block::post_analyse(ResolutionContext& ctx)
 	{
 		ctx.pop_local_scope();
+	}
+
+	ExecutionFlow Block::execute(Runtime& env) const
+	{
+		// TODO
+		//env.push_local_scope(isolated());
+		//for (const ASTNode* node : _children)
+			//node->execute(env);
+		//env.pop_local_scope();
+		return {};
 	}
 
 	void Block::traverse(ASTVisitor& visitor)
@@ -174,6 +196,18 @@ namespace lx
 		return *_block_upflow;
 	}
 
+	UpflowInfo IsolationBlock::block_upflow() const
+	{
+		if (!_block_upflow)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": block upflow not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_block_upflow;
+	}
+
 	ASTRoot::ASTRoot(Token&& start_token)
 		: _start_token(std::move(start_token))
 	{
@@ -191,17 +225,34 @@ namespace lx
 		return _start_token.segment;
 	}
 
+	ExecutionFlow Expression::execute(Runtime& env) const
+	{
+		return {};
+	}
+
 	DataType Expression::evaltype(const ResolutionContext& ctx) const
 	{
 		if (!_validated)
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": node is not validated";
+			ss << __FUNCTION__ << ": node not validated";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		if (!_evaltype)
 			_evaltype = impl_evaltype(ctx);
 		return *_evaltype;
+	}
+
+	DataType Expression::evaltype() const
+	{
+		if (!_evaltype)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": evaltype not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_evaltype;
 	}
 
 	bool Expression::imperative() const
@@ -227,6 +278,13 @@ namespace lx
 	void VariableDeclaration::post_analyse(ResolutionContext& ctx)
 	{
 		ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
+	}
+
+	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
+	{
+		// TODO
+		//env.register_variable(_identifier.lexeme, _expression.evaluate(env), _global ? Namespace::Global : Namespace::Local);
+		return {};
 	}
 
 	void VariableDeclaration::traverse(ASTVisitor& visitor)
@@ -269,6 +327,13 @@ namespace lx
 		}
 	}
 
+	ExecutionFlow VariableAssignment::execute(Runtime& env) const
+	{
+		// TODO
+		//env.registered_variable(_identifier.lexeme, Namespace::Unknown).set(_expression.evaluate(env));
+		return {};
+	}
+
 	void VariableAssignment::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -300,6 +365,13 @@ namespace lx
 		}
 	}
 
+	ExecutionFlow GlobalMatchesAssignment::execute(Runtime& env) const
+	{
+		// TODO
+		//env.global_matches().set(_expression.evaluate(env));
+		return {};
+	}
+
 	void GlobalMatchesAssignment::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -324,6 +396,11 @@ namespace lx
 	void LiteralExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
+	}
+	
+	DataPoint LiteralExpression::evaluate(const Runtime& env) const
+	{
+		return DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved());
 	}
 
 	DataType LiteralExpression::impl_evaltype(const ResolutionContext& ctx) const
@@ -351,6 +428,12 @@ namespace lx
 		evaltype(ctx);
 	}
 
+	DataPoint ListExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	DataType ListExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		return DataType::List;
@@ -374,6 +457,12 @@ namespace lx
 	void BinaryExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
+	}
+
+	DataPoint BinaryExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void BinaryExpression::traverse(ASTVisitor& visitor)
@@ -419,6 +508,12 @@ namespace lx
 	void MemberAccessExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
+	}
+
+	DataPoint MemberAccessExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void MemberAccessExpression::traverse(ASTVisitor& visitor)
@@ -475,6 +570,12 @@ namespace lx
 		evaltype(ctx);
 	}
 
+	DataPoint PrefixExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	void PrefixExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -519,6 +620,12 @@ namespace lx
 		evaltype(ctx);
 	}
 
+	DataPoint AsExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	void AsExpression::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -557,6 +664,12 @@ namespace lx
 	void SubscriptExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
+	}
+
+	DataPoint SubscriptExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor)
@@ -619,6 +732,12 @@ namespace lx
 		}
 	}
 
+	DataPoint VariableExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	DataType VariableExpression::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
@@ -649,6 +768,12 @@ namespace lx
 	void BuiltinSymbolExpression::post_analyse(ResolutionContext& ctx)
 	{
 		evaltype(ctx);
+	}
+
+	DataPoint BuiltinSymbolExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	DataType BuiltinSymbolExpression::impl_evaltype(const ResolutionContext& ctx) const
@@ -692,6 +817,12 @@ namespace lx
 			ss << ")";
 			ctx.add_semantic_error(segment(), ss.str());
 		}
+	}
+
+	DataPoint FunctionCallExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void FunctionCallExpression::traverse(ASTVisitor& visitor)
@@ -747,6 +878,12 @@ namespace lx
 		{
 			ctx.add_semantic_error(segment(), e.message());
 		}
+	}
+
+	DataPoint MethodCallExpression::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void MethodCallExpression::traverse(ASTVisitor& visitor)
@@ -869,6 +1006,12 @@ namespace lx
 		IsolationBlock::post_analyse(ctx);
 	}
 
+	ExecutionFlow FunctionDefinition::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	UpflowInfo FunctionDefinition::impl_upflow(const ResolutionContext& ctx)
 	{
 		return {};
@@ -907,10 +1050,18 @@ namespace lx
 
 	void ReturnStatement::pre_analyse(ResolutionContext& ctx)
 	{
+		// NOP
 	}
 
 	void ReturnStatement::post_analyse(ResolutionContext& ctx)
 	{
+		// NOP
+	}
+
+	ExecutionFlow ReturnStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void ReturnStatement::traverse(ASTVisitor& visitor)
@@ -970,6 +1121,18 @@ namespace lx
 		return *_block_upflow;
 	}
 
+	UpflowInfo IfConditional::block_upflow() const
+	{
+		if (!_block_upflow)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": block upflow not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_block_upflow;
+	}
+
 	IfStatement::IfStatement(Token&& if_token, Expression& condition)
 		: _if_token(std::move(if_token)), _condition(condition)
 	{
@@ -985,6 +1148,12 @@ namespace lx
 	{
 		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
+	}
+
+	ExecutionFlow IfStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void IfStatement::traverse(ASTVisitor& visitor)
@@ -1025,6 +1194,12 @@ namespace lx
 	{
 		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
+	}
+
+	ExecutionFlow ElifStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void ElifStatement::traverse(ASTVisitor& visitor)
@@ -1129,6 +1304,12 @@ namespace lx
 		Loop::post_analyse(ctx);
 	}
 
+	ExecutionFlow WhileLoop::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	void WhileLoop::traverse(ASTVisitor& visitor)
 	{
 		_condition.accept(visitor);
@@ -1163,6 +1344,12 @@ namespace lx
 		Loop::post_analyse(ctx);
 	}
 
+	ExecutionFlow ForLoop::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	void ForLoop::traverse(ASTVisitor& visitor)
 	{
 		_iterable.accept(visitor);
@@ -1187,6 +1374,12 @@ namespace lx
 	void BreakStatement::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
+	}
+
+	ExecutionFlow BreakStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	UpflowInfo BreakStatement::impl_upflow(const ResolutionContext& ctx)
@@ -1226,6 +1419,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow ContinueStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	UpflowInfo ContinueStatement::impl_upflow(const ResolutionContext& ctx)
 	{
 		return { .may_continue = true, .continues = { this } };
@@ -1263,6 +1462,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow LogStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment LogStatement::impl_segment() const
 	{
 		return _log_token.segment;
@@ -1289,6 +1494,12 @@ namespace lx
 			ss << _highlightable->evaltype(ctx) << " is not highlightable";
 			ctx.add_semantic_error(_highlightable->segment(), ss.str());
 		}
+	}
+
+	ExecutionFlow HighlightStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void HighlightStatement::traverse(ASTVisitor& visitor)
@@ -1318,6 +1529,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow DeletePattern::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment DeletePattern::impl_segment() const
 	{
 		return _delete_token.segment.combined_right(_identifier.segment);
@@ -1336,6 +1553,12 @@ namespace lx
 	void PatternDeclaration::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
+	}
+
+	ExecutionFlow PatternDeclaration::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	ScriptSegment PatternDeclaration::impl_segment() const
@@ -1365,6 +1588,12 @@ namespace lx
 		{
 			ctx.add_semantic_error(_expression.segment(), e.message());
 		}
+	}
+
+	DataPoint RepeatOperation::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void RepeatOperation::traverse(ASTVisitor& visitor)
@@ -1406,6 +1635,12 @@ namespace lx
 		}
 	}
 
+	DataPoint SimpleRepeatOperation::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	void SimpleRepeatOperation::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -1442,6 +1677,12 @@ namespace lx
 		// NOP
 	}
 
+	DataPoint PatternBackRef::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	DataType PatternBackRef::impl_evaltype(const ResolutionContext& ctx) const
 	{
 		return DataType::Pattern;
@@ -1472,6 +1713,12 @@ namespace lx
 		{
 			ctx.add_semantic_error(_expression.segment(), e.message());
 		}
+	}
+
+	DataPoint PatternLazy::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
 	}
 
 	void PatternLazy::traverse(ASTVisitor& visitor)
@@ -1526,6 +1773,12 @@ namespace lx
 		}
 	}
 
+	DataPoint PatternCapture::evaluate(const Runtime& env) const
+	{
+		// TODO
+		return Void();
+	}
+
 	void PatternCapture::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -1557,6 +1810,12 @@ namespace lx
 		validate_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
 
+	ExecutionFlow AppendStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	void AppendStatement::traverse(ASTVisitor& visitor)
 	{
 		ASTNode::traverse(visitor);
@@ -1581,6 +1840,12 @@ namespace lx
 	void FindStatement::post_analyse(ResolutionContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
+	}
+
+	ExecutionFlow FindStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	ScriptSegment FindStatement::impl_segment() const
@@ -1619,6 +1884,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow FilterStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment FilterStatement::impl_segment() const
 	{
 		return _filter_token.segment;
@@ -1638,6 +1909,12 @@ namespace lx
 	{
 		validate_implicitly_casts(ctx, _match, DataType::Match);
 		validate_implicitly_casts(ctx, _string, DataType::String);
+	}
+
+	ExecutionFlow ReplaceStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void ReplaceStatement::traverse(ASTVisitor& visitor)
@@ -1683,6 +1960,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow ApplyStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment ApplyStatement::impl_segment() const
 	{
 		return _apply_token.segment;
@@ -1706,6 +1989,12 @@ namespace lx
 		const auto range_type = _range.evaltype(ctx);
 		if (!can_cast_explicit(range_type, DataType::IRange))
 			ctx.add_semantic_error(_range.segment(), "cannot convert to 'irange'");
+	}
+
+	ExecutionFlow ScopeStatement::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	void ScopeStatement::traverse(ASTVisitor& visitor)
@@ -1739,6 +2028,12 @@ namespace lx
 		}
 	}
 
+	ExecutionFlow PagePush::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment PagePush::impl_segment() const
 	{
 		return _page_token.segment;
@@ -1765,6 +2060,12 @@ namespace lx
 		// NOP
 	}
 
+	ExecutionFlow PagePop::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
+	}
+
 	ScriptSegment PagePop::impl_segment() const
 	{
 		return _page_token.segment;
@@ -1783,6 +2084,12 @@ namespace lx
 	void PageClearStack::post_analyse(ResolutionContext& ctx)
 	{
 		// NOP
+	}
+
+	ExecutionFlow PageClearStack::execute(Runtime& env) const
+	{
+		// TODO
+		return {};
 	}
 
 	ScriptSegment PageClearStack::impl_segment() const

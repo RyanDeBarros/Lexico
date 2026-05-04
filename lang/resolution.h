@@ -69,6 +69,7 @@ namespace lx
 		Unknown
 	};
 
+	// TODO rename ResolutionContext to SemanticContext
 	class ResolutionContext
 	{
 		SymbolTable _global_table;

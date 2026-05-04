@@ -5,6 +5,7 @@ set(LANG_SOURCES
 	semantics.cpp
 	executor.cpp
 	resolution.cpp
+	runtime.cpp
 	errors.cpp
 	token.cpp
 	ast.cpp

@@ -199,6 +199,11 @@ namespace lx
 		return std::move(_value);
 	}
 
+	CapId::CapId(unsigned int uid)
+		: _uid(uid)
+	{
+	}
+
 	IRange::IRange(std::optional<int> min, std::optional<int> max)
 		: _min(min), _max(max)
 	{

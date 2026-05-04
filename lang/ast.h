@@ -7,6 +7,8 @@
 #include "errors.h"
 #include "operations.h"
 #include "resolution.h"
+#include "runtime.h"
+#include "types/datapoint.h"
 
 namespace lx
 {
@@ -37,6 +39,19 @@ namespace lx
 		void merge_loop_control(const UpflowInfo& other);
 	};
 
+	struct ExecutionFlow
+	{
+		enum class Type
+		{
+			Normal,
+			Return,
+			Break,
+			Continue,
+		};
+
+		Type type = Type::Normal;
+	};
+
 	class ASTNode
 	{
 	protected:
@@ -53,9 +68,11 @@ namespace lx
 
 		virtual void pre_analyse(ResolutionContext& ctx) = 0;
 		virtual void post_analyse(ResolutionContext& ctx) = 0;
+		virtual ExecutionFlow execute(Runtime& env) const = 0;
 		void accept(ASTVisitor& visitor);
 		virtual void traverse(ASTVisitor& visitor) {}
 		UpflowInfo upflow(const ResolutionContext& ctx);
+		UpflowInfo upflow() const;
 		ScriptSegment segment() const;
 
 	protected:
@@ -70,6 +87,7 @@ namespace lx
 	public:
 		virtual void pre_analyse(ResolutionContext& ctx) override;
 		virtual void post_analyse(ResolutionContext& ctx) override;
+		virtual ExecutionFlow execute(Runtime& env) const override;
 		virtual void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -93,6 +111,7 @@ namespace lx
 		bool isolated() const override;
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
 		UpflowInfo block_upflow(const ResolutionContext& ctx);
+		UpflowInfo block_upflow() const;
 	};
 
 	class ASTRoot : public IsolationBlock
@@ -135,7 +154,12 @@ namespace lx
 		mutable std::optional<DataType> _evaltype;
 
 	public:
+		ExecutionFlow execute(Runtime& env) const override;
+
 		DataType evaltype(const ResolutionContext& ctx) const;
+		DataType evaltype() const;
+
+		virtual DataPoint evaluate(const Runtime& env) const = 0;
 		virtual bool imperative() const;
 
 	protected:
@@ -153,6 +177,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+		
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -172,6 +199,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+		
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -188,6 +218,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -203,6 +236,8 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -221,6 +256,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		DataPoint evaluate(const Runtime& env) const override;
+
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
@@ -237,6 +274,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -258,6 +298,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -279,6 +322,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -299,6 +345,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -316,6 +365,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -336,6 +388,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		DataPoint evaluate(const Runtime& env) const override;
+
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
@@ -351,6 +405,8 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
@@ -368,6 +424,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -389,6 +448,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 		bool imperative() const override;
 
@@ -410,6 +472,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
 		ScriptSegment impl_segment() const override;
@@ -430,6 +494,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -459,6 +526,7 @@ namespace lx
 
 	private:
 		UpflowInfo block_upflow(const ResolutionContext& ctx);
+		UpflowInfo block_upflow() const;
 	};
 
 	class IfStatement : public IfConditional
@@ -471,6 +539,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -489,6 +560,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -537,6 +611,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -553,6 +630,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -569,6 +649,8 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
@@ -589,6 +671,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		UpflowInfo impl_upflow(const ResolutionContext& ctx) override;
 		ScriptSegment impl_segment() const override;
@@ -608,6 +692,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -625,6 +711,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -642,6 +731,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -657,6 +748,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -671,6 +764,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -688,6 +784,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -709,6 +808,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		DataPoint evaluate(const Runtime& env) const override;
+
 	protected:
 		DataType impl_evaltype(const ResolutionContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
@@ -724,6 +825,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -742,6 +846,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		DataPoint evaluate(const Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -759,6 +866,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -776,6 +886,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -790,6 +902,8 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
 		ScriptSegment impl_segment() const override;
@@ -806,6 +920,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -823,6 +940,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -839,6 +958,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -855,6 +977,9 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
+
 		void traverse(ASTVisitor& visitor) override;
 
 	protected:
@@ -871,6 +996,8 @@ namespace lx
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
 
+		ExecutionFlow execute(Runtime& env) const override;
+
 	protected:
 		ScriptSegment impl_segment() const override;
 	};
@@ -884,6 +1011,8 @@ namespace lx
 
 		void pre_analyse(ResolutionContext& ctx) override;
 		void post_analyse(ResolutionContext& ctx) override;
+
+		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
 		ScriptSegment impl_segment() const override;

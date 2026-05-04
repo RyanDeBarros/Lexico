@@ -14,20 +14,7 @@ namespace lx
 		template<Type T>
 		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
 
-		template<Type T>
-		static DataPoint make_from_literal(std::string_view resolved)
-		{
-			if constexpr (requires { T::make_from_literal(resolved); })
-			{
-				return DataPoint(T::make_from_literal(resolved));
-			}
-			else
-			{
-				std::stringstream ss;
-				ss << "cannot make " << to_enum<T> << " from literal string_view";
-				throw LxError(ErrorType::Internal, ss.str());
-			}
-		}
+		static DataPoint make_from_literal(DataType type, std::string_view resolved);
 
 		template<Type T>
 		const T& get() const
