@@ -165,9 +165,25 @@ namespace lx
 		TypeVariant cast_move(DataType type);
 	};
 
+	enum class HighlightColor
+	{
+		Yellow,
+		Red,
+		Green,
+		Blue,
+		Grey,
+		Purple,
+		Orange,
+		Mono,
+	};
+
 	class Color
 	{
+		HighlightColor _color;
+
 	public:
+		Color(BuiltinSymbol symbol);
+
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 	};

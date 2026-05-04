@@ -539,10 +539,44 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	static HighlightColor convert_color(BuiltinSymbol symbol)
+	{
+		switch (symbol)
+		{
+			case BuiltinSymbol::Yellow:
+				return HighlightColor::Yellow;
+			case BuiltinSymbol::Red:
+				return HighlightColor::Red;
+			case BuiltinSymbol::Green:
+				return HighlightColor::Green;
+			case BuiltinSymbol::Blue:
+				return HighlightColor::Blue;
+			case BuiltinSymbol::Grey:
+				return HighlightColor::Grey;
+			case BuiltinSymbol::Purple:
+				return HighlightColor::Purple;
+			case BuiltinSymbol::Orange:
+				return HighlightColor::Orange;
+			case BuiltinSymbol::Mono:
+				return HighlightColor::Mono;
+			default:
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": could not convert symbol " << static_cast<int>(symbol) << " to highlight color";
+				throw LxError(ErrorType::Internal, ss.str());
+			}
+		}
+	}
+
+	Color::Color(BuiltinSymbol symbol)
+		: _color(convert_color(symbol))
+	{
+	}
+
 	TypeVariant Color::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Color)
-			return Color(); // TODO
+			return Color(*this);
 		else if (type == DataType::Void)
 			return Void();
 		else
