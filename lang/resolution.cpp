@@ -76,42 +76,42 @@ namespace lx
 		_function_table[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
 	}
 
-	std::vector<LxError>& ResolutionContext::errors() const
+	std::vector<LxError>& SemanticContext::errors() const
 	{
 		return _errors;
 	}
 
-	void ResolutionContext::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
+	void SemanticContext::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
 	{
 		_errors.push_back(LxError::segment_error(segment, ErrorType::Semantic, cause));
 	}
 
-	void ResolutionContext::add_semantic_error(const Token& token, const std::string_view cause) const
+	void SemanticContext::add_semantic_error(const Token& token, const std::string_view cause) const
 	{
 		add_semantic_error(token.segment, cause);
 	}
 
-	std::vector<LxWarning>& ResolutionContext::warnings() const
+	std::vector<LxWarning>& SemanticContext::warnings() const
 	{
 		return _warnings;
 	}
 
-	void ResolutionContext::add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const
+	void SemanticContext::add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const
 	{
 		_warnings.push_back(LxWarning::segment_warning(segment, ErrorType::Semantic, cause));
 	}
 
-	void ResolutionContext::add_semantic_warning(const Token& token, const std::string_view cause) const
+	void SemanticContext::add_semantic_warning(const Token& token, const std::string_view cause) const
 	{
 		add_semantic_warning(token.segment, cause);
 	}
 
-	void ResolutionContext::push_local_scope(bool isolated)
+	void SemanticContext::push_local_scope(bool isolated)
 	{
 		_scope_stack.push_back({ .isolated = isolated });
 	}
 
-	void ResolutionContext::pop_local_scope()
+	void SemanticContext::pop_local_scope()
 	{
 		if (_scope_stack.empty())
 		{
@@ -122,7 +122,7 @@ namespace lx
 		_scope_stack.pop_back();
 	}
 
-	unsigned int ResolutionContext::scope_depth() const
+	unsigned int SemanticContext::scope_depth() const
 	{
 		return _scope_stack.size();
 	}
@@ -147,7 +147,7 @@ namespace lx
 		return first_line_number;
 	}
 
-	std::optional<unsigned int> ResolutionContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
+	std::optional<unsigned int> SemanticContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -183,7 +183,7 @@ namespace lx
 		return {};
 	}
 
-	std::optional<VariableSignature> ResolutionContext::registered_variable(const std::string_view identifier, Namespace ns) const
+	std::optional<VariableSignature> SemanticContext::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -212,7 +212,7 @@ namespace lx
 		return std::nullopt;
 	}
 
-	void ResolutionContext::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
+	void SemanticContext::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
 	{
 		switch (ns)
 		{
@@ -236,7 +236,7 @@ namespace lx
 		}
 	}
 
-	std::optional<FunctionSignature> ResolutionContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
+	std::optional<FunctionSignature> SemanticContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
 	{
 		try
 		{
@@ -263,7 +263,7 @@ namespace lx
 		return std::nullopt;
 	}
 
-	FunctionCallSet ResolutionContext::registered_function_calls(const std::string_view identifier, Namespace ns) const
+	FunctionCallSet SemanticContext::registered_function_calls(const std::string_view identifier, Namespace ns) const
 	{
 		try
 		{
@@ -292,7 +292,7 @@ namespace lx
 		return {};
 	}
 
-	void ResolutionContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
+	void SemanticContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
 	{
 		switch (ns)
 		{

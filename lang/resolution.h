@@ -3,6 +3,7 @@
 #include "operations.h"
 #include "errors.h"
 #include "util.h"
+#include "namespace.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -22,24 +23,6 @@ namespace lx
 		DataType return_type = DataType::Void;
 		std::vector<DataType> arg_types;
 	};
-
-	struct FunctionCallSignature
-	{
-		std::string identifier;
-		std::vector<DataType> arg_types;
-	};
-
-	struct FunctionCallHash
-	{
-		size_t operator()(const FunctionCallSignature& fc) const;
-	};
-
-	struct FunctionCallEqual
-	{
-		bool operator()(const FunctionCallSignature& a, const FunctionCallSignature& b) const;
-	};
-
-	using FunctionCallSet = std::unordered_set<FunctionCallSignature, FunctionCallHash, FunctionCallEqual>;
 
 	class SymbolTable
 	{
@@ -62,15 +45,7 @@ namespace lx
 		bool isolated;
 	};
 
-	enum class Namespace
-	{
-		Global,
-		Local,
-		Unknown
-	};
-
-	// TODO rename ResolutionContext to SemanticContext
-	class ResolutionContext
+	class SemanticContext
 	{
 		SymbolTable _global_table;
 		std::vector<ScopeContext> _scope_stack;

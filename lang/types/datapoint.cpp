@@ -25,6 +25,16 @@ namespace lx
 		}
 	}
 
+	void DataPoint::set(const DataPoint& other)
+	{
+		std::visit([this](const auto& o) { setval(o); }, other._storage);
+	}
+
+	void DataPoint::set(DataPoint&& other)
+	{
+		std::visit([this](auto&& o) { setval(std::forward<decltype(o)>(o)); }, std::move(other._storage));
+	}
+
 	bool DataPoint::can_cast_implicit(DataType to) const
 	{
 		return lx::can_cast_implicit(static_cast<DataType>(_storage.index()), to);

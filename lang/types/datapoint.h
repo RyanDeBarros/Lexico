@@ -28,14 +28,17 @@ namespace lx
 			return std::get<T>(_storage);
 		}
 
-		template<Type T>
-		void set(T&& obj)
+		template<typename T> requires Type<std::decay_t<T>>
+		void setval(T&& obj)
 		{
 			std::visit([&](auto& v) {
 				using To = std::decay_t<decltype(v)>;
 				v = cast<To>(std::forward<T>(obj));
 			}, _storage);
 		}
+
+		void set(const DataPoint& other);
+		void set(DataPoint&& other);
 
 		bool can_cast_implicit(DataType to) const;
 		bool can_cast_explicit(DataType to) const;

@@ -4,10 +4,10 @@ namespace lx
 {
 	class AnalysisVisitor : public ASTVisitor
 	{
-		ResolutionContext& _ctx;
+		SemanticContext& _ctx;
 
 	public:
-		AnalysisVisitor(ResolutionContext& ctx)
+		AnalysisVisitor(SemanticContext& ctx)
 			: _ctx(ctx)
 		{
 		}
@@ -39,7 +39,7 @@ namespace lx
 
 	void SemanticAnalyser::analyse(Parser& parser)
 	{
-		ResolutionContext dry_ctx;
+		SemanticContext dry_ctx;
 		AnalysisVisitor visitor(dry_ctx);
 		parser.tree().root().accept(visitor);
 		_errors = std::move(dry_ctx.errors());

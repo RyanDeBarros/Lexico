@@ -9,6 +9,31 @@ namespace lx
 	{
 	}
 
+	void Runtime::push_local_scope(bool isolated)
+	{
+		// TODO
+	}
+
+	void Runtime::pop_local_scope()
+	{
+		// TODO
+	}
+
+	void Runtime::register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns)
+	{
+		// TODO
+	}
+
+	const DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
+	{
+		// TODO
+	}
+
+	DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns)
+	{
+		// TODO
+	}
+
 	CapId Runtime::capture_id(const std::string_view id)
 	{
 		auto it = _capture_ids.find(id);

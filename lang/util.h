@@ -24,4 +24,22 @@ namespace lx
 
 	template<typename Value>
 	using StringMap = std::unordered_map<std::string, Value, TransparentHash, TransparentEqual>;
+
+	struct FunctionCallSignature
+	{
+		std::string identifier;
+		std::vector<DataType> arg_types;
+	};
+
+	struct FunctionCallHash
+	{
+		size_t operator()(const FunctionCallSignature& fc) const;
+	};
+
+	struct FunctionCallEqual
+	{
+		bool operator()(const FunctionCallSignature& a, const FunctionCallSignature& b) const;
+	};
+
+	using FunctionCallSet = std::unordered_set<FunctionCallSignature, FunctionCallHash, FunctionCallEqual>;
 }

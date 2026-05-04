@@ -10,7 +10,7 @@ namespace lx
 		static const char* DOES_NOT_RESOLVE = "expression does not resolve to";
 	}
 
-	static DataType assert_implicitly_casts(const ResolutionContext& ctx, const Expression& expr, DataType to)
+	static DataType assert_implicitly_casts(const SemanticContext& ctx, const Expression& expr, DataType to)
 	{
 		if (can_cast_implicit(expr.evaltype(ctx), to))
 			return to;
@@ -20,7 +20,7 @@ namespace lx
 		throw LxError::segment_error(expr.segment(), ErrorType::Internal, ss.str());
 	}
 
-	static void validate_implicitly_casts(const ResolutionContext& ctx, const Expression& expr, DataType to)
+	static void validate_implicitly_casts(const SemanticContext& ctx, const Expression& expr, DataType to)
 	{
 		if (!can_cast_implicit(expr.evaltype(ctx), to))
 		{
@@ -50,7 +50,7 @@ namespace lx
 		visitor.post_visit(*this);
 	}
 
-	UpflowInfo ASTNode::upflow(const ResolutionContext& ctx)
+	UpflowInfo ASTNode::upflow(const SemanticContext& ctx)
 	{
 		if (!_upflow)
 			_upflow = impl_upflow(ctx);
@@ -69,7 +69,7 @@ namespace lx
 			return *_upflow;
 	}
 
-	UpflowInfo ASTNode::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo ASTNode::impl_upflow(const SemanticContext& ctx)
 	{
 		return {};
 	}
@@ -103,24 +103,31 @@ namespace lx
 		return _root;
 	}
 
-	void Block::pre_analyse(ResolutionContext& ctx)
+	void Block::pre_analyse(SemanticContext& ctx)
 	{
 		ctx.push_local_scope(isolated());
 	}
 
-	void Block::post_analyse(ResolutionContext& ctx)
+	void Block::post_analyse(SemanticContext& ctx)
 	{
 		ctx.pop_local_scope();
 	}
 
 	ExecutionFlow Block::execute(Runtime& env) const
 	{
-		// TODO
-		//env.push_local_scope(isolated());
-		//for (const ASTNode* node : _children)
-			//node->execute(env);
-		//env.pop_local_scope();
-		return {};
+		ExecutionFlow flow{};
+		env.push_local_scope(isolated());
+		for (const ASTNode* node : _children)
+		{
+			auto result = node->execute(env);
+			if (result.type != ExecutionFlow::Type::Normal)
+			{
+				flow = result;
+				break;
+			}
+		}
+		env.pop_local_scope();
+		return flow;
 	}
 
 	void Block::traverse(ASTVisitor& visitor)
@@ -130,7 +137,7 @@ namespace lx
 			node->accept(visitor);
 	}
 
-	UpflowInfo Block::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo Block::impl_upflow(const SemanticContext& ctx)
 	{
 		UpflowInfo info;
 		bool livecode = true;
@@ -166,7 +173,7 @@ namespace lx
 		_children.push_back(&child);
 	}
 
-	void IsolationBlock::post_analyse(ResolutionContext& ctx)
+	void IsolationBlock::post_analyse(SemanticContext& ctx)
 	{
 		auto flow = block_upflow(ctx);
 
@@ -184,12 +191,12 @@ namespace lx
 		return true;
 	}
 
-	UpflowInfo IsolationBlock::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo IsolationBlock::impl_upflow(const SemanticContext& ctx)
 	{
 		return {};
 	}
 
-	UpflowInfo IsolationBlock::block_upflow(const ResolutionContext& ctx)
+	UpflowInfo IsolationBlock::block_upflow(const SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -213,7 +220,7 @@ namespace lx
 	{
 	}
 
-	void ASTRoot::pre_analyse(ResolutionContext& ctx)
+	void ASTRoot::pre_analyse(SemanticContext& ctx)
 	{
 		IsolationBlock::pre_analyse(ctx);
 
@@ -230,7 +237,7 @@ namespace lx
 		return {};
 	}
 
-	DataType Expression::evaltype(const ResolutionContext& ctx) const
+	DataType Expression::evaltype(const SemanticContext& ctx) const
 	{
 		if (!_validated)
 		{
@@ -265,7 +272,7 @@ namespace lx
 	{
 	}
 
-	void VariableDeclaration::pre_analyse(ResolutionContext& ctx)
+	void VariableDeclaration::pre_analyse(SemanticContext& ctx)
 	{
 		if (_global && ctx.scope_depth() > 0)
 			ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
@@ -275,15 +282,14 @@ namespace lx
 			_validated = true;
 	}
 
-	void VariableDeclaration::post_analyse(ResolutionContext& ctx)
+	void VariableDeclaration::post_analyse(SemanticContext& ctx)
 	{
 		ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
 	}
 
 	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
 	{
-		// TODO
-		//env.register_variable(_identifier.lexeme, _expression.evaluate(env), _global ? Namespace::Global : Namespace::Local);
+		env.register_variable(_identifier.lexeme, _expression.evaluate(env), _global ? Namespace::Global : Namespace::Local);
 		return {};
 	}
 
@@ -308,7 +314,7 @@ namespace lx
 	{
 	}
 
-	void VariableAssignment::pre_analyse(ResolutionContext& ctx)
+	void VariableAssignment::pre_analyse(SemanticContext& ctx)
 	{
 		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
 			_validated = true;
@@ -316,7 +322,7 @@ namespace lx
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableAssignment::post_analyse(ResolutionContext& ctx)
+	void VariableAssignment::post_analyse(SemanticContext& ctx)
 	{
 		auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown);
 		if (!can_cast_implicit(_expression.evaltype(ctx), var->type))
@@ -329,8 +335,7 @@ namespace lx
 
 	ExecutionFlow VariableAssignment::execute(Runtime& env) const
 	{
-		// TODO
-		//env.registered_variable(_identifier.lexeme, Namespace::Unknown).set(_expression.evaluate(env));
+		env.registered_variable(_identifier.lexeme, Namespace::Unknown).set(_expression.evaluate(env));
 		return {};
 	}
 
@@ -350,12 +355,12 @@ namespace lx
 	{
 	}
 
-	void GlobalMatchesAssignment::pre_analyse(ResolutionContext& ctx)
+	void GlobalMatchesAssignment::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void GlobalMatchesAssignment::post_analyse(ResolutionContext& ctx)
+	void GlobalMatchesAssignment::post_analyse(SemanticContext& ctx)
 	{
 		if (!can_cast_implicit(_expression.evaltype(ctx), DataType::Matches))
 		{
@@ -388,12 +393,12 @@ namespace lx
 	{
 	}
 
-	void LiteralExpression::pre_analyse(ResolutionContext& ctx)
+	void LiteralExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void LiteralExpression::post_analyse(ResolutionContext& ctx)
+	void LiteralExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -403,7 +408,7 @@ namespace lx
 		return DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved());
 	}
 
-	DataType LiteralExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType LiteralExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return literal_type(_literal.type);
 	}
@@ -418,12 +423,12 @@ namespace lx
 	{
 	}
 	
-	void ListExpression::pre_analyse(ResolutionContext& ctx)
+	void ListExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 	
-	void ListExpression::post_analyse(ResolutionContext& ctx)
+	void ListExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -434,7 +439,7 @@ namespace lx
 		return Void();
 	}
 
-	DataType ListExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType ListExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return DataType::List;
 	}
@@ -449,12 +454,12 @@ namespace lx
 	{
 	}
 
-	void BinaryExpression::pre_analyse(ResolutionContext& ctx)
+	void BinaryExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void BinaryExpression::post_analyse(ResolutionContext& ctx)
+	void BinaryExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -472,7 +477,7 @@ namespace lx
 		_right.accept(visitor);
 	}
 
-	DataType BinaryExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType BinaryExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		if (auto type = lx::evaltype(op(), _left.evaltype(ctx), _right.evaltype(ctx)))
 			return *type;
@@ -500,12 +505,12 @@ namespace lx
 	{
 	}
 
-	void MemberAccessExpression::pre_analyse(ResolutionContext& ctx)
+	void MemberAccessExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void MemberAccessExpression::post_analyse(ResolutionContext& ctx)
+	void MemberAccessExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -522,7 +527,7 @@ namespace lx
 		_object.accept(visitor);
 	}
 
-	DataType MemberAccessExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType MemberAccessExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return member(ctx).data_type();
 	}
@@ -532,7 +537,7 @@ namespace lx
 		return _object.segment().combined_right(_member.segment);
 	}
 
-	const MemberSignature& MemberAccessExpression::member(const ResolutionContext& ctx) const
+	const MemberSignature& MemberAccessExpression::member(const SemanticContext& ctx) const
 	{
 		if (const auto members = data_type_members(_object.evaltype(ctx)))
 		{
@@ -560,12 +565,12 @@ namespace lx
 	{
 	}
 
-	void PrefixExpression::pre_analyse(ResolutionContext& ctx)
+	void PrefixExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PrefixExpression::post_analyse(ResolutionContext& ctx)
+	void PrefixExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -582,7 +587,7 @@ namespace lx
 		_expr.accept(visitor);
 	}
 
-	DataType PrefixExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType PrefixExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		if (auto type = lx::evaltype(op(), _expr.evaltype(ctx)))
 			return *type;
@@ -610,12 +615,12 @@ namespace lx
 	{
 	}
 
-	void AsExpression::pre_analyse(ResolutionContext& ctx)
+	void AsExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void AsExpression::post_analyse(ResolutionContext& ctx)
+	void AsExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -632,7 +637,7 @@ namespace lx
 		_expr.accept(visitor);
 	}
 
-	DataType AsExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType AsExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		DataType return_type = data_type(_type.type);
 		if (can_cast_explicit(_expr.evaltype(ctx), return_type))
@@ -656,12 +661,12 @@ namespace lx
 	{
 	}
 
-	void SubscriptExpression::pre_analyse(ResolutionContext& ctx)
+	void SubscriptExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void SubscriptExpression::post_analyse(ResolutionContext& ctx)
+	void SubscriptExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -679,7 +684,7 @@ namespace lx
 		_subscript.accept(visitor);
 	}
 
-	DataType SubscriptExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType SubscriptExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return member(ctx).return_type({_subscript.evaltype(ctx)}).value();
 	}
@@ -689,7 +694,7 @@ namespace lx
 		return _container.segment().combined_right(_subscript.segment());
 	}
 
-	const MemberSignature& SubscriptExpression::member(const ResolutionContext& ctx) const
+	const MemberSignature& SubscriptExpression::member(const SemanticContext& ctx) const
 	{
 		if (const auto members = data_type_members(_container.evaltype(ctx)))
 		{
@@ -712,7 +717,7 @@ namespace lx
 	{
 	}
 
-	void VariableExpression::pre_analyse(ResolutionContext& ctx)
+	void VariableExpression::pre_analyse(SemanticContext& ctx)
 	{
 		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
 			_validated = true;
@@ -720,7 +725,7 @@ namespace lx
 			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
 	}
 
-	void VariableExpression::post_analyse(ResolutionContext& ctx)
+	void VariableExpression::post_analyse(SemanticContext& ctx)
 	{
 		try
 		{
@@ -738,7 +743,7 @@ namespace lx
 		return Void();
 	}
 
-	DataType VariableExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType VariableExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			return var->type;
@@ -760,12 +765,12 @@ namespace lx
 	{
 	}
 
-	void BuiltinSymbolExpression::pre_analyse(ResolutionContext& ctx)
+	void BuiltinSymbolExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void BuiltinSymbolExpression::post_analyse(ResolutionContext& ctx)
+	void BuiltinSymbolExpression::post_analyse(SemanticContext& ctx)
 	{
 		evaltype(ctx);
 	}
@@ -776,7 +781,7 @@ namespace lx
 		return Void();
 	}
 
-	DataType BuiltinSymbolExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType BuiltinSymbolExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return data_type(_builtin_symbol);
 	}
@@ -793,7 +798,7 @@ namespace lx
 	{
 	}
 
-	void FunctionCallExpression::pre_analyse(ResolutionContext& ctx)
+	void FunctionCallExpression::pre_analyse(SemanticContext& ctx)
 	{
 		if (ctx.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
 			ctx.add_semantic_error(_identifier, "function not declared in scope");
@@ -801,7 +806,7 @@ namespace lx
 			_validated = true;
 	}
 
-	void FunctionCallExpression::post_analyse(ResolutionContext& ctx)
+	void FunctionCallExpression::post_analyse(SemanticContext& ctx)
 	{
 		auto argtypes = arg_types(ctx);
 		if (!ctx.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
@@ -832,7 +837,7 @@ namespace lx
 			arg->accept(visitor);
 	}
 
-	DataType FunctionCallExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType FunctionCallExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx), Namespace::Unknown))
 			return fn->return_type;
@@ -849,7 +854,7 @@ namespace lx
 		return _identifier.segment.combined_right(_closing_paren.segment);
 	}
 
-	std::vector<DataType> FunctionCallExpression::arg_types(const ResolutionContext& ctx) const
+	std::vector<DataType> FunctionCallExpression::arg_types(const SemanticContext& ctx) const
 	{
 		std::vector<DataType> args(_args.size());
 		for (size_t i = 0; i < args.size(); ++i)
@@ -863,12 +868,12 @@ namespace lx
 		_member.set_callable(true);
 	}
 
-	void MethodCallExpression::pre_analyse(ResolutionContext& ctx)
+	void MethodCallExpression::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void MethodCallExpression::post_analyse(ResolutionContext& ctx)
+	void MethodCallExpression::post_analyse(SemanticContext& ctx)
 	{
 		try
 		{
@@ -899,7 +904,7 @@ namespace lx
 		return true;
 	}
 
-	DataType MethodCallExpression::impl_evaltype(const ResolutionContext& ctx) const
+	DataType MethodCallExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
 		const auto& m = _member.member(ctx);
 		if (m.is_method())
@@ -940,7 +945,7 @@ namespace lx
 	{
 	}
 
-	void FunctionDefinition::pre_analyse(ResolutionContext& ctx)
+	void FunctionDefinition::pre_analyse(SemanticContext& ctx)
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 		{
@@ -976,7 +981,7 @@ namespace lx
 		_validated = true;
 	}
 
-	void FunctionDefinition::post_analyse(ResolutionContext& ctx)
+	void FunctionDefinition::post_analyse(SemanticContext& ctx)
 	{
 		auto flow = block_upflow(ctx);
 
@@ -1012,7 +1017,7 @@ namespace lx
 		return {};
 	}
 
-	UpflowInfo FunctionDefinition::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo FunctionDefinition::impl_upflow(const SemanticContext& ctx)
 	{
 		return {};
 	}
@@ -1048,12 +1053,12 @@ namespace lx
 	{
 	}
 
-	void ReturnStatement::pre_analyse(ResolutionContext& ctx)
+	void ReturnStatement::pre_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
 
-	void ReturnStatement::post_analyse(ResolutionContext& ctx)
+	void ReturnStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1071,7 +1076,7 @@ namespace lx
 			_expression->accept(visitor);
 	}
 
-	UpflowInfo ReturnStatement::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo ReturnStatement::impl_upflow(const SemanticContext& ctx)
 	{
 		return { .always_returns = true, .live_returns = { this } };
 	}
@@ -1081,7 +1086,7 @@ namespace lx
 		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
-	DataType ReturnStatement::evaltype(const ResolutionContext& ctx) const
+	DataType ReturnStatement::evaltype(const SemanticContext& ctx) const
 	{
 		return _expression ? _expression->evaltype(ctx) : DataType::Void;
 	}
@@ -1098,7 +1103,7 @@ namespace lx
 			_fallback = fallback;
 	}
 
-	UpflowInfo IfConditional::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo IfConditional::impl_upflow(const SemanticContext& ctx)
 	{
 		auto info = block_upflow(ctx);
 		if (_fallback)
@@ -1114,7 +1119,7 @@ namespace lx
 		return info;
 	}
 
-	UpflowInfo IfConditional::block_upflow(const ResolutionContext& ctx)
+	UpflowInfo IfConditional::block_upflow(const SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -1138,13 +1143,13 @@ namespace lx
 	{
 	}
 
-	void IfStatement::pre_analyse(ResolutionContext& ctx)
+	void IfStatement::pre_analyse(SemanticContext& ctx)
 	{
 		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void IfStatement::post_analyse(ResolutionContext& ctx)
+	void IfStatement::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
@@ -1164,7 +1169,7 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo IfStatement::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo IfStatement::impl_upflow(const SemanticContext& ctx)
 	{
 		return IfConditional::impl_upflow(ctx);
 	}
@@ -1184,13 +1189,13 @@ namespace lx
 	{
 	}
 
-	void ElifStatement::pre_analyse(ResolutionContext& ctx)
+	void ElifStatement::pre_analyse(SemanticContext& ctx)
 	{
 		Block::pre_analyse(ctx);
 		_validated = true;
 	}
 
-	void ElifStatement::post_analyse(ResolutionContext& ctx)
+	void ElifStatement::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Block::post_analyse(ctx);
@@ -1210,7 +1215,7 @@ namespace lx
 			_fallback->accept(visitor);
 	}
 
-	UpflowInfo ElifStatement::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo ElifStatement::impl_upflow(const SemanticContext& ctx)
 	{
 		return IfConditional::impl_upflow(ctx);
 	}
@@ -1245,14 +1250,14 @@ namespace lx
 	{
 	}
 
-	void Loop::pre_analyse(ResolutionContext& ctx)
+	void Loop::pre_analyse(SemanticContext& ctx)
 	{
 		Block::pre_analyse(ctx);
 
 		_validated = true;
 	}
 
-	void Loop::post_analyse(ResolutionContext& ctx)
+	void Loop::post_analyse(SemanticContext& ctx)
 	{
 		auto subflow = block_upflow(ctx);
 
@@ -1265,7 +1270,7 @@ namespace lx
 		Block::post_analyse(ctx);
 	}
 
-	UpflowInfo Loop::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo Loop::impl_upflow(const SemanticContext& ctx)
 	{
 		auto info = block_upflow(ctx);
 		info.always_returns &= !info.may_break;
@@ -1281,7 +1286,7 @@ namespace lx
 		return _loop_token.segment;
 	}
 
-	UpflowInfo Loop::block_upflow(const ResolutionContext& ctx)
+	UpflowInfo Loop::block_upflow(const SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -1293,12 +1298,12 @@ namespace lx
 	{
 	}
 
-	void WhileLoop::pre_analyse(ResolutionContext& ctx)
+	void WhileLoop::pre_analyse(SemanticContext& ctx)
 	{
 		Loop::pre_analyse(ctx);
 	}
 
-	void WhileLoop::post_analyse(ResolutionContext& ctx)
+	void WhileLoop::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _condition, DataType::Bool);
 		Loop::post_analyse(ctx);
@@ -1326,13 +1331,13 @@ namespace lx
 	{
 	}
 
-	void ForLoop::pre_analyse(ResolutionContext& ctx)
+	void ForLoop::pre_analyse(SemanticContext& ctx)
 	{
 		Loop::pre_analyse(ctx);
 		ctx.registered_variable(_iterator.lexeme, Namespace::Local);
 	}
 
-	void ForLoop::post_analyse(ResolutionContext& ctx)
+	void ForLoop::post_analyse(SemanticContext& ctx)
 	{
 		if (!is_iterable(_iterable.evaltype(ctx)))
 		{
@@ -1366,12 +1371,12 @@ namespace lx
 	{
 	}
 
-	void BreakStatement::pre_analyse(ResolutionContext& ctx)
+	void BreakStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void BreakStatement::post_analyse(ResolutionContext& ctx)
+	void BreakStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1382,7 +1387,7 @@ namespace lx
 		return {};
 	}
 
-	UpflowInfo BreakStatement::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo BreakStatement::impl_upflow(const SemanticContext& ctx)
 	{
 		return { .may_break = true, .breaks = { this } };
 	}
@@ -1409,12 +1414,12 @@ namespace lx
 	{
 	}
 
-	void ContinueStatement::pre_analyse(ResolutionContext& ctx)
+	void ContinueStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void ContinueStatement::post_analyse(ResolutionContext& ctx)
+	void ContinueStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1425,7 +1430,7 @@ namespace lx
 		return {};
 	}
 
-	UpflowInfo ContinueStatement::impl_upflow(const ResolutionContext& ctx)
+	UpflowInfo ContinueStatement::impl_upflow(const SemanticContext& ctx)
 	{
 		return { .may_continue = true, .continues = { this } };
 	}
@@ -1452,12 +1457,12 @@ namespace lx
 	{
 	}
 
-	void LogStatement::pre_analyse(ResolutionContext& ctx)
+	void LogStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void LogStatement::post_analyse(ResolutionContext& ctx)
+	void LogStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1478,7 +1483,7 @@ namespace lx
 	{
 	}
 
-	void HighlightStatement::pre_analyse(ResolutionContext& ctx)
+	void HighlightStatement::pre_analyse(SemanticContext& ctx)
 	{
 		if (!_color_token || data_type(_color) == DataType::_Color)
 			_validated = true;
@@ -1486,7 +1491,7 @@ namespace lx
 			ctx.add_semantic_error(*_color_token, "symbol is not a color");
 	}
 
-	void HighlightStatement::post_analyse(ResolutionContext& ctx)
+	void HighlightStatement::post_analyse(SemanticContext& ctx)
 	{
 		if (_highlightable && !is_highlightable(_highlightable->evaltype(ctx)))
 		{
@@ -1519,12 +1524,12 @@ namespace lx
 	{
 	}
 
-	void DeletePattern::pre_analyse(ResolutionContext& ctx)
+	void DeletePattern::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void DeletePattern::post_analyse(ResolutionContext& ctx)
+	void DeletePattern::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1545,12 +1550,12 @@ namespace lx
 	{
 	}
 
-	void PatternDeclaration::pre_analyse(ResolutionContext& ctx)
+	void PatternDeclaration::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PatternDeclaration::post_analyse(ResolutionContext& ctx)
+	void PatternDeclaration::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1571,12 +1576,12 @@ namespace lx
 	{
 	}
 
-	void RepeatOperation::pre_analyse(ResolutionContext& ctx)
+	void RepeatOperation::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void RepeatOperation::post_analyse(ResolutionContext& ctx)
+	void RepeatOperation::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _range, DataType::IRange);
 
@@ -1603,7 +1608,7 @@ namespace lx
 		_range.accept(visitor);
 	}
 
-	DataType RepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
+	DataType RepeatOperation::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1618,12 +1623,12 @@ namespace lx
 	{
 	}
 
-	void SimpleRepeatOperation::pre_analyse(ResolutionContext& ctx)
+	void SimpleRepeatOperation::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void SimpleRepeatOperation::post_analyse(ResolutionContext& ctx)
+	void SimpleRepeatOperation::post_analyse(SemanticContext& ctx)
 	{
 		try
 		{
@@ -1647,7 +1652,7 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
-	DataType SimpleRepeatOperation::impl_evaltype(const ResolutionContext& ctx) const
+	DataType SimpleRepeatOperation::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1667,12 +1672,12 @@ namespace lx
 	{
 	}
 
-	void PatternBackRef::pre_analyse(ResolutionContext& ctx)
+	void PatternBackRef::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PatternBackRef::post_analyse(ResolutionContext& ctx)
+	void PatternBackRef::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1683,7 +1688,7 @@ namespace lx
 		return Void();
 	}
 
-	DataType PatternBackRef::impl_evaltype(const ResolutionContext& ctx) const
+	DataType PatternBackRef::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return DataType::Pattern;
 	}
@@ -1698,12 +1703,12 @@ namespace lx
 	{
 	}
 
-	void PatternLazy::pre_analyse(ResolutionContext& ctx)
+	void PatternLazy::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PatternLazy::post_analyse(ResolutionContext& ctx)
+	void PatternLazy::post_analyse(SemanticContext& ctx)
 	{
 		try
 		{
@@ -1727,7 +1732,7 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
-	DataType PatternLazy::impl_evaltype(const ResolutionContext& ctx) const
+	DataType PatternLazy::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1742,7 +1747,7 @@ namespace lx
 	{
 	}
 
-	void PatternCapture::pre_analyse(ResolutionContext& ctx)
+	void PatternCapture::pre_analyse(SemanticContext& ctx)
 	{
 		if (_identifier.lexeme != UNNAMED_CAP_ID)
 		{
@@ -1759,7 +1764,7 @@ namespace lx
 			_validated = true;
 	}
 
-	void PatternCapture::post_analyse(ResolutionContext& ctx)
+	void PatternCapture::post_analyse(SemanticContext& ctx)
 	{
 		ctx.register_variable(_identifier.lexeme, DataType::CapId, _identifier.segment.start_line, Namespace::Global);
 
@@ -1785,7 +1790,7 @@ namespace lx
 		_expression.accept(visitor);
 	}
 
-	DataType PatternCapture::impl_evaltype(const ResolutionContext& ctx) const
+	DataType PatternCapture::impl_evaltype(const SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1800,12 +1805,12 @@ namespace lx
 	{
 	}
 
-	void AppendStatement::pre_analyse(ResolutionContext& ctx)
+	void AppendStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void AppendStatement::post_analyse(ResolutionContext& ctx)
+	void AppendStatement::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1832,12 +1837,12 @@ namespace lx
 	{
 	}
 
-	void FindStatement::pre_analyse(ResolutionContext& ctx)
+	void FindStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void FindStatement::post_analyse(ResolutionContext& ctx)
+	void FindStatement::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
 	}
@@ -1858,7 +1863,7 @@ namespace lx
 	{
 	}
 
-	void FilterStatement::pre_analyse(ResolutionContext& ctx)
+	void FilterStatement::pre_analyse(SemanticContext& ctx)
 	{
 		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
 		{
@@ -1879,7 +1884,7 @@ namespace lx
 		}
 	}
 
-	void FilterStatement::post_analyse(ResolutionContext& ctx)
+	void FilterStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1900,12 +1905,12 @@ namespace lx
 	{
 	}
 
-	void ReplaceStatement::pre_analyse(ResolutionContext& ctx)
+	void ReplaceStatement::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void ReplaceStatement::post_analyse(ResolutionContext& ctx)
+	void ReplaceStatement::post_analyse(SemanticContext& ctx)
 	{
 		validate_implicitly_casts(ctx, _match, DataType::Match);
 		validate_implicitly_casts(ctx, _string, DataType::String);
@@ -1934,7 +1939,7 @@ namespace lx
 	{
 	}
 
-	void ApplyStatement::pre_analyse(ResolutionContext& ctx)
+	void ApplyStatement::pre_analyse(SemanticContext& ctx)
 	{
 		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
 		{
@@ -1955,7 +1960,7 @@ namespace lx
 		}
 	}
 
-	void ApplyStatement::post_analyse(ResolutionContext& ctx)
+	void ApplyStatement::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -1976,7 +1981,7 @@ namespace lx
 	{
 	}
 
-	void ScopeStatement::pre_analyse(ResolutionContext& ctx)
+	void ScopeStatement::pre_analyse(SemanticContext& ctx)
 	{
 		if (data_type(_specifier) == DataType::_Scope)
 			_validated = true;
@@ -1984,7 +1989,7 @@ namespace lx
 			ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
 	}
 
-	void ScopeStatement::post_analyse(ResolutionContext& ctx)
+	void ScopeStatement::post_analyse(SemanticContext& ctx)
 	{
 		const auto range_type = _range.evaltype(ctx);
 		if (!can_cast_explicit(range_type, DataType::IRange))
@@ -2013,12 +2018,12 @@ namespace lx
 	{
 	}
 
-	void PagePush::pre_analyse(ResolutionContext& ctx)
+	void PagePush::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PagePush::post_analyse(ResolutionContext& ctx)
+	void PagePush::post_analyse(SemanticContext& ctx)
 	{
 		if (!is_pageable(_page.evaltype(ctx)))
 		{
@@ -2050,12 +2055,12 @@ namespace lx
 	{
 	}
 
-	void PagePop::pre_analyse(ResolutionContext& ctx)
+	void PagePop::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PagePop::post_analyse(ResolutionContext& ctx)
+	void PagePop::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}
@@ -2076,12 +2081,12 @@ namespace lx
 	{
 	}
 
-	void PageClearStack::pre_analyse(ResolutionContext& ctx)
+	void PageClearStack::pre_analyse(SemanticContext& ctx)
 	{
 		_validated = true;
 	}
 
-	void PageClearStack::post_analyse(ResolutionContext& ctx)
+	void PageClearStack::post_analyse(SemanticContext& ctx)
 	{
 		// NOP
 	}

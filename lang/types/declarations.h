@@ -3,6 +3,8 @@
 #include "operations.h"
 #include "errors.h"
 
+#include <sstream>
+
 namespace lx
 {
 #define LX_EXPAND_BY_TYPE(M, Sep) \
@@ -129,7 +131,7 @@ namespace lx
 	template<DataType T>
 	using to_type = typename ToType<T>::type;
 
-	template<Type To, Type From>
+	template<Type To, typename From> requires Type<std::decay_t<From>>
 	To cast(From&& value)
 	{
 		using FromDecay = std::decay_t<From>;
