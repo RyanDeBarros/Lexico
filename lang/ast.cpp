@@ -434,8 +434,25 @@ namespace lx
 
 	DataPoint ListExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
-		return Void();
+		std::vector<LxError> errors;
+		List list;
+		for (const Expression* expr : _elements)
+		{
+			TypeVariant v = std::move(expr->evaluate(env).variant());
+			try
+			{
+				list.push(to_public(std::move(v)));
+			}
+			catch (const LxError&)
+			{
+				errors.push_back(LxError::segment_error(expr->segment(), ErrorType::Runtime, "does not resolve to a public type"));
+			}
+		}
+
+		if (errors.empty())
+			return list;
+		else
+			throw errors;
 	}
 
 	DataType ListExpression::impl_evaltype(const SemanticContext& ctx) const

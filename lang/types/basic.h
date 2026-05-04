@@ -137,24 +137,6 @@ namespace lx
 		std::string string() const;
 	};
 
-	class Unresolved
-	{
-		std::unique_ptr<PublicTypeVariant> _v;
-
-	public:
-		Unresolved();
-		Unresolved(const PublicTypeVariant& v);
-		Unresolved(PublicTypeVariant&& v);
-
-		Unresolved(const Unresolved&);
-		Unresolved(Unresolved&&) noexcept;
-		Unresolved& operator=(const Unresolved&);
-		Unresolved& operator=(Unresolved&&) noexcept;
-
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
-	};
-
 	class List
 	{
 		std::vector<Unresolved> _elements;
@@ -162,6 +144,9 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+
+		void push(const Unresolved& element);
+		void push(Unresolved&& element);
 	};
 
 	enum class MarkerIdentifier

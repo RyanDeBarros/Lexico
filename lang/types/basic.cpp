@@ -1,5 +1,6 @@
 #include "basic.h"
 
+#include "unresolved.h"
 #include "pattern.h"
 #include "errors.h"
 
@@ -484,69 +485,6 @@ namespace lx
 			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
 	}
 
-	Unresolved::Unresolved()
-		: _v(std::make_unique<PublicTypeVariant>(Void()))
-	{
-	}
-
-	Unresolved::Unresolved(const PublicTypeVariant& v)
-		: _v(std::make_unique<PublicTypeVariant>(v))
-	{
-	}
-
-	Unresolved::Unresolved(PublicTypeVariant&& v)
-		: _v(std::make_unique<PublicTypeVariant>(std::move(v)))
-	{
-	}
-
-	Unresolved::Unresolved(const Unresolved& other)
-		: _v(std::make_unique<PublicTypeVariant>(*other._v))
-	{
-	}
-
-	Unresolved::Unresolved(Unresolved&& other) noexcept
-		: _v(std::move(other._v))
-	{
-		other._v = std::make_unique<PublicTypeVariant>(Void());
-	}
-
-	Unresolved& Unresolved::operator=(const Unresolved& other)
-	{
-		if (this != &other)
-			*_v = *other._v;
-		return *this;
-	}
-
-	Unresolved& Unresolved::operator=(Unresolved&& other) noexcept
-	{
-		if (this != &other)
-		{
-			_v = std::move(other._v);
-			other._v = std::make_unique<PublicTypeVariant>(Void());
-		}
-		return *this;
-	}
-
-	TypeVariant Unresolved::cast_copy(DataType type) const
-	{
-		if (type == DataType::_Unresolved)
-			return *this;
-		else if (type == DataType::Void)
-			return Void();
-		else
-			return std::visit([type](const auto& v) -> TypeVariant { return v.cast_copy(type); }, *_v);
-	}
-
-	TypeVariant Unresolved::cast_move(DataType type)
-	{
-		if (type == DataType::_Unresolved)
-			return std::move(*this);
-		else if (type == DataType::Void)
-			return Void();
-		else
-			return std::visit([type](auto&& v) -> TypeVariant { return v.cast_move(type); }, std::move(*_v));
-	}
-
 	TypeVariant List::cast_copy(DataType type) const
 	{
 		if (type == DataType::List)
@@ -563,6 +501,16 @@ namespace lx
 			return std::move(*this);
 		else
 			return cast_copy(type);
+	}
+
+	void List::push(const Unresolved& element)
+	{
+		_elements.push_back(element);
+	}
+
+	void List::push(Unresolved&& element)
+	{
+		_elements.push_back(std::move(element));
 	}
 
 	MarkerIdentifier marker(BuiltinSymbol symbol)

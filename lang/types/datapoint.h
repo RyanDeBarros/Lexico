@@ -3,6 +3,7 @@
 #include "declarations.h"
 #include "pattern.h"
 #include "basic.h"
+#include "unresolved.h"
 
 namespace lx
 {
@@ -19,6 +20,9 @@ namespace lx
 		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
 
 		static DataPoint make_from_literal(DataType type, std::string_view resolved);
+
+		const TypeVariant& variant() const;
+		TypeVariant& variant();
 
 		template<Type T>
 		const T& get() const

@@ -1,6 +1,7 @@
 #include "pattern.h"
 
 #include "basic.h"
+#include "unresolved.h"
 
 #include <sstream>
 

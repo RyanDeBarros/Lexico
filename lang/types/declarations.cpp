@@ -2,6 +2,7 @@
 
 #include "basic.h"
 #include "pattern.h"
+#include "unresolved.h"
 
 namespace lx
 {

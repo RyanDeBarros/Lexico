@@ -40,6 +40,16 @@ namespace lx
 		}
 	}
 
+	const TypeVariant& DataPoint::variant() const
+	{
+		return _storage;
+	}
+
+	TypeVariant& DataPoint::variant()
+	{
+		return _storage;
+	}
+
 	DataPoint DataPoint::cast_copy(DataType type) const
 	{
 		return std::visit([type](const auto& v) { return DataPoint(v.cast_copy(type)); }, _storage);
