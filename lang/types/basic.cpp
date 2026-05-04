@@ -37,7 +37,7 @@ namespace lx
 		switch (type)
 		{
 		case DataType::Int:
-			return Int(_value);
+			return *this;
 		case DataType::Float:
 			return Float(static_cast<float>(_value));
 		case DataType::Bool:
@@ -96,7 +96,7 @@ namespace lx
 		case DataType::Int:
 			return Int(static_cast<int>(_value));
 		case DataType::Float:
-			return Float(_value);
+			return *this;
 		case DataType::Bool:
 			return Bool(static_cast<bool>(_value));
 		case DataType::String:
@@ -153,7 +153,7 @@ namespace lx
 		case DataType::Float:
 			return Float(static_cast<float>(_value));
 		case DataType::Bool:
-			return Bool(_value);
+			return *this;
 		case DataType::String:
 			return String(_value ? "true" : "false");
 		case DataType::Void:
@@ -200,7 +200,7 @@ namespace lx
 		case DataType::Bool:
 			return Bool::make_from_literal(_value);
 		case DataType::String:
-			return String(_value);
+			return *this;
 		case DataType::Pattern:
 		{
 			Pattern ptn;
@@ -217,7 +217,7 @@ namespace lx
 	TypeVariant String::cast_move(DataType type)
 	{
 		if (type == DataType::String)
-			return String(std::move(_value));
+			return std::move(*this);
 		else if (type == DataType::Pattern)
 		{
 			Pattern ptn;
@@ -250,7 +250,7 @@ namespace lx
 	TypeVariant Match::cast_copy(DataType type) const
 	{
 		if (type == DataType::Match)
-			return Match(); // TODO
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -259,14 +259,16 @@ namespace lx
 
 	TypeVariant Match::cast_move(DataType type)
 	{
-		(void*)this; // ignore const warning
-		return cast_copy(type);
+		if (type == DataType::Match)
+			return std::move(*this);
+		else
+			return cast_copy(type);
 	}
 
 	TypeVariant Matches::cast_copy(DataType type) const
 	{
 		if (type == DataType::Matches)
-			return Matches(); // TODO
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -275,8 +277,10 @@ namespace lx
 
 	TypeVariant Matches::cast_move(DataType type)
 	{
-		(void*)this; // ignore const warning
-		return cast_copy(type);
+		if (type == DataType::Matches)
+			return std::move(*this);
+		else
+			return cast_copy(type);
 	}
 
 	CapId::CapId(unsigned int uid)
@@ -287,7 +291,7 @@ namespace lx
 	TypeVariant CapId::cast_copy(DataType type) const
 	{
 		if (type == DataType::CapId)
-			return CapId(_uid);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -303,7 +307,7 @@ namespace lx
 	TypeVariant Cap::cast_copy(DataType type) const
 	{
 		if (type == DataType::Cap)
-			return Cap(); // TODO
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -312,8 +316,13 @@ namespace lx
 
 	TypeVariant Cap::cast_move(DataType type)
 	{
-		(void*)this; // ignore const warning
-		return cast_copy(type);
+		if (type == DataType::Cap)
+			return std::move(*this);
+		else
+		{
+			(void*)this; // ignore const warning
+			return cast_copy(type);
+		}
 	}
 
 	IRange::IRange(std::optional<int> min, std::optional<int> max)
@@ -324,7 +333,7 @@ namespace lx
 	TypeVariant IRange::cast_copy(DataType type) const
 	{
 		if (type == DataType::IRange)
-			return IRange(_min, _max);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -408,7 +417,7 @@ namespace lx
 		case DataType::String:
 			return String(string());
 		case DataType::SRange:
-			return SRange(_min, _max);
+			return *this;
 		case DataType::Pattern:
 		{
 			Pattern ptn;
@@ -521,7 +530,7 @@ namespace lx
 	TypeVariant Unresolved::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Unresolved)
-			return Unresolved(*this);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -531,7 +540,7 @@ namespace lx
 	TypeVariant Unresolved::cast_move(DataType type)
 	{
 		if (type == DataType::_Unresolved)
-			return Unresolved(std::move(*this));
+			return std::move(*this);
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -541,7 +550,7 @@ namespace lx
 	TypeVariant List::cast_copy(DataType type) const
 	{
 		if (type == DataType::List)
-			return List(*this);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -550,14 +559,37 @@ namespace lx
 
 	TypeVariant List::cast_move(DataType type)
 	{
-		(void*)this; // ignore const warning
-		return cast_copy(type);
+		if (type == DataType::List)
+			return std::move(*this);
+		else
+			return cast_copy(type);
+	}
+
+	MarkerIdentifier marker(BuiltinSymbol symbol)
+	{
+		switch (symbol)
+		{
+		case BuiltinSymbol::Any:
+			return MarkerIdentifier::Any;
+		case BuiltinSymbol::Cap:
+			return MarkerIdentifier::Cap;
+		case BuiltinSymbol::End:
+			return MarkerIdentifier::End;
+		case BuiltinSymbol::Start:
+			return MarkerIdentifier::Start;
+		default:
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": unrecognized marker " << static_cast<int>(symbol);
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		}
 	}
 
 	TypeVariant Marker::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Marker)
-			return Marker(); // TODO
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -578,7 +610,7 @@ namespace lx
 	TypeVariant Scope::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Scope)
-			return Scope(*this);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else
@@ -628,7 +660,7 @@ namespace lx
 	TypeVariant Color::cast_copy(DataType type) const
 	{
 		if (type == DataType::_Color)
-			return Color(*this);
+			return *this;
 		else if (type == DataType::Void)
 			return Void();
 		else

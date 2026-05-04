@@ -164,8 +164,20 @@ namespace lx
 		TypeVariant cast_move(DataType type);
 	};
 
+	enum class MarkerIdentifier
+	{
+		Any,
+		Cap,
+		End,
+		Start,
+	};
+
+	extern MarkerIdentifier marker(BuiltinSymbol symbol);
+
 	class Marker
 	{
+		MarkerIdentifier _identifier;
+
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
