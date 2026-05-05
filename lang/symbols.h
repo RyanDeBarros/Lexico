@@ -16,6 +16,7 @@ namespace lx
 		Space,
 		Uppercase,
 		Varname,
+		Whitespace,
 
 		// Marker
 		Any,

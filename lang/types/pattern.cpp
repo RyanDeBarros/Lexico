@@ -305,7 +305,6 @@ namespace lx
 			ptn.root().append(ptn.add(std::move(sub)));
 			break;
 		}
-		// TODO $whitespace symbol equivalent to `$newline or $space`
 		case BuiltinSymbol::Uppercase:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
@@ -324,6 +323,17 @@ namespace lx
 			for (int i = '0'; i <= '9'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('_')));
+			ptn.root().append(ptn.add(std::move(sub)));
+			break;
+		}
+		case BuiltinSymbol::Whitespace:
+		{
+			auto sub = std::make_unique<SubpatternDisjunction>();
+			sub->append(ptn.add(std::make_unique<SubpatternChar>(' ')));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\t')));
+			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
+			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
 			ptn.root().append(ptn.add(std::move(sub)));
 			break;
 		}

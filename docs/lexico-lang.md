@@ -174,10 +174,13 @@ pattern $varname
 append $alphanumeric or "_"
 
 pattern $space
-append " " or "\t" or "\n" or "\r" or "\v"
+append " " or "\t"
 
 pattern $newline
 append "\r\n" or "\n" or "\r"
+
+pattern $whitespace
+append $space or $newline
 
 pattern $start
 # no script equivalent - but equivalent to `^` in regex

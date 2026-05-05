@@ -41,6 +41,8 @@ namespace lx
 			return BuiltinSymbol::Uppercase;
 		else if (name == "varname")
 			return BuiltinSymbol::Varname;
+		else if (name == "whitespace")
+			return BuiltinSymbol::Whitespace;
 		else if (name == "yellow")
 			return BuiltinSymbol::Yellow;
 		else if (name == "red")

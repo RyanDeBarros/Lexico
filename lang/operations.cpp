@@ -78,6 +78,7 @@ namespace lx
 		case BuiltinSymbol::Space:
 		case BuiltinSymbol::Uppercase:
 		case BuiltinSymbol::Varname:
+		case BuiltinSymbol::Whitespace:
 			return DataType::Pattern;
 
 		case BuiltinSymbol::Any:
