@@ -3,6 +3,7 @@
 #include "unresolved.h"
 #include "pattern.h"
 #include "errors.h"
+#include "heap.h"
 
 #include <charconv>
 #include <sstream>
@@ -503,12 +504,12 @@ namespace lx
 			return cast_copy(type);
 	}
 
-	void List::push(const Unresolved& element)
+	void List::push(const Variable& element)
 	{
 		_elements.push_back(element);
 	}
 
-	void List::push(Unresolved&& element)
+	void List::push(Variable&& element)
 	{
 		_elements.push_back(std::move(element));
 	}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "declarations.h"
+#include "variable.h"
 
 namespace lx
 {
@@ -139,14 +140,14 @@ namespace lx
 
 	class List
 	{
-		std::vector<Unresolved> _elements;
+		std::vector<Variable> _elements;
 
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 
-		void push(const Unresolved& element);
-		void push(Unresolved&& element);
+		void push(const Variable& element);
+		void push(Variable&& element);
 	};
 
 	enum class MarkerIdentifier

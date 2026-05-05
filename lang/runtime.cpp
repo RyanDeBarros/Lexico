@@ -2,7 +2,7 @@
 
 namespace lx
 {
-	void RuntimeSymbolTable::register_variable(const std::string_view identifier, DataPointHandle&& dp)
+	void RuntimeSymbolTable::register_variable(const std::string_view identifier, Variable&& dp)
 	{
 		if (_variable_table.count(identifier))
 		{
@@ -14,7 +14,7 @@ namespace lx
 		_variable_table.try_emplace(std::string(identifier), std::move(dp));
 	}
 
-	std::optional<DataPointHandle> RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
+	std::optional<Variable> RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _variable_table.find(identifier);
 		if (it != _variable_table.end())
@@ -98,7 +98,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
+	Variable Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
 		if (ns == Namespace::Global)
 		{
@@ -131,9 +131,16 @@ namespace lx
 		throw LxError(ErrorType::Runtime, ss.str());
 	}
 
-	DataPointHandle Runtime::temporary_variable(DataPoint&& dp) const
+	Variable Runtime::temporary_variable(DataPoint&& dp) const
 	{
 		return _heap.add(std::move(dp), true);
+	}
+
+	Variable Runtime::unnamed_variable(Variable& owner, DataPoint&& dp) const
+	{
+		auto var = _heap.add(std::move(dp), false);
+		owner.own(var);
+		return var;
 	}
 
 	const Matches& Runtime::global_matches() const
@@ -146,7 +153,7 @@ namespace lx
 		return _global_matches.ref().get<Matches>();
 	}
 
-	DataPointHandle Runtime::global_matches_handle() const
+	Variable Runtime::global_matches_handle() const
 	{
 		return _global_matches;
 	}

@@ -403,7 +403,7 @@ namespace lx
 		evaltype(ctx);
 	}
 	
-	DataPointHandle LiteralExpression::evaluate(const Runtime& env) const
+	Variable LiteralExpression::evaluate(const Runtime& env) const
 	{
 		return env.temporary_variable(DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved()));
 	}
@@ -433,16 +433,18 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle ListExpression::evaluate(const Runtime& env) const
+	Variable ListExpression::evaluate(const Runtime& env) const
 	{
 		std::vector<LxError> errors;
-		List list;
+		Variable list_handle = env.temporary_variable(List());
+		List& list = list_handle.ref().get<List>();
+
 		for (const Expression* expr : _elements)
 		{
 			TypeVariant v = std::move(expr->evaluate(env).dp().variant());
 			try
 			{
-				list.push(to_public(std::move(v)));
+				list.push(env.unnamed_variable(list_handle, std::move(v)));
 			}
 			catch (const LxError&)
 			{
@@ -481,7 +483,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle BinaryExpression::evaluate(const Runtime& env) const
+	Variable BinaryExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -532,7 +534,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle MemberAccessExpression::evaluate(const Runtime& env) const
+	Variable MemberAccessExpression::evaluate(const Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -592,7 +594,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle PrefixExpression::evaluate(const Runtime& env) const
+	Variable PrefixExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -642,7 +644,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle AsExpression::evaluate(const Runtime& env) const
+	Variable AsExpression::evaluate(const Runtime& env) const
 	{
 		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(data_type(_type.type)));
 	}
@@ -687,7 +689,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle SubscriptExpression::evaluate(const Runtime& env) const
+	Variable SubscriptExpression::evaluate(const Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -753,7 +755,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle VariableExpression::evaluate(const Runtime& env) const
+	Variable VariableExpression::evaluate(const Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -791,7 +793,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPointHandle BuiltinSymbolExpression::evaluate(const Runtime& env) const
+	Variable BuiltinSymbolExpression::evaluate(const Runtime& env) const
 	{
 		switch (evaltype())
 		{
@@ -851,7 +853,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle FunctionCallExpression::evaluate(const Runtime& env) const
+	Variable FunctionCallExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -912,7 +914,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle MethodCallExpression::evaluate(const Runtime& env) const
+	Variable MethodCallExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1635,7 +1637,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle RepeatOperation::evaluate(const Runtime& env) const
+	Variable RepeatOperation::evaluate(const Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -1680,7 +1682,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle SimpleRepeatOperation::evaluate(const Runtime& env) const
+	Variable SimpleRepeatOperation::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1722,7 +1724,7 @@ namespace lx
 		// NOP
 	}
 
-	DataPointHandle PatternBackRef::evaluate(const Runtime& env) const
+	Variable PatternBackRef::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1760,7 +1762,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle PatternLazy::evaluate(const Runtime& env) const
+	Variable PatternLazy::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1818,7 +1820,7 @@ namespace lx
 		}
 	}
 
-	DataPointHandle PatternCapture::evaluate(const Runtime& env) const
+	Variable PatternCapture::evaluate(const Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());

@@ -1,46 +1,27 @@
 #pragma once
 
 #include "datapoint.h"
+#include "variable.h"
 
 #include <stack>
 
 namespace lx
 {
-	class DataHeap;
-
-	class DataPointHandle
-	{
-		DataHeap* _heap;
-		unsigned int _id;
-		bool _temporary;
-		std::shared_ptr<unsigned int> _ref_count;
-
-	public:
-		DataPointHandle(DataHeap& heap, unsigned int id, bool temporary);
-		DataPointHandle(const DataPointHandle&);
-		DataPointHandle(DataPointHandle&&) noexcept;
-		~DataPointHandle();
-		DataPointHandle& operator=(const DataPointHandle&);
-		DataPointHandle& operator=(DataPointHandle&&) noexcept;
-
-	private:
-		void decrement();
-
-	public:
-		const DataPoint& ref() const;
-		DataPoint& ref();
-		DataPoint dp();
-	};
-
 	class DataHeap
 	{
 		std::vector<DataPoint> _data;
+		std::vector<std::unordered_set<Variable>> _unnamed;
 		std::stack<unsigned int> _free_slots;
 
 	public:
-		DataPointHandle add(DataPoint&& dp, bool temporary);
+		Variable add(DataPoint&& dp, bool temporary);
+
+	private:
+		friend class Variable;
 		void remove(unsigned int id);
 		const DataPoint& ref(unsigned int id) const;
 		DataPoint& ref(unsigned int id);
+		void own(unsigned int id, const Variable& var);
+		void disown(unsigned int id, const Variable& var);
 	};
 }

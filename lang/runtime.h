@@ -10,15 +10,15 @@ namespace lx
 {
 	class RuntimeSymbolTable
 	{
-		StringMap<DataPointHandle> _variable_table;
+		StringMap<Variable> _variable_table;
 
 	public:
 		RuntimeSymbolTable() = default;
 		RuntimeSymbolTable(const RuntimeSymbolTable&) = delete;
 		RuntimeSymbolTable(RuntimeSymbolTable&&) noexcept = default;
 
-		void register_variable(const std::string_view identifier, DataPointHandle&& handle);
-		std::optional<DataPointHandle> registered_variable(const std::string_view identifier) const;
+		void register_variable(const std::string_view identifier, Variable&& handle);
+		std::optional<Variable> registered_variable(const std::string_view identifier) const;
 	};
 
 	struct RuntimeScopeContext
@@ -43,7 +43,7 @@ namespace lx
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
-		DataPointHandle _global_matches;
+		Variable _global_matches;
 		Scope _search_scope;
 
 		StringMap<unsigned int> _capture_ids;
@@ -62,12 +62,13 @@ namespace lx
 		unsigned int scope_depth() const;
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
-		DataPointHandle registered_variable(const std::string_view identifier, Namespace ns) const;
-		DataPointHandle temporary_variable(DataPoint&& dp) const;
+		Variable registered_variable(const std::string_view identifier, Namespace ns) const;
+		Variable temporary_variable(DataPoint&& dp) const;
+		Variable unnamed_variable(Variable& owner, DataPoint&& dp) const;
 
 		const Matches& global_matches() const;
 		Matches& global_matches();
-		DataPointHandle global_matches_handle() const;
+		Variable global_matches_handle() const;
 
 		const Scope& search_scope() const;
 		Scope& search_scope();
