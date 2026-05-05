@@ -1,30 +1,8 @@
 #include "runtime.h"
 
-#include "types/basic.h"
-
 namespace lx
 {
-	Variable::Variable(const DataPoint& dp)
-		: _dp(std::make_unique<DataPoint>(dp))
-	{
-	}
-	
-	Variable::Variable(DataPoint&& dp)
-		: _dp(std::make_unique<DataPoint>(std::move(dp)))
-	{
-	}
-
-	const DataPoint& Variable::ref() const
-	{
-		return *_dp;
-	}
-	
-	DataPoint& Variable::ref()
-	{
-		return *_dp;
-	}
-
-	void RuntimeSymbolTable::register_variable(const std::string_view identifier, DataPoint&& dp)
+	void RuntimeSymbolTable::register_variable(const std::string_view identifier, DataPointHandle&& dp)
 	{
 		if (_variable_table.count(identifier))
 		{
@@ -36,22 +14,13 @@ namespace lx
 		_variable_table.try_emplace(std::string(identifier), std::move(dp));
 	}
 
-	const DataPoint* RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
+	std::optional<DataPointHandle> RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _variable_table.find(identifier);
 		if (it != _variable_table.end())
-			return &it->second.ref();
+			return it->second;
 		else
-			return nullptr;
-	}
-
-	DataPoint* RuntimeSymbolTable::registered_variable(const std::string_view identifier)
-	{
-		auto it = _variable_table.find(identifier);
-		if (it != _variable_table.end())
-			return &it->second.ref();
-		else
-			return nullptr;
+			return std::nullopt;
 	}
 
 	RuntimeScopeContext::RuntimeScopeContext(bool isolated)
@@ -59,9 +28,29 @@ namespace lx
 	{
 	}
 
-	Runtime::Runtime(const std::string_view input, std::stringstream& output, std::stringstream& log)
-		: _input(input), _output(output), _log(log), _global_matches(Matches()), _search_scope(std::nullopt)
+	Runtime::Runtime(const std::string_view input)
+		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt)
 	{
+	}
+
+	const std::stringstream& Runtime::output() const
+	{
+		return _output;
+	}
+
+	std::stringstream& Runtime::output()
+	{
+		return _output;
+	}
+
+	const std::stringstream& Runtime::log() const
+	{
+		return _log;
+	}
+
+	std::stringstream& Runtime::log()
+	{
+		return _log;
 	}
 
 	void Runtime::push_local_scope(bool isolated)
@@ -90,11 +79,11 @@ namespace lx
 		switch (ns)
 		{
 		case lx::Namespace::Global:
-			_global_table.register_variable(identifier, std::move(dp));
+			_global_table.register_variable(identifier, _heap.add(std::move(dp), false));
 			break;
 		case lx::Namespace::Local:
 			if (!_scope_stack.empty())
-				_scope_stack.back().table.register_variable(identifier, std::move(dp));
+				_scope_stack.back().table.register_variable(identifier, _heap.add(std::move(dp), false));
 			else
 			{
 				std::stringstream ss;
@@ -109,7 +98,7 @@ namespace lx
 		}
 	}
 
-	const DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
+	DataPointHandle Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
 	{
 		if (ns == Namespace::Global)
 		{
@@ -142,17 +131,22 @@ namespace lx
 		throw LxError(ErrorType::Runtime, ss.str());
 	}
 
-	DataPoint& Runtime::registered_variable(const std::string_view identifier, Namespace ns)
+	DataPointHandle Runtime::temporary_variable(DataPoint&& dp) const
 	{
-		return const_cast<DataPoint&>(const_cast<const Runtime*>(this)->registered_variable(identifier, ns));
+		return _heap.add(std::move(dp), true);
 	}
 
 	const Matches& Runtime::global_matches() const
 	{
-		return _global_matches;
+		return _global_matches.ref().get<Matches>();
 	}
 
 	Matches& Runtime::global_matches()
+	{
+		return _global_matches.ref().get<Matches>();
+	}
+
+	DataPointHandle Runtime::global_matches_handle() const
 	{
 		return _global_matches;
 	}

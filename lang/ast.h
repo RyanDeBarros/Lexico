@@ -50,7 +50,7 @@ namespace lx
 		};
 
 		Type type = Type::Normal;
-		std::unique_ptr<DataPoint> data = nullptr;
+		std::optional<DataPointHandle> data = std::nullopt;
 	};
 
 	class ASTNode
@@ -160,7 +160,7 @@ namespace lx
 		DataType evaltype(const SemanticContext& ctx) const;
 		DataType evaltype() const;
 
-		virtual DataPoint evaluate(const Runtime& env) const = 0;
+		virtual DataPointHandle evaluate(const Runtime& env) const = 0;
 		virtual bool imperative() const;
 
 	protected:
@@ -238,7 +238,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -257,7 +257,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -276,7 +276,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -300,7 +300,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -324,7 +324,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -347,7 +347,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -367,7 +367,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -389,7 +389,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -407,7 +407,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -426,7 +426,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -450,7 +450,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 		bool imperative() const override;
@@ -768,7 +768,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -788,7 +788,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -811,7 +811,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -829,7 +829,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -850,7 +850,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		DataPoint evaluate(const Runtime& env) const override;
+		DataPointHandle evaluate(const Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 

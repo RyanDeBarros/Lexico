@@ -5,6 +5,7 @@ set(TYPES_SOURCES
 	pattern.cpp
 	declarations.cpp
 	unresolved.cpp
+	heap.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_SOURCES})

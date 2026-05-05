@@ -1,40 +1,24 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "util.h"
 #include "namespace.h"
-#include "types/datapoint.h"
+#include "types/heap.h"
+
+#include <unordered_map>
 
 namespace lx
 {
-	class Variable
-	{
-		std::unique_ptr<DataPoint> _dp;
-
-	public:
-		Variable(const DataPoint& dp);
-		Variable(DataPoint&& dp);
-
-		Variable(const Variable&) = delete;
-		Variable(Variable&&) noexcept = default;
-
-		const DataPoint& ref() const;
-		DataPoint& ref();
-	};
-
 	class RuntimeSymbolTable
 	{
-		StringMap<Variable> _variable_table;
+		StringMap<DataPointHandle> _variable_table;
 
 	public:
 		RuntimeSymbolTable() = default;
 		RuntimeSymbolTable(const RuntimeSymbolTable&) = delete;
 		RuntimeSymbolTable(RuntimeSymbolTable&&) noexcept = default;
 
-		void register_variable(const std::string_view identifier, DataPoint&& dp);
-		const DataPoint* registered_variable(const std::string_view identifier) const;
-		DataPoint* registered_variable(const std::string_view identifier);
+		void register_variable(const std::string_view identifier, DataPointHandle&& handle);
+		std::optional<DataPointHandle> registered_variable(const std::string_view identifier) const;
 	};
 
 	struct RuntimeScopeContext
@@ -52,19 +36,25 @@ namespace lx
 	class Runtime
 	{
 		const std::string_view _input;
-		std::stringstream& _output;
-		std::stringstream& _log;
+		std::stringstream _output;
+		std::stringstream _log;
 
+		mutable DataHeap _heap;
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
-		Matches _global_matches;
+		DataPointHandle _global_matches;
 		Scope _search_scope;
 
 		StringMap<unsigned int> _capture_ids;
 
 	public:
-		Runtime(const std::string_view input, std::stringstream& output, std::stringstream& log);
+		Runtime(const std::string_view input);
+		
+		const std::stringstream& output() const;
+		std::stringstream& output();
+		const std::stringstream& log() const;
+		std::stringstream& log();
 
 		void push_local_scope(bool isolated);
 		void pop_local_scope();
@@ -72,11 +62,12 @@ namespace lx
 		unsigned int scope_depth() const;
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
-		const DataPoint& registered_variable(const std::string_view identifier, Namespace ns) const;
-		DataPoint& registered_variable(const std::string_view identifier, Namespace ns);
+		DataPointHandle registered_variable(const std::string_view identifier, Namespace ns) const;
+		DataPointHandle temporary_variable(DataPoint&& dp) const;
 
 		const Matches& global_matches() const;
 		Matches& global_matches();
+		DataPointHandle global_matches_handle() const;
 
 		const Scope& search_scope() const;
 		Scope& search_scope();

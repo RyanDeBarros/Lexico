@@ -289,7 +289,7 @@ namespace lx
 
 	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
 	{
-		env.register_variable(_identifier.lexeme, _expression.evaluate(env), _global ? Namespace::Global : Namespace::Local);
+		env.register_variable(_identifier.lexeme, _expression.evaluate(env).dp(), _global ? Namespace::Global : Namespace::Local);
 		return {};
 	}
 
@@ -336,7 +336,7 @@ namespace lx
 
 	ExecutionFlow VariableAssignment::execute(Runtime& env) const
 	{
-		env.registered_variable(_identifier.lexeme, Namespace::Unknown).set(_expression.evaluate(env));
+		env.registered_variable(_identifier.lexeme, Namespace::Unknown).ref().set(_expression.evaluate(env).dp());
 		return {};
 	}
 
@@ -373,7 +373,7 @@ namespace lx
 
 	ExecutionFlow GlobalMatchesAssignment::execute(Runtime& env) const
 	{
-		env.global_matches() = _expression.evaluate(env).cast_move(DataType::Matches).get<Matches>();
+		env.global_matches() = _expression.evaluate(env).dp().cast_move(DataType::Matches).get<Matches>();
 		return {};
 	}
 
@@ -403,9 +403,9 @@ namespace lx
 		evaltype(ctx);
 	}
 	
-	DataPoint LiteralExpression::evaluate(const Runtime& env) const
+	DataPointHandle LiteralExpression::evaluate(const Runtime& env) const
 	{
-		return DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved());
+		return env.temporary_variable(DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved()));
 	}
 
 	DataType LiteralExpression::impl_evaltype(const SemanticContext& ctx) const
@@ -433,13 +433,13 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint ListExpression::evaluate(const Runtime& env) const
+	DataPointHandle ListExpression::evaluate(const Runtime& env) const
 	{
 		std::vector<LxError> errors;
 		List list;
 		for (const Expression* expr : _elements)
 		{
-			TypeVariant v = std::move(expr->evaluate(env).variant());
+			TypeVariant v = std::move(expr->evaluate(env).dp().variant());
 			try
 			{
 				list.push(to_public(std::move(v)));
@@ -451,7 +451,7 @@ namespace lx
 		}
 
 		if (errors.empty())
-			return list;
+			return env.temporary_variable(std::move(list));
 		else
 			throw errors;
 	}
@@ -481,10 +481,10 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint BinaryExpression::evaluate(const Runtime& env) const
+	DataPointHandle BinaryExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void BinaryExpression::traverse(ASTVisitor& visitor)
@@ -532,10 +532,10 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint MemberAccessExpression::evaluate(const Runtime& env) const
+	DataPointHandle MemberAccessExpression::evaluate(const Runtime& env) const
 	{
-		// TODO should return a reference to a DataPoint, not just a copy
-		return Void();
+		// TODO should return a reference, not temporary
+		return env.temporary_variable(Void());
 	}
 
 	void MemberAccessExpression::traverse(ASTVisitor& visitor)
@@ -592,10 +592,10 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint PrefixExpression::evaluate(const Runtime& env) const
+	DataPointHandle PrefixExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void PrefixExpression::traverse(ASTVisitor& visitor)
@@ -642,9 +642,9 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint AsExpression::evaluate(const Runtime& env) const
+	DataPointHandle AsExpression::evaluate(const Runtime& env) const
 	{
-		return _expr.evaluate(env).cast_copy(data_type(_type.type));
+		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(data_type(_type.type)));
 	}
 
 	void AsExpression::traverse(ASTVisitor& visitor)
@@ -687,10 +687,10 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint SubscriptExpression::evaluate(const Runtime& env) const
+	DataPointHandle SubscriptExpression::evaluate(const Runtime& env) const
 	{
-		// TODO should return a reference to a DataPoint, not just a copy
-		return Void();
+		// TODO should return a reference, not temporary
+		return env.temporary_variable(Void());
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor)
@@ -753,10 +753,10 @@ namespace lx
 		}
 	}
 
-	DataPoint VariableExpression::evaluate(const Runtime& env) const
+	DataPointHandle VariableExpression::evaluate(const Runtime& env) const
 	{
-		// TODO
-		return Void();
+		// TODO should return a reference, not temporary
+		return env.temporary_variable(Void());
 	}
 
 	DataType VariableExpression::impl_evaltype(const SemanticContext& ctx) const
@@ -791,16 +791,16 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	DataPoint BuiltinSymbolExpression::evaluate(const Runtime& env) const
+	DataPointHandle BuiltinSymbolExpression::evaluate(const Runtime& env) const
 	{
 		switch (evaltype())
 		{
 		case DataType::Pattern:
-			return Pattern::make_from_symbol(_builtin_symbol);
+			return env.temporary_variable(Pattern::make_from_symbol(_builtin_symbol));
 		case DataType::Matches:
-			return DataPoint(env.global_matches());
+			return env.global_matches_handle();
 		case DataType::_Marker:
-			return Marker(marker(_builtin_symbol));
+			return env.temporary_variable(Marker(marker(_builtin_symbol)));
 		case DataType::_Scope:
 			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unexpected scope symbol");
 		case DataType::_Color:
@@ -851,10 +851,10 @@ namespace lx
 		}
 	}
 
-	DataPoint FunctionCallExpression::evaluate(const Runtime& env) const
+	DataPointHandle FunctionCallExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void FunctionCallExpression::traverse(ASTVisitor& visitor)
@@ -912,10 +912,10 @@ namespace lx
 		}
 	}
 
-	DataPoint MethodCallExpression::evaluate(const Runtime& env) const
+	DataPointHandle MethodCallExpression::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void MethodCallExpression::traverse(ASTVisitor& visitor)
@@ -1093,9 +1093,9 @@ namespace lx
 	ExecutionFlow ReturnStatement::execute(Runtime& env) const
 	{
 		if (_expression)
-			return { .type = ExecutionFlow::Type::Return, .data = std::make_unique<DataPoint>(_expression->evaluate(env)) };
+			return { .type = ExecutionFlow::Type::Return, .data = _expression->evaluate(env) };
 		else
-			return { .type = ExecutionFlow::Type::Return, .data = std::make_unique<DataPoint>(Void()) };
+			return { .type = ExecutionFlow::Type::Return, .data = env.temporary_variable(Void()) };
 	}
 
 	void ReturnStatement::traverse(ASTVisitor& visitor)
@@ -1149,7 +1149,7 @@ namespace lx
 
 	ExecutionFlow IfConditional::execute(Runtime& env) const
 	{
-		if (_condition.evaluate(env).move_as<Bool>().value())
+		if (_condition.evaluate(env).dp().move_as<Bool>().value())
 			return Block::execute(env);
 		else if (_fallback)
 			return _fallback->execute(env);
@@ -1635,10 +1635,10 @@ namespace lx
 		}
 	}
 
-	DataPoint RepeatOperation::evaluate(const Runtime& env) const
+	DataPointHandle RepeatOperation::evaluate(const Runtime& env) const
 	{
-		// TODO
-		return Void();
+		// TODO should return a reference, not temporary
+		return env.temporary_variable(Void());
 	}
 
 	void RepeatOperation::traverse(ASTVisitor& visitor)
@@ -1680,10 +1680,10 @@ namespace lx
 		}
 	}
 
-	DataPoint SimpleRepeatOperation::evaluate(const Runtime& env) const
+	DataPointHandle SimpleRepeatOperation::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void SimpleRepeatOperation::traverse(ASTVisitor& visitor)
@@ -1722,10 +1722,10 @@ namespace lx
 		// NOP
 	}
 
-	DataPoint PatternBackRef::evaluate(const Runtime& env) const
+	DataPointHandle PatternBackRef::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	DataType PatternBackRef::impl_evaltype(const SemanticContext& ctx) const
@@ -1760,10 +1760,10 @@ namespace lx
 		}
 	}
 
-	DataPoint PatternLazy::evaluate(const Runtime& env) const
+	DataPointHandle PatternLazy::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void PatternLazy::traverse(ASTVisitor& visitor)
@@ -1818,10 +1818,10 @@ namespace lx
 		}
 	}
 
-	DataPoint PatternCapture::evaluate(const Runtime& env) const
+	DataPointHandle PatternCapture::evaluate(const Runtime& env) const
 	{
 		// TODO
-		return Void();
+		return env.temporary_variable(Void());
 	}
 
 	void PatternCapture::traverse(ASTVisitor& visitor)
@@ -2072,7 +2072,7 @@ namespace lx
 		{
 			if (_count)
 			{
-				int c = _count->evaluate(env).move_as<Int>().value();
+				int c = _count->evaluate(env).dp().move_as<Int>().value();
 				if (c > 0)
 					return Scope(c);
 				else
