@@ -98,18 +98,14 @@ namespace lx
 		}
 	}
 
-	Variable Runtime::registered_variable(const std::string_view identifier, Namespace ns) const
+	Variable Runtime::registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const
 	{
 		if (ns == Namespace::Global)
 		{
 			if (auto dp = _global_table.registered_variable(identifier))
 				return *dp;
 			else
-			{
-				std::stringstream ss;
-				ss << __FUNCTION__ << ": global variable \"" << identifier << "\" not present in global table";
-				throw LxError(ErrorType::Runtime, ss.str());
-			}
+				throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 		}
 
 		if (ns == Namespace::Unknown || scope_depth() == 0)
@@ -126,9 +122,7 @@ namespace lx
 				break;
 		}
 
-		std::stringstream ss;
-		ss << __FUNCTION__ << ": variable \"" << identifier << "\" not present in any table";
-		throw LxError(ErrorType::Runtime, ss.str());
+		throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 	}
 
 	Variable Runtime::temporary_variable(DataPoint&& dp)
@@ -141,6 +135,39 @@ namespace lx
 		auto var = _heap.add(std::move(dp), false);
 		owner.own(var);
 		return var;
+	}
+
+	void Runtime::declare_pattern(std::string_view identifier)
+	{
+		auto it = _declared_patterns.find(identifier);
+		if (it != _declared_patterns.end())
+			_focused_pattern = it->second;
+		else
+		{
+			// TODO v0.3 allow for passing initial pattern expression in pattern declaration
+			Variable var = _heap.add(Pattern(), false);
+			_declared_patterns.try_emplace(std::string(identifier), var);
+			_focused_pattern = var;
+		}
+	}
+	
+	void Runtime::delete_pattern(std::string_view identifier)
+	{
+		auto it = _declared_patterns.find(identifier);
+		if (it != _declared_patterns.end())
+		{
+			if (_focused_pattern && *_focused_pattern == it->second)
+				_focused_pattern.reset();
+			_declared_patterns.erase(it);
+		}
+	}
+	
+	Variable Runtime::focused_pattern(const ScriptSegment& segment) const
+	{
+		if (_focused_pattern)
+			return *_focused_pattern;
+		else
+			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
 	const Matches& Runtime::global_matches() const

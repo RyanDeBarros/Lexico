@@ -130,6 +130,7 @@ namespace lx
 				break;
 			}
 		}
+		// TODO even though errors will shut down execution, it's good practice to pop outer scopes - so add RAII class for auto-pushing/popping scopes in Blocks.
 		env.pop_local_scope();
 		return flow;
 	}
@@ -1580,7 +1581,7 @@ namespace lx
 
 	ExecutionFlow DeletePattern::execute(Runtime& env) const
 	{
-		// TODO
+		env.delete_pattern(_identifier.lexeme);
 		return {};
 	}
 
@@ -1606,7 +1607,7 @@ namespace lx
 
 	ExecutionFlow PatternDeclaration::execute(Runtime& env) const
 	{
-		// TODO
+		env.declare_pattern(_identifier.lexeme);
 		return {};
 	}
 
@@ -1860,7 +1861,7 @@ namespace lx
 
 	ExecutionFlow AppendStatement::execute(Runtime& env) const
 	{
-		// TODO
+		env.focused_pattern(segment()).ref().get<Pattern>().append_pattern(_expression.evaluate(env).dp().move_as<Pattern>());
 		return {};
 	}
 

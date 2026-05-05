@@ -364,6 +364,11 @@ namespace lx
 		_subnodes.push_back(std::move(node));
 	}
 
+	void Pattern::append_pattern(Pattern&& pattern)
+	{
+		append(add(std::move(pattern)));
+	}
+
 	Pattern& Pattern::add(Pattern&& pattern)
 	{
 		auto ptn = std::make_unique<Pattern>(std::move(pattern));

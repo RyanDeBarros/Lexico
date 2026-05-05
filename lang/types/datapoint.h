@@ -37,6 +37,12 @@ namespace lx
 		}
 
 		template<Type T>
+		bool holds() const
+		{
+			return std::holds_alternative<T>(_storage);
+		}
+
+		template<Type T>
 		T copy_as() const
 		{
 			return std::get<T>(std::visit([](const auto& v) { return v.cast_copy(to_enum<T>); }, _storage));

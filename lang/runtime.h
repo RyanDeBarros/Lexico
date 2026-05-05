@@ -43,6 +43,9 @@ namespace lx
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
+		StringMap<Variable> _declared_patterns;
+		std::optional<Variable> _focused_pattern;
+
 		Variable _global_matches;
 		Scope _search_scope;
 
@@ -62,9 +65,13 @@ namespace lx
 		unsigned int scope_depth() const;
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
-		Variable registered_variable(const std::string_view identifier, Namespace ns) const;
+		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable temporary_variable(DataPoint&& dp);
 		Variable unnamed_variable(Variable& owner, DataPoint&& dp);
+
+		void declare_pattern(std::string_view identifier);
+		void delete_pattern(std::string_view identifier);
+		Variable focused_pattern(const ScriptSegment& segment) const;
 
 		const Matches& global_matches() const;
 		Matches& global_matches();

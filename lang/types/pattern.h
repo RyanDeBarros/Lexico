@@ -189,6 +189,7 @@ namespace lx
 			return *ptr;
 		}
 
+		void append_pattern(Pattern&& pattern);
 		Pattern& add(Pattern&& pattern);
 	};
 }
