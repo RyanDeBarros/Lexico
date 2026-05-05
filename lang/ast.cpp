@@ -124,7 +124,7 @@ namespace lx
 		for (const ASTNode* node : _children)
 		{
 			auto result = node->execute(env);
-			if (result.type != ExecutionFlow::Type::Normal)
+			if (result.type != FlowType::Normal)
 			{
 				flow = std::move(result);
 				break;
@@ -1024,8 +1024,14 @@ namespace lx
 
 	ExecutionFlow FunctionDefinition::execute(Runtime& env) const
 	{
-		// TODO
+		// TODO transfer function table before execution, so this execute() should do no operation
 		return {};
+	}
+
+	InvokeResult FunctionDefinition::invoke(Runtime& env) const
+	{
+		auto flow = Block::execute(env);
+		return { .data = flow.data ? *flow.data : env.temporary_variable(Void()) };
 	}
 
 	UpflowInfo FunctionDefinition::impl_upflow(const SemanticContext& ctx)
@@ -1077,9 +1083,9 @@ namespace lx
 	ExecutionFlow ReturnStatement::execute(Runtime& env) const
 	{
 		if (_expression)
-			return { .type = ExecutionFlow::Type::Return, .data = _expression->evaluate(env) };
+			return { .type = FlowType::Return, .data = _expression->evaluate(env) };
 		else
-			return { .type = ExecutionFlow::Type::Return, .data = env.temporary_variable(Void()) };
+			return { .type = FlowType::Return, .data = env.temporary_variable(Void()) };
 	}
 
 	void ReturnStatement::traverse(ASTVisitor& visitor)
@@ -1337,7 +1343,14 @@ namespace lx
 
 	ExecutionFlow WhileLoop::execute(Runtime& env) const
 	{
-		// TODO
+		while (_condition.evaluate(env).dp().move_as<Bool>().value())
+		{
+			auto flow = Block::execute(env);
+			if (flow.type == FlowType::Break)
+				break;
+			else if (flow.type == FlowType::Return)
+				return flow;
+		}
 		return {};
 	}
 
@@ -1377,7 +1390,7 @@ namespace lx
 
 	ExecutionFlow ForLoop::execute(Runtime& env) const
 	{
-		// TODO
+		// TODO define iterator utility that wraps a Variable for the iterator and a Variable for the iterable
 		return {};
 	}
 
@@ -1409,7 +1422,7 @@ namespace lx
 
 	ExecutionFlow BreakStatement::execute(Runtime& env) const
 	{
-		return { .type = ExecutionFlow::Type::Break };
+		return { .type = FlowType::Break };
 	}
 
 	UpflowInfo BreakStatement::impl_upflow(const SemanticContext& ctx)
@@ -1451,7 +1464,7 @@ namespace lx
 
 	ExecutionFlow ContinueStatement::execute(Runtime& env) const
 	{
-		return { .type = ExecutionFlow::Type::Continue };
+		return { .type = FlowType::Continue };
 	}
 
 	UpflowInfo ContinueStatement::impl_upflow(const SemanticContext& ctx)

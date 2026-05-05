@@ -39,18 +39,23 @@ namespace lx
 		void merge_loop_control(const UpflowInfo& other);
 	};
 
+	enum class FlowType
+	{
+		Normal,
+		Return,
+		Break,
+		Continue,
+	};
+
 	struct ExecutionFlow
 	{
-		enum class Type
-		{
-			Normal,
-			Return,
-			Break,
-			Continue,
-		};
-
-		Type type = Type::Normal;
+		FlowType type = FlowType::Normal;
 		std::optional<Variable> data = std::nullopt;
+	};
+
+	struct InvokeResult
+	{
+		Variable data;
 	};
 
 	class ASTNode
@@ -442,6 +447,7 @@ namespace lx
 		void post_analyse(SemanticContext& ctx) override;
 
 		ExecutionFlow execute(Runtime& env) const override;
+		InvokeResult invoke(Runtime& env) const;
 
 	protected:
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
