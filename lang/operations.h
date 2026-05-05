@@ -104,7 +104,4 @@ namespace lx
 	};
 
 	extern PatternSimpleRepeatOperator pattern_simple_repeat_operator(TokenType type);
-
-	// TODO move to pattern implementation file
-	constexpr const char* UNNAMED_CAP_ID = "_";
 }

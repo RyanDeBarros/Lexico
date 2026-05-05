@@ -2,6 +2,7 @@
 
 #include "types/accessor.h"
 #include "types/processing.h"
+#include "constants.h"
 
 #include <sstream>
 #include <stdexcept>
@@ -643,8 +644,7 @@ namespace lx
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
-		// TODO use constant const char* for "[]"
-		return MethodAccessor::invoke(_container.evaluate(env), env, "[]", { _subscript.evaluate(env) });
+		return MethodAccessor::invoke(_container.evaluate(env), env, constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor)
@@ -671,7 +671,7 @@ namespace lx
 
 		if (const auto members = data_type_members(_container.evaltype(ctx)))
 		{
-			auto it = members->find("[]");
+			auto it = members->find(constants::SUBSCRIPT_OP);
 			if (it != members->end())
 			{
 				const auto& member = it->second;
@@ -727,12 +727,8 @@ namespace lx
 
 	Variable VariableExpression::evaluate(Runtime& env) const
 	{
-		// TODO use constant char* for %
-		if (_identifier.lexeme == "%")
-			return env.global_matches_handle();
-		else
-			// TODO should return a reference, not temporary
-			return env.temporary_variable(Void());
+		// TODO should return a reference, not temporary
+		return env.temporary_variable(Void());
 	}
 
 	DataType VariableExpression::impl_evaltype(const SemanticContext& ctx) const
@@ -1625,8 +1621,8 @@ namespace lx
 
 	Variable RepeatOperation::evaluate(Runtime& env) const
 	{
-		IRange range = _range.evaluate(env).dp().cast_move(DataType::IRange).get<IRange>();
-		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		IRange range = _range.evaluate(env).dp().move_as<IRange>();
+		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
 		return env.temporary_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
@@ -1749,8 +1745,7 @@ namespace lx
 
 	Variable PatternLazy::evaluate(Runtime& env) const
 	{
-		// TODO helper cast_move(...).get<...>() -> cast_move<...>()
-		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
 		return env.temporary_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
@@ -1777,7 +1772,7 @@ namespace lx
 
 	void PatternCapture::pre_analyse(SemanticContext& ctx)
 	{
-		if (_identifier.lexeme != UNNAMED_CAP_ID)
+		if (_identifier.lexeme != constants::UNNAMED_CAP_ID)
 		{
 			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			{
@@ -1808,7 +1803,7 @@ namespace lx
 
 	Variable PatternCapture::evaluate(Runtime& env) const
 	{
-		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
 		return env.temporary_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 

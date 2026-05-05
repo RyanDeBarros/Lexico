@@ -824,9 +824,7 @@ namespace lx
 
 		Expression& parse_primary_expression(TokenOffset& offset)
 		{
-			if (peek_token_is(0, TokenType::Percent))
-				return parse_percent_expression(offset);
-			else if (peek_token_is(0, TokenType::Identifier))
+			if (peek_token_is(0, TokenType::Identifier))
 				return parse_identifier_expression(offset);
 			else if (peek_token_is(0, TokenType::BuiltinSymbol) || peek_token_is(0, TokenType::Percent))
 				return parse_symbol_expression(offset);
@@ -840,13 +838,6 @@ namespace lx
 				return parse_list_expression(offset);
 			else
 				throw_error(errors::UNRECOGNIZED_TOKEN, 0);
-		}
-
-		Expression& parse_percent_expression(TokenOffset& offset)
-		{
-			auto& identifier = ref(0);
-			offset.add(1);
-			return _tree.add(std::make_unique<VariableExpression>(std::move(identifier)));
 		}
 
 		Expression& parse_identifier_expression(TokenOffset& offset)

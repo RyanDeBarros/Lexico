@@ -1,6 +1,7 @@
 #include "operations.h"
 
 #include "errors.h"
+#include "constants.h"
 
 #include <sstream>
 
@@ -157,7 +158,7 @@ namespace lx
 	static const std::unordered_map<DataType, StringMap<MemberSignature>> MEMBER_TABLE = {
 		{ DataType::String, {
 			{ "len", MemberSignature::make_data("len", DataType::Int) },
-			{ "[]", MemberSignature::make_method("[]", {
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
 				{.return_type = DataType::String, .arg_types = { DataType::Int } },
 				{.return_type = DataType::String, .arg_types = { DataType::IRange } },
 			}) },
@@ -169,7 +170,7 @@ namespace lx
 			{ "len", MemberSignature::make_data("len", DataType::Int) },
 			{ "pos", MemberSignature::make_data("pos", DataType::IRange) },
 			{ "str", MemberSignature::make_data("str", DataType::String) },
-			{ "[]", MemberSignature::make_method("[]", {
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::Cap, .arg_types = { DataType::CapId } },
 				{ .return_type = DataType::Cap, .arg_types = { DataType::Int } },
 			}) },
@@ -185,7 +186,7 @@ namespace lx
 		} },
 		{ DataType::List, {
 			{ "len", MemberSignature::make_data("len", DataType::Int)},
-			{ "[]", MemberSignature::make_method("[]", {
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::_Unresolved, .arg_types = { DataType::Int } },
 			}) },
 		} },
