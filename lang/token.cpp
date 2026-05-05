@@ -161,6 +161,7 @@ namespace lx
 		switch (type)
 		{
 		case TokenType::And:
+		case TokenType::Assign:
 		case TokenType::Asterisk:
 		case TokenType::Comma:
 		case TokenType::EqualTo:
@@ -257,6 +258,9 @@ namespace lx
 		case TokenType::Comma:
 			return Precedence::Comma;
 
+		case TokenType::Assign:
+			return Precedence::Assign;
+
 		default:
 			return Precedence::None;
 		}
@@ -266,6 +270,8 @@ namespace lx
 	{
 		switch (type)
 		{
+		case TokenType::Assign:
+			return true;
 		default:
 			return false;
 		}

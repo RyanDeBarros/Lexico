@@ -263,7 +263,6 @@ namespace lx
 				parse_page_statement() ||
 				parse_function_definition() ||
 				parse_variable_declaration() ||
-				parse_assignment() ||
 				parse_function_call() ||
 				parse_control_statement() ||
 				parse_log_statement() ||
@@ -474,25 +473,6 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 			offset.submit();
 			append_to_context(std::make_unique<VariableDeclaration>(global, std::move(identifier), expr));
-			return true;
-		}
-
-		bool parse_assignment()
-		{
-			if (!(peek_token_is(0, TokenType::Identifier) || peek_token_is(0, TokenType::Percent)) || !peek_token_is(1, TokenType::Assign))
-				return false;
-
-			auto& identifier = ref(0);
-			parse_token(1, TokenType::Assign, errors::EXPECTED_ASSIGN);
-
-			auto offset = token_offset(2);
-			Expression& expr = parse_expression(offset);
-			offset.submit();
-
-			if (identifier.type == TokenType::Percent)
-				append_to_context(std::make_unique<GlobalMatchesAssignment>(std::move(identifier), expr));
-			else
-				append_to_context(std::make_unique<VariableAssignment>(std::move(identifier), expr));
 			return true;
 		}
 
@@ -803,7 +783,7 @@ namespace lx
 				
 				if (peek(0).is_postfix_operator())
 				{
-					if (!peek(0).is_binary_operator() || !(
+					if (!(peek(0).is_binary_operator() || peek_token_is(0, TokenType::Assign)) || !(
 						peek_token_is(1, TokenType::Identifier) ||
 						peek_token_is(1, TokenType::BuiltinSymbol) ||
 						peek_token_is(1, TokenType::Percent) ||
@@ -844,7 +824,9 @@ namespace lx
 
 		Expression& parse_primary_expression(TokenOffset& offset)
 		{
-			if (peek_token_is(0, TokenType::Identifier))
+			if (peek_token_is(0, TokenType::Percent))
+				return parse_percent_expression(offset);
+			else if (peek_token_is(0, TokenType::Identifier))
 				return parse_identifier_expression(offset);
 			else if (peek_token_is(0, TokenType::BuiltinSymbol) || peek_token_is(0, TokenType::Percent))
 				return parse_symbol_expression(offset);
@@ -858,6 +840,13 @@ namespace lx
 				return parse_list_expression(offset);
 			else
 				throw_error(errors::UNRECOGNIZED_TOKEN, 0);
+		}
+
+		Expression& parse_percent_expression(TokenOffset& offset)
+		{
+			auto& identifier = ref(0);
+			offset.add(1);
+			return _tree.add(std::make_unique<VariableExpression>(std::move(identifier)));
 		}
 
 		Expression& parse_identifier_expression(TokenOffset& offset)

@@ -311,85 +311,6 @@ namespace lx
 		return _global;
 	}
 
-	// TODO allow assigning to a MemberAccessExpression/SubscriptExpression, not just identifier -> parser should parse expression up until first '='
-	VariableAssignment::VariableAssignment(Token&& identifier, Expression& expression)
-		: _identifier(std::move(identifier)), _expression(expression)
-	{
-	}
-
-	void VariableAssignment::pre_analyse(SemanticContext& ctx)
-	{
-		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
-			_validated = true;
-		else
-			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
-	}
-
-	void VariableAssignment::post_analyse(SemanticContext& ctx)
-	{
-		auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown);
-		if (!can_cast_implicit(_expression.evaltype(ctx), var->type))
-		{
-			std::stringstream ss;
-			ss << "cannot assign variable of type " << var->type << " to expression of type " << _expression.evaltype(ctx);
-			ctx.add_semantic_error(segment(), ss.str());
-		}
-	}
-
-	ExecutionFlow VariableAssignment::execute(Runtime& env) const
-	{
-		env.registered_variable(_identifier.lexeme, Namespace::Unknown).ref().set(_expression.evaluate(env).dp());
-		return {};
-	}
-
-	void VariableAssignment::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_expression.accept(visitor);
-	}
-
-	ScriptSegment VariableAssignment::impl_segment() const
-	{
-		return _identifier.segment.combined_right(_expression.segment());
-	}
-
-	GlobalMatchesAssignment::GlobalMatchesAssignment(Token&& percent_token, Expression& expression)
-		: _percent_token(std::move(percent_token)), _expression(expression)
-	{
-	}
-
-	void GlobalMatchesAssignment::pre_analyse(SemanticContext& ctx)
-	{
-		_validated = true;
-	}
-
-	void GlobalMatchesAssignment::post_analyse(SemanticContext& ctx)
-	{
-		if (!can_cast_implicit(_expression.evaltype(ctx), DataType::Matches))
-		{
-			std::stringstream ss;
-			ss << "cannot assign `%` to expression of type " << _expression.evaltype(ctx);
-			ctx.add_semantic_error(segment(), ss.str());
-		}
-	}
-
-	ExecutionFlow GlobalMatchesAssignment::execute(Runtime& env) const
-	{
-		env.global_matches() = _expression.evaluate(env).dp().cast_move(DataType::Matches).get<Matches>();
-		return {};
-	}
-
-	void GlobalMatchesAssignment::traverse(ASTVisitor& visitor)
-	{
-		ASTNode::traverse(visitor);
-		_expression.accept(visitor);
-	}
-
-	ScriptSegment GlobalMatchesAssignment::impl_segment() const
-	{
-		return _percent_token.segment.combined_right(_expression.segment());
-	}
-
 	LiteralExpression::LiteralExpression(Token&& literal)
 		: _literal(std::move(literal))
 	{
@@ -487,7 +408,7 @@ namespace lx
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
-		// TODO
+		// TODO note that '=' shouldn't allow for assigning to temporary Variables
 		return env.temporary_variable(Void());
 	}
 
@@ -807,8 +728,12 @@ namespace lx
 
 	Variable VariableExpression::evaluate(Runtime& env) const
 	{
-		// TODO should return a reference, not temporary
-		return env.temporary_variable(Void());
+		// TODO use constant char* for %
+		if (_identifier.lexeme == "%")
+			return env.global_matches_handle();
+		else
+			// TODO should return a reference, not temporary
+			return env.temporary_variable(Void());
 	}
 
 	DataType VariableExpression::impl_evaltype(const SemanticContext& ctx) const

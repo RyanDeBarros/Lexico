@@ -56,6 +56,7 @@ namespace lx
 	enum class BinaryOperator
 	{
 		And,
+		Assign,
 		Asterisk,
 		Comma,
 		EqualTo,

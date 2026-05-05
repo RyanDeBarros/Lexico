@@ -322,13 +322,6 @@ namespace lx
 		return ptn;
 	}
 
-	SubpatternNode& Pattern::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		std::stringstream ss;
-		ss << __FUNCTION__ << ": cannot clone pattern directly";
-		throw LxError(ErrorType::Internal, ss.str());
-	}
-
 	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)
 	{
 		_subnodes.push_back(std::move(node));

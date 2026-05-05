@@ -103,6 +103,11 @@ namespace lx
 			throw LxError(ErrorType::Internal, "variable reference count is null");
 	}
 
+	bool Variable::temporary() const
+	{
+		return _temporary;
+	}
+
 	void Variable::own(const Variable& var)
 	{
 		if (_ref_count)

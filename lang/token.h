@@ -113,6 +113,7 @@ namespace lx
 	{
 		None = -1,
 		Lowest,
+		Assign,
 		Comma,
 		Or,
 		And,

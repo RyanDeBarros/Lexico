@@ -30,6 +30,7 @@ namespace lx
 		DataPoint& ref();
 		DataPoint dp();
 
+		bool temporary() const;
 		void own(const Variable& var);
 		void disown(const Variable& var);
 

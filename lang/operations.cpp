@@ -372,6 +372,8 @@ namespace lx
 		{
 		case TokenType::And:
 			return BinaryOperator::And;
+		case TokenType::Assign:
+			return BinaryOperator::Assign;
 		case TokenType::Asterisk:
 			return BinaryOperator::Asterisk;
 		case TokenType::Comma:
@@ -421,6 +423,11 @@ namespace lx
 		case BinaryOperator::Or:
 			if (can_cast_implicit(lhs, DataType::Bool) && can_cast_implicit(rhs, DataType::Bool))
 				return DataType::Bool;
+			break;
+
+		case BinaryOperator::Assign:
+			if (can_cast_implicit(rhs, lhs))
+				return lhs;
 			break;
 
 		case BinaryOperator::Asterisk:

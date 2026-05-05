@@ -171,9 +171,6 @@ namespace lx
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
 
-	protected:
-		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-
 	private:
 		void impl_add(std::unique_ptr<SubpatternNode>&& node);
 

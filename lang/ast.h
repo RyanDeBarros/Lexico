@@ -190,44 +190,6 @@ namespace lx
 		bool is_global() const;
 	};
 
-	class VariableAssignment : public ASTNode
-	{
-		Token _identifier;
-		Expression& _expression;
-
-	public:
-		VariableAssignment(Token&& identifier, Expression& expression);
-
-		void pre_analyse(SemanticContext& ctx) override;
-		void post_analyse(SemanticContext& ctx) override;
-
-		ExecutionFlow execute(Runtime& env) const override;
-		
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
-	class GlobalMatchesAssignment : public ASTNode
-	{
-		Token _percent_token;
-		Expression& _expression;
-
-	public:
-		GlobalMatchesAssignment(Token&& percent_token, Expression& expression);
-
-		void pre_analyse(SemanticContext& ctx) override;
-		void post_analyse(SemanticContext& ctx) override;
-
-		ExecutionFlow execute(Runtime& env) const override;
-
-		void traverse(ASTVisitor& visitor) override;
-
-	protected:
-		ScriptSegment impl_segment() const override;
-	};
-
 	class LiteralExpression : public Expression
 	{
 		Token _literal;
