@@ -39,7 +39,7 @@ namespace lx
 		std::stringstream _output;
 		std::stringstream _log;
 
-		mutable DataHeap _heap;
+		DataHeap _heap;
 		RuntimeSymbolTable _global_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 
@@ -63,8 +63,8 @@ namespace lx
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns) const;
-		Variable temporary_variable(DataPoint&& dp) const;
-		Variable unnamed_variable(Variable& owner, DataPoint&& dp) const;
+		Variable temporary_variable(DataPoint&& dp);
+		Variable unnamed_variable(Variable& owner, DataPoint&& dp);
 
 		const Matches& global_matches() const;
 		Matches& global_matches();

@@ -131,12 +131,12 @@ namespace lx
 		throw LxError(ErrorType::Runtime, ss.str());
 	}
 
-	Variable Runtime::temporary_variable(DataPoint&& dp) const
+	Variable Runtime::temporary_variable(DataPoint&& dp)
 	{
 		return _heap.add(std::move(dp), true);
 	}
 
-	Variable Runtime::unnamed_variable(Variable& owner, DataPoint&& dp) const
+	Variable Runtime::unnamed_variable(Variable& owner, DataPoint&& dp)
 	{
 		auto var = _heap.add(std::move(dp), false);
 		owner.own(var);

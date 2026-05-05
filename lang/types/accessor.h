@@ -8,11 +8,11 @@ namespace lx
 {
 	struct DataAccessor
 	{
-		Variable invoke(const Variable& var, const Runtime& env, const std::string_view member);
+		static Variable invoke(const Variable& var, Runtime& env, const std::string_view member);
 	};
 
 	struct MethodAccessor
 	{
-		Variable invoke(const Variable& var, const Runtime& env, const std::string_view method, const std::vector<Variable>& args);
+		static Variable invoke(const Variable& var, Runtime& env, const std::string_view method, const std::vector<Variable>& args);
 	};
 }

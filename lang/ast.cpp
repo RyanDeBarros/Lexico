@@ -1,5 +1,7 @@
 #include "ast.h"
 
+#include "types/accessor.h"
+
 #include <sstream>
 #include <stdexcept>
 
@@ -403,7 +405,7 @@ namespace lx
 		evaltype(ctx);
 	}
 	
-	Variable LiteralExpression::evaluate(const Runtime& env) const
+	Variable LiteralExpression::evaluate(Runtime& env) const
 	{
 		return env.temporary_variable(DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved()));
 	}
@@ -433,7 +435,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable ListExpression::evaluate(const Runtime& env) const
+	Variable ListExpression::evaluate(Runtime& env) const
 	{
 		std::vector<LxError> errors;
 		Variable list_handle = env.temporary_variable(List());
@@ -483,7 +485,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable BinaryExpression::evaluate(const Runtime& env) const
+	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -520,7 +522,7 @@ namespace lx
 	}
 
 	MemberAccessExpression::MemberAccessExpression(Expression& object, Token&& member)
-		: _object(object), _member(std::move(member))
+		: _object(object), _member_name(std::move(member))
 	{
 	}
 
@@ -534,10 +536,17 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable MemberAccessExpression::evaluate(const Runtime& env) const
+	Variable MemberAccessExpression::evaluate(Runtime& env) const
 	{
-		// TODO should return a reference, not temporary
-		return env.temporary_variable(Void());
+		const MemberSignature& m = member();
+		if (m.is_data())
+			return DataAccessor::invoke(_object.evaluate(env), env, m.identifier);
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member \"" << m.identifier << "\" is not data layout";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	void MemberAccessExpression::traverse(ASTVisitor& visitor)
@@ -553,25 +562,48 @@ namespace lx
 
 	ScriptSegment MemberAccessExpression::impl_segment() const
 	{
-		return _object.segment().combined_right(_member.segment);
+		return _object.segment().combined_right(_member_name.segment);
 	}
 
 	const MemberSignature& MemberAccessExpression::member(const SemanticContext& ctx) const
 	{
+		if (_member)
+			return *_member;
+
 		if (const auto members = data_type_members(_object.evaltype(ctx)))
 		{
-			auto it = members->find(_member.lexeme);
+			auto it = members->find(_member_name.lexeme);
 			if (it != members->end())
 			{
 				const auto& member = it->second;
 				if (_callable ? member.is_method() : member.is_data())
-					return member;
+				{
+					_member = member;
+					return *_member;
+				}
 			}
 		}
 
 		std::stringstream ss;
-		ss << "data member " << _member.lexeme << " does not exist for type " << _object.evaltype(ctx);
-		throw LxError::segment_error(_member.segment, ErrorType::Semantic, ss.str());
+		ss << "member " << _member_name.lexeme << " does not exist for type " << _object.evaltype(ctx);
+		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& MemberAccessExpression::member() const
+	{
+		if (!_member)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_member;
+	}
+
+	const Expression& MemberAccessExpression::object() const
+	{
+		return _object;
 	}
 
 	void MemberAccessExpression::set_callable(bool callable)
@@ -594,7 +626,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable PrefixExpression::evaluate(const Runtime& env) const
+	Variable PrefixExpression::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -644,7 +676,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable AsExpression::evaluate(const Runtime& env) const
+	Variable AsExpression::evaluate(Runtime& env) const
 	{
 		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(data_type(_type.type)));
 	}
@@ -689,10 +721,9 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable SubscriptExpression::evaluate(const Runtime& env) const
+	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
-		// TODO should return a reference, not temporary
-		return env.temporary_variable(Void());
+		return MethodAccessor::invoke(_container.evaluate(env), env, "[]", { _subscript.evaluate(env) });
 	}
 
 	void SubscriptExpression::traverse(ASTVisitor& visitor)
@@ -714,6 +745,9 @@ namespace lx
 
 	const MemberSignature& SubscriptExpression::member(const SemanticContext& ctx) const
 	{
+		if (_member)
+			return *_member;
+
 		if (const auto members = data_type_members(_container.evaltype(ctx)))
 		{
 			auto it = members->find("[]");
@@ -721,13 +755,28 @@ namespace lx
 			{
 				const auto& member = it->second;
 				if (member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
-					return member;
+				{
+					_member = member;
+					return *_member;
+				}
 			}
 		}
 
 		std::stringstream ss;
 		ss << _container.evaltype(ctx) << " does not support [] with index type " << _subscript.evaltype(ctx);
 		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& SubscriptExpression::member() const
+	{
+		if (!_member)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member not set";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		else
+			return *_member;
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -755,7 +804,7 @@ namespace lx
 		}
 	}
 
-	Variable VariableExpression::evaluate(const Runtime& env) const
+	Variable VariableExpression::evaluate(Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -793,7 +842,7 @@ namespace lx
 		evaltype(ctx);
 	}
 
-	Variable BuiltinSymbolExpression::evaluate(const Runtime& env) const
+	Variable BuiltinSymbolExpression::evaluate(Runtime& env) const
 	{
 		switch (evaltype())
 		{
@@ -853,7 +902,7 @@ namespace lx
 		}
 	}
 
-	Variable FunctionCallExpression::evaluate(const Runtime& env) const
+	Variable FunctionCallExpression::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -914,10 +963,22 @@ namespace lx
 		}
 	}
 
-	Variable MethodCallExpression::evaluate(const Runtime& env) const
+	Variable MethodCallExpression::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		const MemberSignature& m = _member.member();
+		if (m.is_method())
+		{
+			std::vector<Variable> args;
+			for (const Expression* expr : _args)
+				args.push_back(expr->evaluate(env));
+			return MethodAccessor::invoke(_member.object().evaluate(env), env, m.identifier, args);
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member \"" << m.identifier << "\" is not method";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	void MethodCallExpression::traverse(ASTVisitor& visitor)
@@ -1637,7 +1698,7 @@ namespace lx
 		}
 	}
 
-	Variable RepeatOperation::evaluate(const Runtime& env) const
+	Variable RepeatOperation::evaluate(Runtime& env) const
 	{
 		// TODO should return a reference, not temporary
 		return env.temporary_variable(Void());
@@ -1682,7 +1743,7 @@ namespace lx
 		}
 	}
 
-	Variable SimpleRepeatOperation::evaluate(const Runtime& env) const
+	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1724,7 +1785,7 @@ namespace lx
 		// NOP
 	}
 
-	Variable PatternBackRef::evaluate(const Runtime& env) const
+	Variable PatternBackRef::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1762,7 +1823,7 @@ namespace lx
 		}
 	}
 
-	Variable PatternLazy::evaluate(const Runtime& env) const
+	Variable PatternLazy::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -1820,7 +1881,7 @@ namespace lx
 		}
 	}
 
-	Variable PatternCapture::evaluate(const Runtime& env) const
+	Variable PatternCapture::evaluate(Runtime& env) const
 	{
 		// TODO
 		return env.temporary_variable(Void());
@@ -2053,8 +2114,8 @@ namespace lx
 		if (_count)
 			_count->accept(visitor);
 	}
-
-	Scope ScopeStatement::scope(const Runtime& env) const
+	
+	Scope ScopeStatement::scope(Runtime& env) const
 	{
 		if (_specifier == BuiltinSymbol::Page)
 		{

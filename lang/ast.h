@@ -160,7 +160,7 @@ namespace lx
 		DataType evaltype(const SemanticContext& ctx) const;
 		DataType evaltype() const;
 
-		virtual Variable evaluate(const Runtime& env) const = 0;
+		virtual Variable evaluate(Runtime& env) const = 0;
 		virtual bool imperative() const;
 
 	protected:
@@ -238,7 +238,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -257,7 +257,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -276,7 +276,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -291,8 +291,9 @@ namespace lx
 	class MemberAccessExpression : public Expression
 	{
 		Expression& _object;
-		Token _member;
+		Token _member_name;
 		bool _callable = false;
+		mutable std::optional<MemberSignature> _member;
 
 	public:
 		MemberAccessExpression(Expression& object, Token&& member);
@@ -300,7 +301,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -310,6 +311,9 @@ namespace lx
 
 	public:
 		const MemberSignature& member(const SemanticContext& ctx) const;
+		const MemberSignature& member() const;
+		const Expression& object() const;
+
 		void set_callable(bool callable);
 	};
 
@@ -324,7 +328,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -347,7 +351,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -360,6 +364,7 @@ namespace lx
 	{
 		Expression& _container;
 		Expression& _subscript;
+		mutable std::optional<MemberSignature> _member;
 
 	public:
 		SubscriptExpression(Expression& container, Expression& subscript);
@@ -367,7 +372,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -377,6 +382,7 @@ namespace lx
 
 	public:
 		const MemberSignature& member(const SemanticContext& ctx) const;
+		const MemberSignature& member() const;
 	};
 
 	class VariableExpression : public Expression
@@ -389,7 +395,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -407,7 +413,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -426,7 +432,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -450,7 +456,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 		bool imperative() const override;
@@ -768,7 +774,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -788,7 +794,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -811,7 +817,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 	protected:
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
@@ -829,7 +835,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -850,7 +856,7 @@ namespace lx
 		void pre_analyse(SemanticContext& ctx) override;
 		void post_analyse(SemanticContext& ctx) override;
 
-		Variable evaluate(const Runtime& env) const override;
+		Variable evaluate(Runtime& env) const override;
 
 		void traverse(ASTVisitor& visitor) override;
 
@@ -967,7 +973,7 @@ namespace lx
 		void traverse(ASTVisitor& visitor) override;
 
 	private:
-		Scope scope(const Runtime& env) const;
+		Scope scope(Runtime& env) const;
 
 	protected:
 		ScriptSegment impl_segment() const override;
