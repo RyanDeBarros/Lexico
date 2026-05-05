@@ -8,6 +8,7 @@ set(TYPES_SOURCES
 	variable.cpp
 	heap.cpp
 	accessor.cpp
+	processing.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_SOURCES})

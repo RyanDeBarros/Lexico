@@ -79,11 +79,12 @@ namespace lx
 
 	class SubpatternRepetition : public SubpatternNode
 	{
+		SubpatternNode* _repeated;
 		IRange _range;
 
 	public:
-		SubpatternRepetition(const IRange& range);
-		SubpatternRepetition(PatternSimpleRepeatOperator op);
+		SubpatternRepetition(SubpatternNode& repeated, const IRange& range);
+		SubpatternRepetition(SubpatternNode& repeated, PatternSimpleRepeatOperator op);
 
 	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
@@ -170,6 +171,10 @@ namespace lx
 		TypeVariant cast_move(DataType type);
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
+		static Pattern make_repeat(Pattern&& pattern, const IRange& range);
+		static Pattern make_backref(const CapId& capid);
+		static Pattern make_lazy(Pattern&& pattern);
+		static Pattern make_capture(Pattern&& pattern, const CapId& capid);
 
 	private:
 		void impl_add(std::unique_ptr<SubpatternNode>&& node);
@@ -182,5 +187,7 @@ namespace lx
 			impl_add(std::move(node));
 			return *ptr;
 		}
+
+		Pattern& add(Pattern&& pattern);
 	};
 }

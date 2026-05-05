@@ -1,6 +1,7 @@
 #include "ast.h"
 
 #include "types/accessor.h"
+#include "types/processing.h"
 
 #include <sstream>
 #include <stdexcept>
@@ -408,8 +409,7 @@ namespace lx
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
-		// TODO note that '=' shouldn't allow for assigning to temporary Variables
-		return env.temporary_variable(Void());
+		return operate(env, op(), _left.evaluate(env), _right.evaluate(env));
 	}
 
 	void BinaryExpression::traverse(ASTVisitor& visitor)
@@ -549,8 +549,7 @@ namespace lx
 
 	Variable PrefixExpression::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		return operate(env, op(), _expr.evaluate(env));
 	}
 
 	void PrefixExpression::traverse(ASTVisitor& visitor)
@@ -1626,8 +1625,9 @@ namespace lx
 
 	Variable RepeatOperation::evaluate(Runtime& env) const
 	{
-		// TODO should return a reference, not temporary
-		return env.temporary_variable(Void());
+		IRange range = _range.evaluate(env).dp().cast_move(DataType::IRange).get<IRange>();
+		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		return env.temporary_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
 	void RepeatOperation::traverse(ASTVisitor& visitor)
@@ -1671,8 +1671,7 @@ namespace lx
 
 	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		return operate(env, op(), _expression.evaluate(env));
 	}
 
 	void SimpleRepeatOperation::traverse(ASTVisitor& visitor)
@@ -1713,8 +1712,7 @@ namespace lx
 
 	Variable PatternBackRef::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		return env.temporary_variable(Pattern::make_backref(env.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternBackRef::impl_evaltype(const SemanticContext& ctx) const
@@ -1751,8 +1749,9 @@ namespace lx
 
 	Variable PatternLazy::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		// TODO helper cast_move(...).get<...>() -> cast_move<...>()
+		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		return env.temporary_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
 	void PatternLazy::traverse(ASTVisitor& visitor)
@@ -1809,8 +1808,8 @@ namespace lx
 
 	Variable PatternCapture::evaluate(Runtime& env) const
 	{
-		// TODO
-		return env.temporary_variable(Void());
+		Pattern& ptn = _expression.evaluate(env).dp().cast_move(DataType::Pattern).get<Pattern>();
+		return env.temporary_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 
 	void PatternCapture::traverse(ASTVisitor& visitor)

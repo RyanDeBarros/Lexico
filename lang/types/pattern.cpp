@@ -79,8 +79,8 @@ namespace lx
 		return clone_base<SubpatternException>(this, conv, arena, _exception->refer_node(conv, arena));
 	}
 
-	SubpatternRepetition::SubpatternRepetition(const IRange& range)
-		: _range(range)
+	SubpatternRepetition::SubpatternRepetition(SubpatternNode& repeated, const IRange& range)
+		: _repeated(&repeated), _range(range)
 	{
 	}
 
@@ -101,14 +101,14 @@ namespace lx
 		}
 	}
 
-	SubpatternRepetition::SubpatternRepetition(PatternSimpleRepeatOperator op)
-		: _range(simple_repeat_range(op))
+	SubpatternRepetition::SubpatternRepetition(SubpatternNode& repeated, PatternSimpleRepeatOperator op)
+		: _repeated(&repeated), _range(simple_repeat_range(op))
 	{
 	}
 
 	SubpatternNode& SubpatternRepetition::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternRepetition>(this, conv, arena, _range);
+		return clone_base<SubpatternRepetition>(this, conv, arena, _repeated->refer_node(conv, arena), _range);
 	}
 
 	LookaroundMode lookaround_mode(PrefixOperator op)
@@ -322,8 +322,47 @@ namespace lx
 		return ptn;
 	}
 
+	Pattern Pattern::make_repeat(Pattern&& pattern, const IRange& range)
+	{
+		Pattern ptn;
+		Pattern& subptn = ptn.add(std::move(pattern));
+		ptn.append(ptn.add(std::make_unique<SubpatternRepetition>(subptn, range)));
+		return ptn;
+	}
+
+	Pattern Pattern::make_backref(const CapId& capid)
+	{
+		Pattern ptn;
+		ptn.append(ptn.add(std::make_unique<SubpatternBackRef>(capid)));
+		return ptn;
+	}
+
+	Pattern Pattern::make_lazy(Pattern&& pattern)
+	{
+		Pattern ptn;
+		Pattern& subptn = ptn.add(std::move(pattern));
+		ptn.append(ptn.add(std::make_unique<SubpatternLazy>(subptn)));
+		return ptn;
+	}
+
+	Pattern Pattern::make_capture(Pattern&& pattern, const CapId& capid)
+	{
+		Pattern ptn;
+		Pattern& subptn = ptn.add(std::move(pattern));
+		ptn.append(ptn.add(std::make_unique<SubpatternCapture>(capid, subptn)));
+		return ptn;
+	}
+
 	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)
 	{
 		_subnodes.push_back(std::move(node));
+	}
+
+	Pattern& Pattern::add(Pattern&& pattern)
+	{
+		auto ptn = std::make_unique<Pattern>(std::move(pattern));
+		Pattern& p = *ptn;
+		_subnodes.push_back(std::move(ptn));
+		return p;
 	}
 }
