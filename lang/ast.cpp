@@ -330,7 +330,7 @@ namespace lx
 	
 	Variable LiteralExpression::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(DataPoint::make_from_literal(data_type(_literal.type), _literal.resolved()));
+		return env.temporary_variable(DataPoint::make_from_literal(literal_type(_literal.type), _literal.resolved()));
 	}
 
 	DataType LiteralExpression::impl_evaltype(const SemanticContext& ctx) const
@@ -825,7 +825,7 @@ namespace lx
 
 	Variable FunctionCallExpression::evaluate(Runtime& env) const
 	{
-		// TODO
+		// TODO return .invoke().data on registered function
 		return env.temporary_variable(Void());
 	}
 
@@ -1513,6 +1513,7 @@ namespace lx
 			if (i + 1 < _args.size())
 				env.log() << " "; // TODO v0.2 optional separator symbol argument
 		}
+		env.log() << '\n';
 		return {};
 	}
 

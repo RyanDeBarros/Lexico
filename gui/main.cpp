@@ -28,7 +28,9 @@ static EditorState STATE{};
 
 static void run_script()
 {
-    lx::execute(STATE.script, STATE.input, STATE.output, STATE.log);
+    auto res = lx::execute({ .script = STATE.script, .input = STATE.input });
+    STATE.output = res.output;
+    STATE.log = res.log;
 }
 
 static void glfw_error_callback(int error, const char* description)

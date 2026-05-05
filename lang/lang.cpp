@@ -65,13 +65,14 @@ namespace lx
 		}
 	}
 
-	bool execute(const std::string_view script, const std::string_view input, std::string& output, std::string& log)
+	ExecResult execute(const ExecInput& input)
 	{
+		ExecResult res;
 		std::stringstream out;
 		std::stringstream lg;
-		bool success = exec(script, input, out, lg);
-		output = out.str();
-		log = lg.str();
-		return success;
+		res.success = exec(input.script, input.input, out, lg);
+		res.output = out.str();
+		res.log = lg.str();
+		return res;
 	}
 }
