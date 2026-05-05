@@ -66,7 +66,12 @@ namespace lx
 		(void*)this; // ignore const warning
 		return cast_copy(type);
 	}
-	
+
+	void Int::print(std::stringstream& ss) const
+	{
+		ss << _value;
+	}
+
 	int Int::value() const
 	{
 		return _value;
@@ -122,6 +127,11 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	void Float::print(std::stringstream& ss) const
+	{
+		ss << _value;
+	}
+
 	float Float::value() const
 	{
 		return _value;
@@ -169,6 +179,11 @@ namespace lx
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
+	}
+
+	void Bool::print(std::stringstream& ss) const
+	{
+		ss << (_value ? "true" : "false");
 	}
 
 	bool Bool::value() const
@@ -230,6 +245,11 @@ namespace lx
 			return cast_copy(type);
 	}
 
+	void String::print(std::stringstream& ss) const
+	{
+		ss << _value;
+	}
+
 	std::string_view String::value() const
 	{
 		return _value;
@@ -247,6 +267,11 @@ namespace lx
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
+	}
+
+	void Void::print(std::stringstream& ss) const
+	{
+		ss << "";
 	}
 
 	TypeVariant Match::cast_copy(DataType type) const
@@ -267,6 +292,12 @@ namespace lx
 			return cast_copy(type);
 	}
 
+	void Match::print(std::stringstream& ss) const
+	{
+		// TODO v0.2 string representation of match
+		ss << DataType::Match;
+	}
+
 	TypeVariant Matches::cast_copy(DataType type) const
 	{
 		if (type == DataType::Matches)
@@ -283,6 +314,12 @@ namespace lx
 			return std::move(*this);
 		else
 			return cast_copy(type);
+	}
+
+	void Matches::print(std::stringstream& ss) const
+	{
+		// TODO v0.2 string representation of matches
+		ss << DataType::Matches;
 	}
 
 	CapId::CapId(unsigned int uid)
@@ -306,6 +343,11 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	void CapId::print(std::stringstream& ss) const
+	{
+		ss << DataType::CapId;
+	}
+
 	TypeVariant Cap::cast_copy(DataType type) const
 	{
 		if (type == DataType::Cap)
@@ -327,6 +369,12 @@ namespace lx
 		}
 	}
 
+	void Cap::print(std::stringstream& ss) const
+	{
+		// TODO v0.2 string representation of cap
+		ss << DataType::Cap;
+	}
+
 	IRange::IRange(std::optional<int> min, std::optional<int> max)
 		: _min(min), _max(max)
 	{
@@ -346,6 +394,21 @@ namespace lx
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
+	}
+
+	void IRange::print(std::stringstream& ss) const
+	{
+		ss << '<';
+		if (_min)
+		{
+			if (_max)
+				ss << *_min << " to " << *_max;
+			else
+				ss << "min " << *_min;
+		}
+		else if (_max)
+			ss << "max " << *_max;
+		ss << '>';
 	}
 
 	std::optional<int> IRange::min() const
@@ -442,6 +505,21 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	void SRange::print(std::stringstream& ss) const
+	{
+		ss << '<';
+		if (_min)
+		{
+			if (_max)
+				ss << *_min << " to " << *_max;
+			else
+				ss << "min " << *_min;
+		}
+		else if (_max)
+			ss << "max " << *_max;
+		ss << '>';
+	}
+
 	std::optional<char> SRange::min() const
 	{
 		return _min;
@@ -504,8 +582,21 @@ namespace lx
 			return cast_copy(type);
 	}
 
+	void List::print(std::stringstream& ss) const
+	{
+		ss << "[";
+		for (size_t i = 0; i < _elements.size(); ++i)
+		{
+			_elements[i].ref().print(ss);
+			if (i + 1 < _elements.size())
+				ss << ", ";
+		}
+		ss << "]";
+	}
+
 	void List::push(const Variable& element)
 	{
+		// TODO no need for own/disown if List already keeps Variable alive
 		_elements.push_back(element);
 	}
 
@@ -556,6 +647,11 @@ namespace lx
 		return cast_copy(type);
 	}
 
+	void Marker::print(std::stringstream& ss) const
+	{
+		ss << DataType::_Marker;
+	}
+
 	Scope::Scope(std::optional<unsigned int> lines)
 		: _lines(lines)
 	{
@@ -575,6 +671,11 @@ namespace lx
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
+	}
+
+	void Scope::print(std::stringstream& ss) const
+	{
+		ss << DataType::_Scope;
 	}
 
 	static HighlightColor convert_color(BuiltinSymbol symbol)
@@ -625,5 +726,10 @@ namespace lx
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
+	}
+
+	void Color::print(std::stringstream& ss) const
+	{
+		ss << DataType::_Color;
 	}
 }

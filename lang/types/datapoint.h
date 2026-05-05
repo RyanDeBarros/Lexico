@@ -74,5 +74,7 @@ namespace lx
 
 		bool can_cast_implicit(DataType to) const;
 		bool can_cast_explicit(DataType to) const;
+
+		void print(std::stringstream& ss) const;
 	};
 }

@@ -15,5 +15,6 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 }

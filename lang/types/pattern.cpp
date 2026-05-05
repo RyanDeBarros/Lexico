@@ -220,6 +220,12 @@ namespace lx
 			return cast_copy(type);
 	}
 
+	void Pattern::print(std::stringstream& ss) const
+	{
+		// TODO v0.2 string representation of pattern
+		ss << DataType::Pattern;
+	}
+
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)
 	{
 		Pattern ptn;

@@ -31,4 +31,9 @@ namespace lx
 		else
 			return std::visit([type](auto&& v) -> TypeVariant { return v.cast_move(type); }, std::move(_v));
 	}
+
+	void Unresolved::print(std::stringstream& ss) const
+	{
+		std::visit([&ss](const auto& v) { v.print(ss); }, _v);
+	}
 }

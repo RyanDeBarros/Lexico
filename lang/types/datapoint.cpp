@@ -79,4 +79,9 @@ namespace lx
 	{
 		return lx::can_cast_explicit(static_cast<DataType>(_storage.index()), to);
 	}
+
+	void DataPoint::print(std::stringstream& ss) const
+	{
+		std::visit([&ss](const auto& v) { v.print(ss); }, _storage);
+	}
 }

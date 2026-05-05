@@ -16,6 +16,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		int value() const;
 	};
@@ -31,6 +32,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		float value() const;
 	};
@@ -46,6 +48,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		bool value() const;
 	};
@@ -62,6 +65,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		std::string_view value() const;
 	};
@@ -71,6 +75,7 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	class Match
@@ -78,6 +83,7 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 	};
 
@@ -86,6 +92,7 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	class CapId
@@ -97,6 +104,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	class Cap
@@ -104,6 +112,7 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	class IRange
@@ -116,6 +125,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		std::optional<int> min() const;
 		std::optional<int> max() const;
@@ -132,6 +142,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		std::optional<char> min() const;
 		std::optional<char> max() const;
@@ -145,6 +156,7 @@ namespace lx
 	public:
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 
 		void push(const Variable& element);
 		void push(Variable&& element);
@@ -169,6 +181,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	class Scope
@@ -180,6 +193,7 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 
 	enum class HighlightColor
@@ -203,5 +217,6 @@ namespace lx
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
+		void print(std::stringstream& ss) const;
 	};
 }

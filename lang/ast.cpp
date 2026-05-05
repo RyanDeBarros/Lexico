@@ -1506,7 +1506,13 @@ namespace lx
 
 	ExecutionFlow LogStatement::execute(Runtime& env) const
 	{
-		// TODO
+		for (size_t i = 0; i < _args.size(); ++i)
+		{
+			Variable var = _args[i]->evaluate(env);
+			var.ref().print(env.log());
+			if (i + 1 < _args.size())
+				env.log() << " "; // TODO v0.2 optional separator symbol argument
+		}
 		return {};
 	}
 
