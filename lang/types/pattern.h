@@ -16,7 +16,11 @@ namespace lx
 	public:
 		virtual ~SubpatternNode() = default;
 
+	protected:
 		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const = 0;
+
+	public:
+		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 	};
 
 	class SubpatternArray : public SubpatternNode
@@ -26,17 +30,9 @@ namespace lx
 	public:
 		void append(SubpatternNode& node);
 
-		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-
 	protected:
+		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		const std::vector<SubpatternNode*>& array() const;
-	};
-
-	class SubpatternRoot : public SubpatternArray
-	{
-	public:
-		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		std::unique_ptr<SubpatternRoot> clone_root(std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 	};
 
 	class SubpatternChar : public SubpatternNode
@@ -46,6 +42,7 @@ namespace lx
 	public:
 		SubpatternChar(char ch);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -57,6 +54,7 @@ namespace lx
 		SubpatternString(const std::string& string);
 		SubpatternString(std::string&& string);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -75,6 +73,7 @@ namespace lx
 	public:
 		SubpatternException(SubpatternNode& exception);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -86,6 +85,7 @@ namespace lx
 		SubpatternRepetition(const IRange& range);
 		SubpatternRepetition(PatternSimpleRepeatOperator op);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -106,6 +106,7 @@ namespace lx
 	public:
 		SubpatternLookaround(LookaroundMode mode);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -116,6 +117,7 @@ namespace lx
 	public:
 		SubpatternOptional(SubpatternNode& optional);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -126,6 +128,7 @@ namespace lx
 	public:
 		SubpatternBackRef(CapId capid);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -137,6 +140,7 @@ namespace lx
 	public:
 		SubpatternCapture(CapId capid, SubpatternNode& captured);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -147,14 +151,13 @@ namespace lx
 	public:
 		SubpatternLazy(SubpatternNode& lazy);
 
+	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
-	// TODO replace SubpatternRoot with just Pattern
-	class Pattern
+	class Pattern : public SubpatternArray
 	{
 		std::vector<std::unique_ptr<SubpatternNode>> _subnodes;
-		std::unique_ptr<SubpatternRoot> _root;
 
 	public:
 		Pattern();
@@ -163,13 +166,13 @@ namespace lx
 		Pattern& operator=(const Pattern& other);
 		Pattern& operator=(Pattern&& other) noexcept = default;
 
-		const SubpatternRoot& root() const;
-		SubpatternRoot& root();
-
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
+
+	protected:
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 
 	private:
 		void impl_add(std::unique_ptr<SubpatternNode>&& node);
@@ -182,7 +185,5 @@ namespace lx
 			impl_add(std::move(node));
 			return *ptr;
 		}
-
-		void append(Pattern&& pattern);
 	};
 }

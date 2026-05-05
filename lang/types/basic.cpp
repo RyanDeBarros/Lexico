@@ -51,7 +51,7 @@ namespace lx
 		case DataType::Pattern:
 		{
 			Pattern ptn;
-			ptn.root().append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
+			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
 			return ptn;
 		}
 		case DataType::Void:
@@ -106,7 +106,7 @@ namespace lx
 		case DataType::Pattern:
 		{
 			Pattern ptn;
-			ptn.root().append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
+			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
 			return ptn;
 		}
 		case DataType::Void:
@@ -206,7 +206,7 @@ namespace lx
 		case DataType::Pattern:
 		{
 			Pattern ptn;
-			ptn.root().append(ptn.add(std::make_unique<SubpatternString>(_value)));
+			ptn.append(ptn.add(std::make_unique<SubpatternString>(_value)));
 			return ptn;
 		}
 		case DataType::Void:
@@ -223,7 +223,7 @@ namespace lx
 		else if (type == DataType::Pattern)
 		{
 			Pattern ptn;
-			ptn.root().append(ptn.add(std::make_unique<SubpatternString>(std::move(_value))));
+			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::move(_value))));
 			return ptn;
 		}
 		else
@@ -424,7 +424,7 @@ namespace lx
 		{
 			Pattern ptn;
 			auto& sub = ptn.add(std::make_unique<SubpatternDisjunction>());
-			ptn.root().append(sub);
+			ptn.append(sub);
 			for (char c : string())
 				sub.append(ptn.add(std::make_unique<SubpatternChar>(c)));
 			return ptn;

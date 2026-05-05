@@ -723,6 +723,7 @@ namespace lx
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
+		// TODO use constant const char* for "[]"
 		return MethodAccessor::invoke(_container.evaluate(env), env, "[]", { _subscript.evaluate(env) });
 	}
 

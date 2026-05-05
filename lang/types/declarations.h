@@ -56,8 +56,6 @@ namespace lx
 #define LX_IDENTITY(U) U
 #define LX_COMMA ,
 
-	// TODO make TypeVariant a wrapper around variants to ensure that type never changes after instantiation
-
 	using TypeVariant = std::variant<
 		LX_EXPAND_BY_TYPE(LX_IDENTITY, LX_COMMA)
 	>;

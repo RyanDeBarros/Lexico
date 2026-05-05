@@ -7,13 +7,13 @@
 
 namespace lx
 {
-	static SubpatternNode& refer_node(const SubpatternNode& from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena)
+	SubpatternNode& SubpatternNode::refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		auto it = conv.find(&from);
+		auto it = conv.find(this);
 		if (it != conv.end())
 			return *it->second;
 		else
-			return from.clone(conv, arena);
+			return clone(conv, arena);
 	}
 
 	template<std::derived_from<SubpatternNode> T, typename... Args>
@@ -35,30 +35,13 @@ namespace lx
 	{
 		auto& array = clone_base<SubpatternArray>(this, conv, arena);
 		for (const SubpatternNode* el : _array)
-			array.append(refer_node(*el, conv, arena));
+			array.append(el->refer_node(conv, arena));
 		return array;
 	}
 
 	const std::vector<SubpatternNode*>& SubpatternArray::array() const
 	{
 		return _array;
-	}
-
-	SubpatternNode& SubpatternRoot::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		std::stringstream ss;
-		ss << __FUNCTION__ << ": cannot clone root node directly";
-		throw LxError(ErrorType::Internal, ss.str());
-	}
-
-	std::unique_ptr<SubpatternRoot> SubpatternRoot::clone_root(std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		NodeConvertMap conv;
-		auto cloned = std::make_unique<SubpatternRoot>();
-		conv[this] = cloned.get();
-		for (const SubpatternNode* el : array())
-			cloned->append(refer_node(*el, conv, arena));
-		return cloned;
 	}
 
 	SubpatternChar::SubpatternChar(char ch)
@@ -93,7 +76,7 @@ namespace lx
 
 	SubpatternNode& SubpatternException::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternException>(this, conv, arena, refer_node(*_exception, conv, arena));
+		return clone_base<SubpatternException>(this, conv, arena, _exception->refer_node(conv, arena));
 	}
 
 	SubpatternRepetition::SubpatternRepetition(const IRange& range)
@@ -166,7 +149,7 @@ namespace lx
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternOptional>(this, conv, arena, refer_node(*_optional, conv, arena));
+		return clone_base<SubpatternOptional>(this, conv, arena, _optional->refer_node(conv, arena));
 	}
 
 	SubpatternBackRef::SubpatternBackRef(CapId capid)
@@ -186,7 +169,7 @@ namespace lx
 
 	SubpatternNode& SubpatternCapture::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternCapture>(this, conv, arena, _capid, refer_node(*_captured, conv, arena));
+		return clone_base<SubpatternCapture>(this, conv, arena, _capid, _captured->refer_node(conv, arena));
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -196,17 +179,19 @@ namespace lx
 
 	SubpatternNode& SubpatternLazy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternLazy>(this, conv, arena, refer_node(*_lazy, conv, arena));
+		return clone_base<SubpatternLazy>(this, conv, arena, _lazy->refer_node(conv, arena));
 	}
 
 	Pattern::Pattern()
-		: _root(std::make_unique<SubpatternRoot>())
 	{
 	}
 
 	Pattern::Pattern(const Pattern& other)
 	{
-		_root = other._root->clone_root(_subnodes);
+		NodeConvertMap conv;
+		conv[&other] = this;
+		for (const SubpatternNode* el : array())
+			append(el->refer_node(conv, _subnodes));
 	}
 
 	Pattern& Pattern::operator=(const Pattern& other)
@@ -214,16 +199,6 @@ namespace lx
 		if (this != &other)
 			*this = Pattern(other);
 		return *this;
-	}
-
-	const SubpatternRoot& Pattern::root() const
-	{
-		return *_root;
-	}
-
-	SubpatternRoot& Pattern::root()
-	{
-		return *_root;
 	}
 
 	TypeVariant Pattern::cast_copy(DataType type) const
@@ -259,7 +234,7 @@ namespace lx
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
 			for (int i = '0'; i <= '9'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Digit:
@@ -267,7 +242,7 @@ namespace lx
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = '0'; i <= '9'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Letter:
@@ -277,7 +252,7 @@ namespace lx
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
 			for (int i = 'A'; i <= 'Z'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Lowercase:
@@ -285,7 +260,7 @@ namespace lx
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Newline:
@@ -294,7 +269,7 @@ namespace lx
 			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Space:
@@ -302,7 +277,7 @@ namespace lx
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			sub->append(ptn.add(std::make_unique<SubpatternChar>(' ')));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('\t')));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Uppercase:
@@ -310,7 +285,7 @@ namespace lx
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'A'; i <= 'Z'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Varname:
@@ -323,7 +298,7 @@ namespace lx
 			for (int i = '0'; i <= '9'; ++i)
 				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('_')));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		case BuiltinSymbol::Whitespace:
@@ -334,7 +309,7 @@ namespace lx
 			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
 			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
-			ptn.root().append(ptn.add(std::move(sub)));
+			ptn.append(ptn.add(std::move(sub)));
 			break;
 		}
 		default:
@@ -347,15 +322,15 @@ namespace lx
 		return ptn;
 	}
 
+	SubpatternNode& Pattern::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		std::stringstream ss;
+		ss << __FUNCTION__ << ": cannot clone pattern directly";
+		throw LxError(ErrorType::Internal, ss.str());
+	}
+
 	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)
 	{
 		_subnodes.push_back(std::move(node));
-	}
-
-	void Pattern::append(Pattern&& pattern)
-	{
-		_root->append(add(std::move(pattern._root)));
-		for (auto& subnode : pattern._subnodes)
-			add(std::move(subnode));
 	}
 }
