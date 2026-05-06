@@ -24,17 +24,22 @@ namespace lx
 		std::vector<DataType> arg_types;
 	};
 
-	class SemanticSymbolTable
+	class SemanticVariableTable
 	{
-		StringMap<VariableSignature> _variable_table;
-		// TODO don't use map so as to be able to match unresolved arguments
-		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _function_table;
-		StringMap<FunctionCallSet> _function_lut;
+		StringMap<VariableSignature> _map;
 
 	public:
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier) const;
 		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number);
+	};
 
+	class FunctionTable
+	{
+		// TODO don't use map so as to be able to match unresolved arguments
+		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _map;
+		StringMap<FunctionCallSet> _lut;
+
+	public:
 		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
 		FunctionCallSet registered_function_calls(const std::string_view identifier) const;
 		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
@@ -42,13 +47,14 @@ namespace lx
 
 	struct SemanticScopeContext
 	{
-		SemanticSymbolTable table;
+		SemanticVariableTable table;
 		bool isolated;
 	};
 
 	class SemanticContext
 	{
-		SemanticSymbolTable _global_table;
+		SemanticVariableTable _global_variable_table;
+		FunctionTable _function_table;
 		std::vector<SemanticScopeContext> _scope_stack;
 		mutable std::vector<LxError> _errors;
 		mutable std::vector<LxWarning> _warnings;
@@ -87,8 +93,8 @@ namespace lx
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier, Namespace ns) const;
 		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns);
 
-		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const;
-		FunctionCallSet registered_function_calls(const std::string_view identifier, Namespace ns) const;
-		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns);
+		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
+		FunctionCallSet registered_function_calls(const std::string_view identifier) const;
+		void register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 	};
 }

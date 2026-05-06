@@ -19,51 +19,51 @@ namespace lx
 		return a.identifier == b.identifier && a.arg_types == b.arg_types;
 	}
 
-	std::optional<VariableSignature> SemanticSymbolTable::registered_variable(const std::string_view identifier) const
+	std::optional<VariableSignature> SemanticVariableTable::registered_variable(const std::string_view identifier) const
 	{
-		auto it = _variable_table.find(identifier);
-		if (it != _variable_table.end())
+		auto it = _map.find(identifier);
+		if (it != _map.end())
 			return it->second;
 		else
 			return std::nullopt;
 	}
 
-	void SemanticSymbolTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
+	void SemanticVariableTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
 	{
-		if (_variable_table.count(identifier))
+		if (_map.count(identifier))
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": variable already registered: " << identifier;
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 
-		_variable_table[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
+		_map[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
 	}
 
-	std::optional<FunctionSignature> SemanticSymbolTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
+	std::optional<FunctionSignature> FunctionTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		auto it = _function_table.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
-		if (it != _function_table.end())
+		auto it = _map.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
+		if (it != _map.end())
 			return it->second;
 		else
 			return std::nullopt;
 	}
 
-	FunctionCallSet SemanticSymbolTable::registered_function_calls(const std::string_view identifier) const
+	FunctionCallSet FunctionTable::registered_function_calls(const std::string_view identifier) const
 	{
-		auto it = _function_lut.find(identifier);
-		if (it != _function_lut.end())
+		auto it = _lut.find(identifier);
+		if (it != _lut.end())
 			return it->second;
 		else
 			return {};
 	}
 
-	void SemanticSymbolTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
+	void FunctionTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		if (!_function_lut.count(identifier))
-			_function_lut[std::string(identifier)] = {};
+		if (!_lut.count(identifier))
+			_lut[std::string(identifier)] = {};
 
-		auto& registered_args = _function_lut.find(identifier)->second;
+		auto& registered_args = _lut.find(identifier)->second;
 		FunctionCallSignature fc{ .identifier = std::string(identifier), .arg_types = arg_types };
 		if (registered_args.count(fc))
 		{
@@ -73,7 +73,7 @@ namespace lx
 		}
 
 		registered_args.insert(fc);
-		_function_table[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
+		_map[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
 	}
 
 	std::vector<LxError>& SemanticContext::errors() const
@@ -145,24 +145,28 @@ namespace lx
 		return !_scope_stack.empty();
 	}
 
-	static std::optional<unsigned int> first_line_number(const SemanticSymbolTable& table, const std::string_view identifier)
+	static std::optional<unsigned int> first_variable_line_number(const SemanticVariableTable& variable_table, const std::string_view identifier)
 	{
-		std::optional<unsigned int> first_line_number = std::nullopt;
+		if (auto var = variable_table.registered_variable(identifier))
+			return var->decl_line_number;
+		else
+			return std::nullopt;
+	}
 
-		if (auto var = table.registered_variable(identifier))
-			first_line_number = var->decl_line_number;
+	static std::optional<unsigned int> first_function_line_number(const FunctionTable& function_table, const std::string_view identifier)
+	{
 
-		auto calls = table.registered_function_calls(identifier);
+		auto calls = function_table.registered_function_calls(identifier);
 		if (!calls.empty())
 		{
-			if (!first_line_number)
-				first_line_number = std::numeric_limits<unsigned int>::max();
-
+			unsigned int first_line_number = std::numeric_limits<unsigned int>::max();
 			for (const auto& call : calls)
-				first_line_number = std::min(*first_line_number, table.registered_function(call.identifier, call.arg_types)->decl_line_number);
-		}
+				first_line_number = std::min(first_line_number, function_table.registered_function(call.identifier, call.arg_types)->decl_line_number);
 
-		return first_line_number;
+			return first_line_number;
+		}
+		else
+			return std::nullopt;
 	}
 
 	std::optional<unsigned int> SemanticContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
@@ -170,16 +174,28 @@ namespace lx
 		try
 		{
 			if (ns == Namespace::Global)
-				return first_line_number(_global_table, identifier);
+			{
+				if (auto vln = first_variable_line_number(_global_variable_table, identifier))
+					return *vln;
+				else if (auto fln = first_function_line_number(_function_table, identifier))
+					return *fln;
+				else
+					return std::nullopt;
+			}
 
 			std::optional<unsigned int> line_number = std::nullopt;
 
 			if (ns == Namespace::Unknown || _scope_stack.empty())
-				line_number = first_line_number(_global_table, identifier);
+			{
+				if (auto vln = first_variable_line_number(_global_variable_table, identifier))
+					line_number = *vln;
+				else if (auto fln = first_function_line_number(_function_table, identifier))
+					line_number = *fln;
+			}
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
-				if (auto ln = first_line_number(it->table, identifier))
+				if (auto ln = first_variable_line_number(it->table, identifier))
 				{
 					if (line_number)
 						line_number = std::min(*line_number, *ln);
@@ -206,11 +222,11 @@ namespace lx
 		try
 		{
 			if (ns == Namespace::Global)
-				return _global_table.registered_variable(identifier);
+				return _global_variable_table.registered_variable(identifier);
 			
 			if (ns == Namespace::Unknown || _scope_stack.empty())
 			{
-				if (auto sig = _global_table.registered_variable(identifier))
+				if (auto sig = _global_variable_table.registered_variable(identifier))
 					return sig;
 			}
 
@@ -235,7 +251,7 @@ namespace lx
 		switch (ns)
 		{
 		case lx::Namespace::Global:
-			_global_table.register_variable(identifier, type, line_number);
+			_global_variable_table.register_variable(identifier, type, line_number);
 			break;
 		case lx::Namespace::Local:
 			if (!_scope_stack.empty())
@@ -254,83 +270,18 @@ namespace lx
 		}
 	}
 
-	std::optional<FunctionSignature> SemanticContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, Namespace ns) const
+	std::optional<FunctionSignature> SemanticContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		try
-		{
-			if (ns == Namespace::Global)
-				return _global_table.registered_function(identifier, arg_types);
-			
-			if (ns == Namespace::Unknown || _scope_stack.empty())
-			{
-				if (auto ln = _global_table.registered_function(identifier, arg_types))
-					return ln;
-			}
-
-			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
-			{
-				if (auto ln = it->table.registered_function(identifier, arg_types))
-					return ln;
-			}
-		}
-		catch (const LxError& error)
-		{
-			_errors.push_back(error);
-		}
-
-		return std::nullopt;
+		return _function_table.registered_function(identifier, arg_types);
 	}
 
-	FunctionCallSet SemanticContext::registered_function_calls(const std::string_view identifier, Namespace ns) const
+	FunctionCallSet SemanticContext::registered_function_calls(const std::string_view identifier) const
 	{
-		try
-		{
-			if (ns == Namespace::Global)
-				return _global_table.registered_function_calls(identifier);
-
-			FunctionCallSet callset;
-
-			if (ns == Namespace::Unknown || _scope_stack.empty())
-				callset = _global_table.registered_function_calls(identifier);
-
-			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
-			{
-				auto calls = it->table.registered_function_calls(identifier);
-				for (const auto& call : calls)
-					callset.insert(call);
-			}
-
-			return callset;
-		}
-		catch (const LxError& error)
-		{
-			_errors.push_back(error);
-		}
-
-		return {};
+		return _function_table.registered_function_calls(identifier);
 	}
 
-	void SemanticContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number, Namespace ns)
+	void SemanticContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		switch (ns)
-		{
-		case lx::Namespace::Global:
-			_global_table.register_function(identifier, return_type, std::move(arg_types), line_number);
-			break;
-		case lx::Namespace::Local:
-			if (!_scope_stack.empty())
-				_scope_stack.back().table.register_function(identifier, return_type, std::move(arg_types), line_number);
-			else
-			{
-				std::stringstream ss;
-				ss << __FUNCTION__ << ": local scope stack is empty";
-				throw LxError(ErrorType::Internal, ss.str());
-			}
-			break;
-		default:
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot register function to unknown/isolated namespace";
-			_errors.push_back(LxError(ErrorType::Internal, ss.str()));
-		}
+		_function_table.register_function(identifier, return_type, std::move(arg_types), line_number);
 	}
 }

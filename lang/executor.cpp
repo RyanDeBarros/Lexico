@@ -12,7 +12,7 @@ namespace lx
 	void Executor::execute(SemanticAnalyser& analyser, const std::string_view input)
 	{
 		Runtime env(input);
-		_ast.execute(env);
+		_ast.execute(env); // TODO some kind of recursion/infinite-loop/time limit for safety. This can be a configurable setting passed to execute()
 		_output_stream = std::move(env.output());
 		_log_stream = std::move(env.log());
 	}

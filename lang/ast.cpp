@@ -42,11 +42,11 @@ namespace lx
 		continues.insert(continues.end(), other.continues.begin(), other.continues.end());
 	}
 
-	void ASTNode::analyse(SemanticContext& ctx)
+	void ASTNode::analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		try
 		{
-			impl_analyse(ctx);
+			impl_analyse(ctx, pass);
 		}
 		catch (const LxError& e)
 		{
@@ -110,10 +110,10 @@ namespace lx
 		return _root;
 	}
 
-	void Block::impl_analyse(SemanticContext& ctx)
+	void Block::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
-		analyse_subnodes(ctx);
+		analyse_subnodes(ctx, pass);
 	}
 
 	ExecutionFlow Block::execute(Runtime& env) const
@@ -137,10 +137,10 @@ namespace lx
 		return SemanticContext::LocalScope(ctx, isolated());
 	}
 
-	void Block::analyse_subnodes(SemanticContext& ctx)
+	void Block::analyse_subnodes(SemanticContext& ctx, AnalysisPass pass)
 	{
 		for (ASTNode* node : _children)
-			node->analyse(ctx);
+			node->analyse(ctx, pass);
 	}
 
 	UpflowInfo Block::impl_upflow(const SemanticContext& ctx)
@@ -179,17 +179,20 @@ namespace lx
 		_children.push_back(&child);
 	}
 
-	void IsolationBlock::analyse_subnodes(SemanticContext& ctx)
+	void IsolationBlock::analyse_subnodes(SemanticContext& ctx, AnalysisPass pass)
 	{
-		Block::analyse_subnodes(ctx);
+		Block::analyse_subnodes(ctx, pass);
 
-		auto flow = block_upflow(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			auto flow = block_upflow(ctx);
 
-		for (BreakStatement* b : flow.breaks)
-			ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
+			for (BreakStatement* b : flow.breaks)
+				ctx.add_semantic_error(b->segment(), "no outer loop to break out of");
 
-		for (ContinueStatement* c : flow.continues)
-			ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
+			for (ContinueStatement* c : flow.continues)
+				ctx.add_semantic_error(c->segment(), "no outer loop to continue to");
+		}
 	}
 
 	bool IsolationBlock::isolated() const
@@ -224,6 +227,12 @@ namespace lx
 	ASTRoot::ASTRoot(Token&& start_token)
 		: _start_token(std::move(start_token))
 	{
+	}
+
+	void ASTRoot::analyse_tree(SemanticContext& ctx)
+	{
+		analyse(ctx, AnalysisPass::RegisterFunctions);
+		analyse(ctx, AnalysisPass::Validation);
 	}
 
 	ScriptSegment ASTRoot::impl_segment() const
@@ -273,16 +282,21 @@ namespace lx
 	{
 	}
 
-	void VariableDeclaration::impl_analyse(SemanticContext& ctx)
+	void VariableDeclaration::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (_global && ctx.in_local_scope())
-			ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
-		else if (auto ln = ctx.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
-			ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(*ln));
-		else
+		if (pass == AnalysisPass::Validation)
 		{
-			_expression.analyse(ctx);
-			ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
+			// TODO moreover, global vars need to be declared before all function chains that use them. Use new AnalysisPass for that.
+
+			if (_global && ctx.in_local_scope())
+				ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
+			else if (auto ln = ctx.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
+				ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(*ln));
+			else
+			{
+				_expression.analyse(ctx, pass);
+				ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
+			}
 		}
 	}
 
@@ -307,10 +321,13 @@ namespace lx
 	{
 	}
 
-	void LiteralExpression::impl_analyse(SemanticContext& ctx)
+	void LiteralExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			evaltype(ctx);
+		}
 	}
 	
 	Variable LiteralExpression::evaluate(Runtime& env) const
@@ -333,10 +350,13 @@ namespace lx
 	{
 	}
 	
-	void ListExpression::impl_analyse(SemanticContext& ctx)
+	void ListExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			evaltype(ctx);
+		}
 	}
 
 	Variable ListExpression::evaluate(Runtime& env) const
@@ -379,12 +399,15 @@ namespace lx
 	{
 	}
 
-	void BinaryExpression::impl_analyse(SemanticContext& ctx)
+	void BinaryExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_left.analyse(ctx);
-		_right.analyse(ctx);
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_left.analyse(ctx, pass);
+			_right.analyse(ctx, pass);
+			evaltype(ctx);
+		}
 	}
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
@@ -425,11 +448,14 @@ namespace lx
 	{
 	}
 
-	void MemberAccessExpression::impl_analyse(SemanticContext& ctx)
+	void MemberAccessExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_object.analyse(ctx);
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_object.analyse(ctx, pass);
+			evaltype(ctx);
+		}
 	}
 
 	Variable MemberAccessExpression::evaluate(Runtime& env) const
@@ -506,11 +532,14 @@ namespace lx
 	{
 	}
 
-	void PrefixExpression::impl_analyse(SemanticContext& ctx)
+	void PrefixExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_expr.analyse(ctx);
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_expr.analyse(ctx, pass);
+			evaltype(ctx);
+		}
 	}
 
 	Variable PrefixExpression::evaluate(Runtime& env) const
@@ -546,11 +575,14 @@ namespace lx
 	{
 	}
 
-	void AsExpression::impl_analyse(SemanticContext& ctx)
+	void AsExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_expr.analyse(ctx);
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_expr.analyse(ctx, pass);
+			evaltype(ctx);
+		}
 	}
 
 	Variable AsExpression::evaluate(Runtime& env) const
@@ -582,12 +614,15 @@ namespace lx
 	{
 	}
 
-	void SubscriptExpression::impl_analyse(SemanticContext& ctx)
+	void SubscriptExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_container.analyse(ctx);
-		_subscript.analyse(ctx);
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_container.analyse(ctx, pass);
+			_subscript.analyse(ctx, pass);
+			evaltype(ctx);
+		}
 	}
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
@@ -646,22 +681,25 @@ namespace lx
 	{
 	}
 
-	void VariableExpression::impl_analyse(SemanticContext& ctx)
+	void VariableExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
-			_validated = true;
-		else
-			ctx.add_semantic_error(_identifier, "variable is not declared in scope");
-
-		if (_validated)
+		if (pass == AnalysisPass::Validation)
 		{
-			try
+			if (ctx.registered_variable(_identifier.lexeme, Namespace::Unknown).has_value())
+				_validated = true;
+			else
+				ctx.add_semantic_error(_identifier, "variable is not declared in scope");
+
+			if (_validated)
 			{
-				evaltype(ctx);
-			}
-			catch (const LxError& e)
-			{
-				ctx.add_semantic_error(_identifier.segment, e.message());
+				try
+				{
+					evaltype(ctx);
+				}
+				catch (const LxError& e)
+				{
+					ctx.add_semantic_error(_identifier.segment, e.message());
+				}
 			}
 		}
 	}
@@ -694,10 +732,13 @@ namespace lx
 	{
 	}
 
-	void BuiltinSymbolExpression::impl_analyse(SemanticContext& ctx)
+	void BuiltinSymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		evaltype(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			evaltype(ctx);
+		}
 	}
 
 	Variable BuiltinSymbolExpression::evaluate(Runtime& env) const
@@ -734,31 +775,34 @@ namespace lx
 	{
 	}
 
-	void FunctionCallExpression::impl_analyse(SemanticContext& ctx)
+	void FunctionCallExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (ctx.registered_function_calls(_identifier.lexeme, Namespace::Unknown).empty())
-			ctx.add_semantic_error(_identifier, "function not declared in scope");
-		else
-			_validated = true;
-
-		if (_validated)
+		if (pass == AnalysisPass::Validation)
 		{
-			for (Expression* arg : _args)
-				arg->analyse(ctx);
+			if (ctx.registered_function_calls(_identifier.lexeme).empty())
+				ctx.add_semantic_error(_identifier, "function not declared");
+			else
+				_validated = true;
 
-			auto argtypes = arg_types(ctx);
-			if (!ctx.registered_function(_identifier.lexeme, argtypes, Namespace::Unknown))
+			if (_validated)
 			{
-				std::stringstream ss;
-				ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
-				for (size_t i = 0; i < argtypes.size(); ++i)
+				for (Expression* arg : _args)
+					arg->analyse(ctx, pass);
+
+				auto argtypes = arg_types(ctx);
+				if (!ctx.registered_function(_identifier.lexeme, argtypes))
 				{
-					ss << argtypes[i];
-					if (i + 1 < argtypes.size())
-						ss << ", ";
+					std::stringstream ss;
+					ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
+					for (size_t i = 0; i < argtypes.size(); ++i)
+					{
+						ss << argtypes[i];
+						if (i + 1 < argtypes.size())
+							ss << ", ";
+					}
+					ss << ")";
+					ctx.add_semantic_error(segment(), ss.str());
 				}
-				ss << ")";
-				ctx.add_semantic_error(segment(), ss.str());
 			}
 		}
 	}
@@ -771,7 +815,7 @@ namespace lx
 
 	DataType FunctionCallExpression::impl_evaltype(const SemanticContext& ctx) const
 	{
-		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx), Namespace::Unknown))
+		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
 			return fn->return_type;
 		else
 		{
@@ -800,21 +844,24 @@ namespace lx
 		_member.set_callable(true);
 	}
 
-	void MethodCallExpression::impl_analyse(SemanticContext& ctx)
+	void MethodCallExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
 		
-		_member.analyse(ctx);
-		for (Expression* arg : _args)
-			arg->analyse(ctx);
+			_member.analyse(ctx, pass);
+			for (Expression* arg : _args)
+				arg->analyse(ctx, pass);
 
-		try
-		{
-			evaltype(ctx);
-		}
-		catch (const LxError& e)
-		{
-			ctx.add_semantic_error(segment(), e.message());
+			try
+			{
+				evaltype(ctx);
+			}
+			catch (const LxError& e)
+			{
+				ctx.add_semantic_error(segment(), e.message());
+			}
 		}
 	}
 
@@ -882,63 +929,78 @@ namespace lx
 	{
 	}
 
-	void FunctionDefinition::impl_analyse(SemanticContext& ctx)
+	void FunctionDefinition::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+		if (pass == AnalysisPass::RegisterFunctions)
 		{
-			ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(var->decl_line_number));
-			return;
-		}
-		
-		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(), Namespace::Unknown))
-		{
-			ctx.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
-			return;
-		}
-
-		std::unordered_set<std::string_view> argnames;
-		for (const auto& [_, identifier] : _arglist)
-		{
-			if (argnames.count(identifier.lexeme))
-				ctx.add_semantic_error(identifier, "repeated argument identifier");
-			else
-				argnames.insert(identifier.lexeme);
-		}
-
-		if (argnames.size() != _arglist.size())
-			return;
-
-		ctx.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line, ctx.in_local_scope() ? Namespace::Local : Namespace::Global);
-
-		auto scope = enter_scope(ctx);
-
-		for (size_t i = 0; i < _arglist.size(); ++i)
-			ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
-
-		IsolationBlock::analyse_subnodes(ctx);
-
-		auto flow = block_upflow(ctx);
-
-		if (return_type() != DataType::Void && !flow.always_returns)
-			ctx.add_semantic_error(_identifier, "not all control paths return a value");
-
-		for (const ReturnStatement* r : flow.live_returns)
-		{
-			if (r->evaltype(ctx) != return_type())
+			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			{
-				std::stringstream ss;
-				ss << "function should return " << return_type() << " but statement returns " << r->evaltype(ctx);
-				ctx.add_semantic_error(r->segment(), ss.str());
+				ctx.add_semantic_error(_identifier, "identifier already declared on line " + std::to_string(var->decl_line_number));
+				return;
 			}
+		
+			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types()))
+			{
+				ctx.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
+				return;
+			}
+
+			std::unordered_set<std::string_view> argnames;
+			for (const auto& [_, identifier] : _arglist)
+			{
+				if (argnames.count(identifier.lexeme))
+					ctx.add_semantic_error(identifier, "repeated argument identifier");
+				else
+					argnames.insert(identifier.lexeme);
+			}
+
+			if (argnames.size() != _arglist.size())
+				return;
+
+			if (ctx.in_local_scope())
+			{
+				ctx.add_semantic_error(_identifier, "cannot define function inside local scope");
+				return;
+			}
+
+			ctx.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line);
+
+			auto scope = enter_scope(ctx);
+			IsolationBlock::analyse_subnodes(ctx, pass);
 		}
 
-		for (const ReturnStatement* r : flow.dead_returns)
+		if (pass == AnalysisPass::Validation)
 		{
-			if (r->evaltype(ctx) != return_type())
+			auto scope = enter_scope(ctx);
+
+			for (size_t i = 0; i < _arglist.size(); ++i)
+				ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
+
+			IsolationBlock::analyse_subnodes(ctx, pass);
+
+			auto flow = block_upflow(ctx);
+
+			if (return_type() != DataType::Void && !flow.always_returns)
+				ctx.add_semantic_error(_identifier, "not all control paths return a value");
+
+			for (const ReturnStatement* r : flow.live_returns)
 			{
-				std::stringstream ss;
-				ss << "function should return " << return_type() << " but (unreachable) statement returns " << r->evaltype(ctx);
-				ctx.add_semantic_warning(r->segment(), ss.str());
+				if (r->evaltype(ctx) != return_type())
+				{
+					std::stringstream ss;
+					ss << "function should return " << return_type() << " but statement returns " << r->evaltype(ctx);
+					ctx.add_semantic_error(r->segment(), ss.str());
+				}
+			}
+
+			for (const ReturnStatement* r : flow.dead_returns)
+			{
+				if (r->evaltype(ctx) != return_type())
+				{
+					std::stringstream ss;
+					ss << "function should return " << return_type() << " but (unreachable) statement returns " << r->evaltype(ctx);
+					ctx.add_semantic_warning(r->segment(), ss.str());
+				}
 			}
 		}
 	}
@@ -991,10 +1053,10 @@ namespace lx
 	{
 	}
 
-	void ReturnStatement::impl_analyse(SemanticContext& ctx)
+	void ReturnStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		if (_expression)
-			_expression->analyse(ctx);
+			_expression->analyse(ctx, pass);
 	}
 
 	ExecutionFlow ReturnStatement::execute(Runtime& env) const
@@ -1025,24 +1087,16 @@ namespace lx
 	{
 	}
 
-	void IfConditionalBlock::impl_analyse(SemanticContext& ctx)
+	void IfConditionalBlock::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		condition().analyse(ctx);
-		validate_implicitly_casts(ctx, condition(), DataType::Bool);
+		_condition.analyse(ctx, pass);
 
-		Block::impl_analyse(ctx);
+		if (pass == AnalysisPass::Validation)
+			validate_implicitly_casts(ctx, _condition, DataType::Bool);
+
+		Block::impl_analyse(ctx, pass);
 		if (_fallback)
-			_fallback->fallback_analyse(ctx);
-	}
-
-	const Expression& IfConditionalBlock::condition() const
-	{
-		return _condition;
-	}
-
-	Expression& IfConditionalBlock::condition()
-	{
-		return _condition;
+			_fallback->fallback_analyse(ctx, pass);
 	}
 
 	void IfConditionalBlock::set_fallback(IfFallback* fallback)
@@ -1127,9 +1181,9 @@ namespace lx
 	{
 	}
 
-	void ElifStatement::impl_analyse(SemanticContext& ctx)
+	void ElifStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		IfConditionalBlock::impl_analyse(ctx);
+		IfConditionalBlock::impl_analyse(ctx, pass);
 	}
 
 	UpflowInfo ElifStatement::impl_upflow(const SemanticContext& ctx)
@@ -1147,9 +1201,9 @@ namespace lx
 		return false;
 	}
 
-	void ElifStatement::fallback_analyse(SemanticContext& ctx)
+	void ElifStatement::fallback_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		analyse(ctx);
+		analyse(ctx, pass);
 	}
 	
 	ExecutionFlow ElifStatement::fallback_execute(Runtime& env) const
@@ -1177,9 +1231,9 @@ namespace lx
 		return false;
 	}
 
-	void ElseStatement::fallback_analyse(SemanticContext& ctx)
+	void ElseStatement::fallback_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		analyse(ctx);
+		analyse(ctx, pass);
 	}
 
 	ExecutionFlow ElseStatement::fallback_execute(Runtime& env) const
@@ -1197,15 +1251,15 @@ namespace lx
 	{
 	}
 
-	void Loop::impl_analyse(SemanticContext& ctx)
+	void Loop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
-		analyse_subnodes(ctx);
+		analyse_subnodes(ctx, pass);
 	}
 
-	void Loop::analyse_subnodes(SemanticContext& ctx)
+	void Loop::analyse_subnodes(SemanticContext& ctx, AnalysisPass pass)
 	{
-		Block::analyse_subnodes(ctx);
+		Block::analyse_subnodes(ctx, pass);
 
 		auto subflow = block_upflow(ctx);
 
@@ -1244,11 +1298,12 @@ namespace lx
 	{
 	}
 
-	void WhileLoop::impl_analyse(SemanticContext& ctx)
+	void WhileLoop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
-		validate_implicitly_casts(ctx, _condition, DataType::Bool);
-		Loop::analyse_subnodes(ctx);
+		if (pass == AnalysisPass::Validation)
+			validate_implicitly_casts(ctx, _condition, DataType::Bool);
+		Loop::analyse_subnodes(ctx, pass);
 	}
 
 	ExecutionFlow WhileLoop::execute(Runtime& env) const
@@ -1274,17 +1329,21 @@ namespace lx
 	{
 	}
 
-	void ForLoop::impl_analyse(SemanticContext& ctx)
+	void ForLoop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
-		ctx.register_variable(_iterator.lexeme, DataType::_Unresolved, _iterator.segment.start_line, Namespace::Local);
-		Loop::analyse_subnodes(ctx);
+		if (pass == AnalysisPass::Validation)
+			ctx.register_variable(_iterator.lexeme, DataType::_Unresolved, _iterator.segment.start_line, Namespace::Local);
+		Loop::analyse_subnodes(ctx, pass);
 
-		if (!is_iterable(_iterable.evaltype(ctx)))
+		if (pass == AnalysisPass::Validation)
 		{
-			std::stringstream ss;
-			ss << _iterable.evaltype(ctx) << " is not iterable";
-			ctx.add_semantic_error(_iterable.segment(), ss.str());
+			if (!is_iterable(_iterable.evaltype(ctx)))
+			{
+				std::stringstream ss;
+				ss << _iterable.evaltype(ctx) << " is not iterable";
+				ctx.add_semantic_error(_iterable.segment(), ss.str());
+			}
 		}
 	}
 
@@ -1304,7 +1363,7 @@ namespace lx
 	{
 	}
 
-	void BreakStatement::impl_analyse(SemanticContext& ctx)
+	void BreakStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1340,7 +1399,7 @@ namespace lx
 	{
 	}
 
-	void ContinueStatement::impl_analyse(SemanticContext& ctx)
+	void ContinueStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1376,7 +1435,7 @@ namespace lx
 	{
 	}
 
-	void LogStatement::impl_analyse(SemanticContext& ctx)
+	void LogStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1403,20 +1462,23 @@ namespace lx
 	{
 	}
 
-	void HighlightStatement::impl_analyse(SemanticContext& ctx)
+	void HighlightStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (_color_token && data_type(_color) != DataType::_Color)
-			ctx.add_semantic_error(*_color_token, "symbol is not a color");
-
-		if (_highlightable)
+		if (pass == AnalysisPass::Validation)
 		{
-			_highlightable->analyse(ctx);
+			if (_color_token && data_type(_color) != DataType::_Color)
+				ctx.add_semantic_error(*_color_token, "symbol is not a color");
 
-			if (!is_highlightable(_highlightable->evaltype(ctx)))
+			if (_highlightable)
 			{
-				std::stringstream ss;
-				ss << _highlightable->evaltype(ctx) << " is not highlightable";
-				ctx.add_semantic_error(_highlightable->segment(), ss.str());
+				_highlightable->analyse(ctx, pass);
+
+				if (!is_highlightable(_highlightable->evaltype(ctx)))
+				{
+					std::stringstream ss;
+					ss << _highlightable->evaltype(ctx) << " is not highlightable";
+					ctx.add_semantic_error(_highlightable->segment(), ss.str());
+				}
 			}
 		}
 	}
@@ -1441,7 +1503,7 @@ namespace lx
 	{
 	}
 
-	void DeletePattern::impl_analyse(SemanticContext& ctx)
+	void DeletePattern::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1461,7 +1523,7 @@ namespace lx
 	{
 	}
 
-	void PatternDeclaration::impl_analyse(SemanticContext& ctx)
+	void PatternDeclaration::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1481,21 +1543,24 @@ namespace lx
 	{
 	}
 
-	void RepeatOperation::impl_analyse(SemanticContext& ctx)
+	void RepeatOperation::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-
-		_expression.analyse(ctx);
-		_range.analyse(ctx);
-		validate_implicitly_casts(ctx, _range, DataType::IRange);
-
-		try
+		if (pass == AnalysisPass::Validation)
 		{
-			evaltype(ctx);
-		}
-		catch (const LxError& e)
-		{
-			ctx.add_semantic_error(_expression.segment(), e.message());
+			_validated = true;
+
+			_expression.analyse(ctx, pass);
+			_range.analyse(ctx, pass);
+			validate_implicitly_casts(ctx, _range, DataType::IRange);
+
+			try
+			{
+				evaltype(ctx);
+			}
+			catch (const LxError& e)
+			{
+				ctx.add_semantic_error(_expression.segment(), e.message());
+			}
 		}
 	}
 
@@ -1521,10 +1586,10 @@ namespace lx
 	{
 	}
 
-	void SimpleRepeatOperation::impl_analyse(SemanticContext& ctx)
+	void SimpleRepeatOperation::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		_validated = true;
-		_expression.analyse(ctx);
+		_expression.analyse(ctx, pass);
 
 		try
 		{
@@ -1561,9 +1626,10 @@ namespace lx
 	{
 	}
 
-	void PatternBackRef::impl_analyse(SemanticContext& ctx)
+	void PatternBackRef::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
+		if (pass == AnalysisPass::Validation)
+			_validated = true;
 	}
 
 	Variable PatternBackRef::evaluate(Runtime& env) const
@@ -1586,18 +1652,21 @@ namespace lx
 	{
 	}
 
-	void PatternLazy::impl_analyse(SemanticContext& ctx)
+	void PatternLazy::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_validated = true;
-		_expression.analyse(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_expression.analyse(ctx, pass);
 
-		try
-		{
-			evaltype(ctx);
-		}
-		catch (const LxError& e)
-		{
-			ctx.add_semantic_error(_expression.segment(), e.message());
+			try
+			{
+				evaltype(ctx);
+			}
+			catch (const LxError& e)
+			{
+				ctx.add_semantic_error(_expression.segment(), e.message());
+			}
 		}
 	}
 
@@ -1622,35 +1691,38 @@ namespace lx
 	{
 	}
 
-	void PatternCapture::impl_analyse(SemanticContext& ctx)
+	void PatternCapture::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (_identifier.lexeme != constants::UNNAMED_CAP_ID)
+		if (pass == AnalysisPass::Validation)
 		{
-			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+			if (_identifier.lexeme != constants::UNNAMED_CAP_ID)
 			{
-				std::stringstream ss;
-				ss << "variable already declared on line " << var->decl_line_number;
-				ctx.add_semantic_error(_identifier.segment, ss.str());
+				if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
+				{
+					std::stringstream ss;
+					ss << "variable already declared on line " << var->decl_line_number;
+					ctx.add_semantic_error(_identifier.segment, ss.str());
+				}
+				else
+					_validated = true;
 			}
 			else
 				_validated = true;
-		}
-		else
-			_validated = true;
 
-		if (_validated)
-		{
-			_expression.analyse(ctx);
-
-			ctx.register_variable(_identifier.lexeme, DataType::CapId, _identifier.segment.start_line, Namespace::Global);
-
-			try
+			if (_validated)
 			{
-				evaltype(ctx);
-			}
-			catch (const LxError& e)
-			{
-				ctx.add_semantic_error(_expression.segment(), e.message());
+				_expression.analyse(ctx, pass);
+
+				ctx.register_variable(_identifier.lexeme, DataType::CapId, _identifier.segment.start_line, Namespace::Global);
+
+				try
+				{
+					evaltype(ctx);
+				}
+				catch (const LxError& e)
+				{
+					ctx.add_semantic_error(_expression.segment(), e.message());
+				}
 			}
 		}
 	}
@@ -1676,10 +1748,13 @@ namespace lx
 	{
 	}
 
-	void AppendStatement::impl_analyse(SemanticContext& ctx)
+	void AppendStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_expression.analyse(ctx);
-		validate_implicitly_casts(ctx, _expression, DataType::Pattern);
+		if (pass == AnalysisPass::Validation)
+		{
+			_expression.analyse(ctx, pass);
+			validate_implicitly_casts(ctx, _expression, DataType::Pattern);
+		}
 	}
 
 	ExecutionFlow AppendStatement::execute(Runtime& env) const
@@ -1698,10 +1773,13 @@ namespace lx
 	{
 	}
 
-	void FindStatement::impl_analyse(SemanticContext& ctx)
+	void FindStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_pattern.analyse(ctx);
-		validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
+		if (pass == AnalysisPass::Validation)
+		{
+			_pattern.analyse(ctx, pass);
+			validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
+		}
 	}
 
 	ExecutionFlow FindStatement::execute(Runtime& env) const
@@ -1720,22 +1798,25 @@ namespace lx
 	{
 	}
 
-	void FilterStatement::impl_analyse(SemanticContext& ctx)
+	void FilterStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
+		if (pass == AnalysisPass::Validation)
 		{
-			if (fn->return_type != DataType::Bool)
+			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }))
+			{
+				if (fn->return_type != DataType::Bool)
+				{
+					std::stringstream ss;
+					ss << "function on line " << fn->decl_line_number << " is not a match predicate: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+					ctx.add_semantic_error(_identifier.segment, ss.str());
+				}
+			}
+			else
 			{
 				std::stringstream ss;
-				ss << "function on line " << fn->decl_line_number << " is not a match predicate: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+				ss << "no matching predicate function: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
 				ctx.add_semantic_error(_identifier.segment, ss.str());
 			}
-		}
-		else
-		{
-			std::stringstream ss;
-			ss << "no matching predicate function: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
-			ctx.add_semantic_error(_identifier.segment, ss.str());
 		}
 	}
 
@@ -1755,13 +1836,16 @@ namespace lx
 	{
 	}
 
-	void ReplaceStatement::impl_analyse(SemanticContext& ctx)
+	void ReplaceStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_match.analyse(ctx);
-		_string.analyse(ctx);
+		if (pass == AnalysisPass::Validation)
+		{
+			_match.analyse(ctx, pass);
+			_string.analyse(ctx, pass);
 
-		validate_implicitly_casts(ctx, _match, DataType::Match);
-		validate_implicitly_casts(ctx, _string, DataType::String);
+			validate_implicitly_casts(ctx, _match, DataType::Match);
+			validate_implicitly_casts(ctx, _string, DataType::String);
+		}
 	}
 
 	ExecutionFlow ReplaceStatement::execute(Runtime& env) const
@@ -1780,22 +1864,25 @@ namespace lx
 	{
 	}
 
-	void ApplyStatement::impl_analyse(SemanticContext& ctx)
+	void ApplyStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }, Namespace::Unknown))
+		if (pass == AnalysisPass::Validation)
 		{
-			if (fn->return_type != DataType::String)
+			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }))
+			{
+				if (fn->return_type != DataType::String)
+				{
+					std::stringstream ss;
+					ss << "found function on line " << fn->decl_line_number << ": expected signature (" << DataType::Match << ") -> " << DataType::String;
+					ctx.add_semantic_error(_identifier.segment, ss.str());
+				}
+			}
+			else
 			{
 				std::stringstream ss;
-				ss << "found function on line " << fn->decl_line_number << ": expected signature (" << DataType::Match << ") -> " << DataType::String;
+				ss << "no matching function: expected signature (" << DataType::Match << ") -> " << DataType::String;
 				ctx.add_semantic_error(_identifier.segment, ss.str());
 			}
-		}
-		else
-		{
-			std::stringstream ss;
-			ss << "no matching function: expected signature (" << DataType::Match << ") -> " << DataType::String;
-			ctx.add_semantic_error(_identifier.segment, ss.str());
 		}
 	}
 
@@ -1815,18 +1902,21 @@ namespace lx
 	{
 	}
 
-	void ScopeStatement::impl_analyse(SemanticContext& ctx)
+	void ScopeStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (data_type(_specifier) != DataType::_Scope)
-			ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
-
-		if (_count)
+		if (pass == AnalysisPass::Validation)
 		{
-			_count->analyse(ctx);
+			if (data_type(_specifier) != DataType::_Scope)
+				ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
 
-			const auto range_type = _count->evaltype(ctx);
-			if (!can_cast_explicit(range_type, DataType::Int))
-				ctx.add_semantic_error(_count->segment(), "cannot convert to " + friendly_name(DataType::Int));
+			if (_count)
+			{
+				_count->analyse(ctx, pass);
+
+				const auto range_type = _count->evaltype(ctx);
+				if (!can_cast_explicit(range_type, DataType::Int))
+					ctx.add_semantic_error(_count->segment(), "cannot convert to " + friendly_name(DataType::Int));
+			}
 		}
 	}
 
@@ -1883,15 +1973,18 @@ namespace lx
 	{
 	}
 
-	void PagePush::impl_analyse(SemanticContext& ctx)
+	void PagePush::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		_page.analyse(ctx);
-
-		if (!is_pageable(_page.evaltype(ctx)))
+		if (pass == AnalysisPass::Validation)
 		{
-			std::stringstream ss;
-			ss << "cannot push " << _page.evaltype(ctx) << " to page stack";
-			ctx.add_semantic_error(_page.segment(), ss.str());
+			_page.analyse(ctx, pass);
+
+			if (!is_pageable(_page.evaltype(ctx)))
+			{
+				std::stringstream ss;
+				ss << "cannot push " << _page.evaltype(ctx) << " to page stack";
+				ctx.add_semantic_error(_page.segment(), ss.str());
+			}
 		}
 	}
 
@@ -1911,7 +2004,7 @@ namespace lx
 	{
 	}
 
-	void PagePop::impl_analyse(SemanticContext& ctx)
+	void PagePop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 
@@ -1931,7 +2024,7 @@ namespace lx
 	{
 	}
 
-	void PageClearStack::impl_analyse(SemanticContext& ctx)
+	void PageClearStack::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 	}
 

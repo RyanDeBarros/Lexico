@@ -5,7 +5,7 @@ namespace lx
 	void SemanticAnalyser::analyse(Parser& parser)
 	{
 		SemanticContext dry_ctx;
-		parser.tree().root().analyse(dry_ctx);
+		parser.tree().root().analyse_tree(dry_ctx);
 		_errors = std::move(dry_ctx.errors());
 		_warnings = std::move(dry_ctx.warnings());
 	}

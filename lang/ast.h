@@ -49,6 +49,12 @@ namespace lx
 		Variable data;
 	};
 
+	enum class AnalysisPass
+	{
+		RegisterFunctions,
+		Validation
+	};
+
 	class ASTNode
 	{
 	protected:
@@ -60,7 +66,7 @@ namespace lx
 		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
 		
-		void analyse(SemanticContext& ctx);
+		void analyse(SemanticContext& ctx, AnalysisPass pass);
 
 		virtual ExecutionFlow execute(Runtime& env) const = 0;
 		UpflowInfo upflow(const SemanticContext& ctx);
@@ -68,7 +74,7 @@ namespace lx
 		ScriptSegment segment() const;
 
 	protected:
-		virtual void impl_analyse(SemanticContext& ctx) = 0;
+		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
 		virtual UpflowInfo impl_upflow(const SemanticContext& ctx);
 		virtual ScriptSegment impl_segment() const = 0;
 	};
@@ -81,9 +87,9 @@ namespace lx
 		virtual ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		virtual void impl_analyse(SemanticContext& ctx) override;
+		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		SemanticContext::LocalScope enter_scope(SemanticContext& ctx);
-		virtual void analyse_subnodes(SemanticContext& ctx);
+		virtual void analyse_subnodes(SemanticContext& ctx, AnalysisPass pass);
 		virtual UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 
 	protected:
@@ -98,7 +104,7 @@ namespace lx
 		std::optional<UpflowInfo> _block_upflow;
 
 	protected:
-		void analyse_subnodes(SemanticContext& ctx) override;
+		void analyse_subnodes(SemanticContext& ctx, AnalysisPass pass) override;
 
 		bool isolated() const override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
@@ -112,6 +118,8 @@ namespace lx
 
 	public:
 		ASTRoot(Token&& start_token);
+
+		void analyse_tree(SemanticContext& ctx);
 
 	protected:
 		ScriptSegment impl_segment() const override;
@@ -171,7 +179,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 		
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 		
 	public:
@@ -188,7 +196,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -205,7 +213,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -222,7 +230,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		bool imperative() const override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
@@ -244,7 +252,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -267,7 +275,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -286,7 +294,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -303,7 +311,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -322,7 +330,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -338,7 +346,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -355,7 +363,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -376,7 +384,7 @@ namespace lx
 		bool imperative() const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -395,7 +403,7 @@ namespace lx
 		InvokeResult invoke(Runtime& env) const;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -416,7 +424,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		
@@ -431,7 +439,7 @@ namespace lx
 		friend IfConditionalBlock;
 
 	protected:
-		virtual void fallback_analyse(SemanticContext& ctx) = 0;
+		virtual void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
 		virtual ExecutionFlow fallback_execute(Runtime& env) const = 0;
 		virtual UpflowInfo fallback_upflow(const SemanticContext& ctx) = 0;
 	};
@@ -446,10 +454,7 @@ namespace lx
 
 		IfConditionalBlock(Expression& condition);
 
-		void impl_analyse(SemanticContext& ctx) override;
-
-		const Expression& condition() const;
-		Expression& condition();
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 
 	public:
 		void set_fallback(IfFallback* fallback);
@@ -485,12 +490,12 @@ namespace lx
 		ElifStatement(Token&& elif_token, Expression& condition);
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		bool isolated() const override;
 
-		void fallback_analyse(SemanticContext& ctx) override;
+		void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ExecutionFlow fallback_execute(Runtime& env) const override;
 		UpflowInfo fallback_upflow(const SemanticContext& ctx) override;
 	};
@@ -506,7 +511,7 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 		bool isolated() const override;
 
-		void fallback_analyse(SemanticContext& ctx) override;
+		void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ExecutionFlow fallback_execute(Runtime& env) const override;
 		UpflowInfo fallback_upflow(const SemanticContext& ctx) override;
 	};
@@ -520,8 +525,8 @@ namespace lx
 		Loop(Token&& loop_token);
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
-		void analyse_subnodes(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
+		void analyse_subnodes(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -539,7 +544,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		bool isolated() const override;
 	};
 
@@ -554,7 +559,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		bool isolated() const override;
 	};
 
@@ -569,7 +574,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -588,7 +593,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -607,7 +612,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -625,7 +630,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -640,7 +645,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -655,7 +660,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -670,7 +675,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -686,7 +691,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -705,7 +710,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -721,7 +726,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -738,7 +743,7 @@ namespace lx
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -754,7 +759,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -769,7 +774,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -784,7 +789,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -800,7 +805,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -815,7 +820,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -832,7 +837,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 
 	private:
@@ -850,7 +855,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -864,7 +869,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -878,7 +883,7 @@ namespace lx
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
-		void impl_analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 	};
 }
