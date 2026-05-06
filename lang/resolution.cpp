@@ -1,6 +1,7 @@
 #include "resolution.h"
 
 #include "errors.h"
+#include "ast.h"
 
 #include <sstream>
 
@@ -58,7 +59,8 @@ namespace lx
 			return {};
 	}
 
-	void FunctionTable::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
+	void FunctionTable::register_function(	FunctionDefinition& decl_node, const std::string_view identifier,
+		DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
 		if (!_lut.count(identifier))
 			_lut[std::string(identifier)] = {};
@@ -73,35 +75,62 @@ namespace lx
 		}
 
 		registered_args.insert(fc);
-		_map[std::move(fc)] = { .decl_line_number = line_number, .return_type = return_type, .arg_types = std::move(arg_types) };
+		_map.try_emplace(std::move(fc), &decl_node, line_number, return_type, std::move(arg_types));
 	}
 
-	std::vector<LxError>& SemanticContext::errors() const
+	bool VarConsistencyTest::seen(const FunctionDefinition& fn) const
+	{
+		return _seen_functions.count(&fn);
+	}
+	
+	void VarConsistencyTest::see(const FunctionDefinition& fn)
+	{
+		_seen_functions.insert(&fn);
+	}
+
+	void VarConsistencyTest::clear_functions()
+	{
+		_seen_functions.clear();
+	}
+
+	void VarConsistencyTest::declare(const std::string_view var_identifier)
+	{
+		_declared_vars.insert(std::string(var_identifier));
+	}
+
+	void VarConsistencyTest::test(SemanticContext& ctx, const Token& var) const
+	{
+		if (!_declared_vars.count(var.lexeme))
+			// TODO v0.2 print call stack that caused this
+			ctx.add_semantic_error(var.segment, "global variable may not be defined at this point in function call stack");
+	}
+
+	std::vector<LxError>& SemanticContext::errors()
 	{
 		return _errors;
 	}
 
-	void SemanticContext::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) const
+	void SemanticContext::add_semantic_error(const ScriptSegment& segment, const std::string_view cause) 
 	{
 		_errors.push_back(LxError::segment_error(segment, ErrorType::Semantic, cause));
 	}
 
-	void SemanticContext::add_semantic_error(const Token& token, const std::string_view cause) const
+	void SemanticContext::add_semantic_error(const Token& token, const std::string_view cause)
 	{
 		add_semantic_error(token.segment, cause);
 	}
 
-	std::vector<LxWarning>& SemanticContext::warnings() const
+	std::vector<LxWarning>& SemanticContext::warnings()
 	{
 		return _warnings;
 	}
 
-	void SemanticContext::add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const
+	void SemanticContext::add_semantic_warning(const ScriptSegment& segment, const std::string_view cause)
 	{
 		_warnings.push_back(LxWarning::segment_warning(segment, ErrorType::Semantic, cause));
 	}
 
-	void SemanticContext::add_semantic_warning(const Token& token, const std::string_view cause) const
+	void SemanticContext::add_semantic_warning(const Token& token, const std::string_view cause)
 	{
 		add_semantic_warning(token.segment, cause);
 	}
@@ -145,6 +174,11 @@ namespace lx
 		return !_scope_stack.empty();
 	}
 
+	VarConsistencyTest& SemanticContext::var_consistency_test()
+	{
+		return _var_consistency_test;
+	}
+
 	static std::optional<unsigned int> first_variable_line_number(const SemanticVariableTable& variable_table, const std::string_view identifier)
 	{
 		if (auto var = variable_table.registered_variable(identifier))
@@ -169,7 +203,7 @@ namespace lx
 			return std::nullopt;
 	}
 
-	std::optional<unsigned int> SemanticContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const
+	std::optional<unsigned int> SemanticContext::identifier_first_decl_line_number(const std::string_view identifier, Namespace ns)
 	{
 		try
 		{
@@ -217,7 +251,7 @@ namespace lx
 		return {};
 	}
 
-	std::optional<VariableSignature> SemanticContext::registered_variable(const std::string_view identifier, Namespace ns) const
+	std::optional<VariableSignature> SemanticContext::registered_variable(const std::string_view identifier, Namespace ns)
 	{
 		try
 		{
@@ -280,8 +314,9 @@ namespace lx
 		return _function_table.registered_function_calls(identifier);
 	}
 
-	void SemanticContext::register_function(const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
+	void SemanticContext::register_function(FunctionDefinition& decl_node, const std::string_view identifier,
+		DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		_function_table.register_function(identifier, return_type, std::move(arg_types), line_number);
+		_function_table.register_function(decl_node, identifier, return_type, std::move(arg_types), line_number);
 	}
 }

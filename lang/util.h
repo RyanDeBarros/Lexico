@@ -26,6 +26,7 @@ namespace lx
 
 	template<typename Value>
 	using StringMap = std::unordered_map<std::string, Value, TransparentHash, TransparentEqual>;
+	using StringSet = std::unordered_set<std::string, TransparentHash, TransparentEqual>;
 
 	struct FunctionCallSignature
 	{

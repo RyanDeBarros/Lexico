@@ -14,7 +14,7 @@ namespace lx
 		static const char* DOES_NOT_RESOLVE = "expression does not resolve to";
 	}
 
-	static DataType assert_implicitly_casts(const SemanticContext& ctx, const Expression& expr, DataType to)
+	static DataType assert_implicitly_casts(SemanticContext& ctx, const Expression& expr, DataType to)
 	{
 		if (can_cast_implicit(expr.evaltype(ctx), to))
 			return to;
@@ -24,7 +24,7 @@ namespace lx
 		throw LxError::segment_error(expr.segment(), ErrorType::Internal, ss.str());
 	}
 
-	static void validate_implicitly_casts(const SemanticContext& ctx, const Expression& expr, DataType to)
+	static void validate_implicitly_casts(SemanticContext& ctx, const Expression& expr, DataType to)
 	{
 		if (!can_cast_implicit(expr.evaltype(ctx), to))
 		{
@@ -57,7 +57,7 @@ namespace lx
 		}
 	}
 
-	UpflowInfo ASTNode::upflow(const SemanticContext& ctx)
+	UpflowInfo ASTNode::upflow(SemanticContext& ctx)
 	{
 		if (!_upflow)
 			_upflow = impl_upflow(ctx);
@@ -76,7 +76,7 @@ namespace lx
 			return *_upflow;
 	}
 
-	UpflowInfo ASTNode::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo ASTNode::impl_upflow(SemanticContext& ctx)
 	{
 		return {};
 	}
@@ -115,7 +115,6 @@ namespace lx
 		auto scope = enter_scope(ctx);
 		analyse_subnodes(ctx, pass);
 	}
-
 	ExecutionFlow Block::execute(Runtime& env) const
 	{
 		Runtime::LocalScope local_scope(env, isolated());
@@ -139,11 +138,12 @@ namespace lx
 
 	void Block::analyse_subnodes(SemanticContext& ctx, AnalysisPass pass)
 	{
-		for (ASTNode* node : _children)
-			node->analyse(ctx, pass);
+		if (pass != AnalysisPass::VarConsistencySetup || !ctx.in_local_scope())
+			for (ASTNode* node : _children)
+				node->analyse(ctx, pass);
 	}
 
-	UpflowInfo Block::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo Block::impl_upflow(SemanticContext& ctx)
 	{
 		UpflowInfo info;
 		bool livecode = true;
@@ -200,12 +200,12 @@ namespace lx
 		return true;
 	}
 
-	UpflowInfo IsolationBlock::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo IsolationBlock::impl_upflow(SemanticContext& ctx)
 	{
 		return {};
 	}
 
-	UpflowInfo IsolationBlock::block_upflow(const SemanticContext& ctx)
+	UpflowInfo IsolationBlock::block_upflow(SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -233,6 +233,12 @@ namespace lx
 	{
 		analyse(ctx, AnalysisPass::RegisterFunctions);
 		analyse(ctx, AnalysisPass::Validation);
+		analyse(ctx, AnalysisPass::VarConsistencySetup);
+	}
+
+	void ASTRoot::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	{
+		analyse_subnodes(ctx, pass);
 	}
 
 	ScriptSegment ASTRoot::impl_segment() const
@@ -245,7 +251,7 @@ namespace lx
 		return {};
 	}
 
-	DataType Expression::evaltype(const SemanticContext& ctx) const
+	DataType Expression::evaltype(SemanticContext& ctx) const
 	{
 		if (!_validated)
 		{
@@ -286,8 +292,6 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			// TODO moreover, global vars need to be declared before all function chains that use them. Use new AnalysisPass for that.
-
 			if (_global && ctx.in_local_scope())
 				ctx.add_semantic_error(_identifier, "cannot declare global variable inside a scope");
 			else if (auto ln = ctx.identifier_first_decl_line_number(_identifier.lexeme, _global ? Namespace::Unknown : Namespace::Local))
@@ -298,6 +302,9 @@ namespace lx
 				ctx.register_variable(_identifier.lexeme, _expression.evaltype(ctx), _identifier.segment.start_line, _global ? Namespace::Global : Namespace::Local);
 			}
 		}
+
+		if (pass == AnalysisPass::VarConsistencySetup)
+			ctx.var_consistency_test().declare(_identifier.lexeme);
 	}
 
 	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
@@ -335,7 +342,7 @@ namespace lx
 		return env.temporary_variable(DataPoint::make_from_literal(literal_type(_literal.type), _literal.resolved()));
 	}
 
-	DataType LiteralExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType LiteralExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return literal_type(_literal.type);
 	}
@@ -384,7 +391,7 @@ namespace lx
 			throw errors;
 	}
 
-	DataType ListExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType ListExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return DataType::List;
 	}
@@ -420,7 +427,7 @@ namespace lx
 		return is_imperative(op());
 	}
 
-	DataType BinaryExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType BinaryExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		if (auto type = lx::evaltype(op(), _left.evaltype(ctx), _right.evaltype(ctx)))
 			return *type;
@@ -471,7 +478,7 @@ namespace lx
 		}
 	}
 
-	DataType MemberAccessExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType MemberAccessExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return member(ctx).data_type();
 	}
@@ -481,7 +488,7 @@ namespace lx
 		return _object.segment().combined_right(_member_name.segment);
 	}
 
-	const MemberSignature& MemberAccessExpression::member(const SemanticContext& ctx) const
+	const MemberSignature& MemberAccessExpression::member(SemanticContext& ctx) const
 	{
 		if (_member)
 			return *_member;
@@ -547,7 +554,7 @@ namespace lx
 		return operate(env, op(), _expr.evaluate(env));
 	}
 
-	DataType PrefixExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType PrefixExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		if (auto type = lx::evaltype(op(), _expr.evaltype(ctx)))
 			return *type;
@@ -590,7 +597,7 @@ namespace lx
 		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(data_type(_type.type)));
 	}
 
-	DataType AsExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		DataType return_type = data_type(_type.type);
 		if (can_cast_explicit(_expr.evaltype(ctx), return_type))
@@ -630,7 +637,7 @@ namespace lx
 		return MethodAccessor::invoke(_container.evaluate(env), env, constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
 	}
 
-	DataType SubscriptExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return member(ctx).return_type({_subscript.evaltype(ctx)}).value();
 	}
@@ -640,7 +647,7 @@ namespace lx
 		return _container.segment().combined_right(_subscript.segment());
 	}
 
-	const MemberSignature& SubscriptExpression::member(const SemanticContext& ctx) const
+	const MemberSignature& SubscriptExpression::member(SemanticContext& ctx) const
 	{
 		if (_member)
 			return *_member;
@@ -702,6 +709,9 @@ namespace lx
 				}
 			}
 		}
+
+		if (pass == AnalysisPass::VarConsistencyExec)
+			ctx.var_consistency_test().test(ctx, _identifier);
 	}
 
 	Variable VariableExpression::evaluate(Runtime& env) const
@@ -710,7 +720,7 @@ namespace lx
 		return env.temporary_variable(Void());
 	}
 
-	DataType VariableExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType VariableExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			return var->type;
@@ -760,7 +770,7 @@ namespace lx
 		}
 	}
 
-	DataType BuiltinSymbolExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType BuiltinSymbolExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return data_type(_builtin_symbol);
 	}
@@ -793,7 +803,7 @@ namespace lx
 				if (!ctx.registered_function(_identifier.lexeme, argtypes))
 				{
 					std::stringstream ss;
-					ss << "no declaration of '" << _identifier.lexeme << "' matches the arguemnt types (";
+					ss << "no declaration of '" << _identifier.lexeme << "' matches the argument types (";
 					for (size_t i = 0; i < argtypes.size(); ++i)
 					{
 						ss << argtypes[i];
@@ -805,6 +815,26 @@ namespace lx
 				}
 			}
 		}
+
+		if (_validated)
+		{
+			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
+			{
+				if (pass == AnalysisPass::VarConsistencySetup)
+				{
+					ctx.var_consistency_test().see(*fn->decl_node);
+					fn->decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
+					ctx.var_consistency_test().clear_functions();
+				}
+
+				if (pass == AnalysisPass::VarConsistencyExec)
+				{
+					if (!ctx.var_consistency_test().seen(*fn->decl_node))
+						ctx.var_consistency_test().see(*fn->decl_node);
+					fn->decl_node->analyse(ctx, pass);
+				}
+			}
+		}
 	}
 
 	Variable FunctionCallExpression::evaluate(Runtime& env) const
@@ -813,7 +843,7 @@ namespace lx
 		return env.temporary_variable(Void());
 	}
 
-	DataType FunctionCallExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType FunctionCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
 			return fn->return_type;
@@ -830,7 +860,7 @@ namespace lx
 		return _identifier.segment.combined_right(_closing_paren.segment);
 	}
 
-	std::vector<DataType> FunctionCallExpression::arg_types(const SemanticContext& ctx) const
+	std::vector<DataType> FunctionCallExpression::arg_types(SemanticContext& ctx) const
 	{
 		std::vector<DataType> args(_args.size());
 		for (size_t i = 0; i < args.size(); ++i)
@@ -888,7 +918,7 @@ namespace lx
 		return true;
 	}
 
-	DataType MethodCallExpression::impl_evaltype(const SemanticContext& ctx) const
+	DataType MethodCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		const auto& m = _member.member(ctx);
 		if (m.is_method())
@@ -963,20 +993,21 @@ namespace lx
 				return;
 			}
 
-			ctx.register_function(_identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line);
-
-			auto scope = enter_scope(ctx);
-			IsolationBlock::analyse_subnodes(ctx, pass);
+			ctx.register_function(*this, _identifier.lexeme, return_type(), arg_types(), _identifier.segment.start_line);
 		}
+	
+		auto scope = enter_scope(ctx);
 
 		if (pass == AnalysisPass::Validation)
 		{
-			auto scope = enter_scope(ctx);
-
 			for (size_t i = 0; i < _arglist.size(); ++i)
 				ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
+		}
 
-			IsolationBlock::analyse_subnodes(ctx, pass);
+		IsolationBlock::analyse_subnodes(ctx, pass);
+
+		if (pass == AnalysisPass::Validation)
+		{
 
 			auto flow = block_upflow(ctx);
 
@@ -1017,7 +1048,7 @@ namespace lx
 		return { .data = flow.data ? *flow.data : env.temporary_variable(Void()) };
 	}
 
-	UpflowInfo FunctionDefinition::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo FunctionDefinition::impl_upflow(SemanticContext& ctx)
 	{
 		return {};
 	}
@@ -1067,7 +1098,7 @@ namespace lx
 			return { .type = FlowType::Return, .data = env.temporary_variable(Void()) };
 	}
 
-	UpflowInfo ReturnStatement::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo ReturnStatement::impl_upflow(SemanticContext& ctx)
 	{
 		return { .always_returns = true, .live_returns = { this } };
 	}
@@ -1077,7 +1108,7 @@ namespace lx
 		return _expression ? _expression->segment() : _return_token.segment;
 	}
 
-	DataType ReturnStatement::evaltype(const SemanticContext& ctx) const
+	DataType ReturnStatement::evaltype(SemanticContext& ctx) const
 	{
 		return _expression ? _expression->evaltype(ctx) : DataType::Void;
 	}
@@ -1121,7 +1152,7 @@ namespace lx
 			return {};
 	}
 
-	UpflowInfo IfConditionalBlock::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo IfConditionalBlock::impl_upflow(SemanticContext& ctx)
 	{
 		auto info = block_upflow(ctx);
 		if (_fallback)
@@ -1137,7 +1168,7 @@ namespace lx
 		return info;
 	}
 
-	UpflowInfo IfConditionalBlock::block_upflow(const SemanticContext& ctx)
+	UpflowInfo IfConditionalBlock::block_upflow(SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -1161,7 +1192,7 @@ namespace lx
 	{
 	}
 
-	UpflowInfo IfStatement::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo IfStatement::impl_upflow(SemanticContext& ctx)
 	{
 		return IfConditionalBlock::impl_upflow(ctx);
 	}
@@ -1186,7 +1217,7 @@ namespace lx
 		IfConditionalBlock::impl_analyse(ctx, pass);
 	}
 
-	UpflowInfo ElifStatement::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo ElifStatement::impl_upflow(SemanticContext& ctx)
 	{
 		return IfConditionalBlock::impl_upflow(ctx);
 	}
@@ -1211,7 +1242,7 @@ namespace lx
 		return execute(env);
 	}
 
-	UpflowInfo ElifStatement::fallback_upflow(const SemanticContext& ctx)
+	UpflowInfo ElifStatement::fallback_upflow(SemanticContext& ctx)
 	{
 		return upflow(ctx);
 	}
@@ -1241,7 +1272,7 @@ namespace lx
 		return execute(env);
 	}
 
-	UpflowInfo ElseStatement::fallback_upflow(const SemanticContext& ctx)
+	UpflowInfo ElseStatement::fallback_upflow(SemanticContext& ctx)
 	{
 		return upflow(ctx);
 	}
@@ -1270,7 +1301,7 @@ namespace lx
 			c->attach_loop(this);
 	}
 
-	UpflowInfo Loop::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo Loop::impl_upflow(SemanticContext& ctx)
 	{
 		auto info = block_upflow(ctx);
 		info.always_returns &= !info.may_break;
@@ -1286,7 +1317,7 @@ namespace lx
 		return _loop_token.segment;
 	}
 
-	UpflowInfo Loop::block_upflow(const SemanticContext& ctx)
+	UpflowInfo Loop::block_upflow(SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
@@ -1372,7 +1403,7 @@ namespace lx
 		return { .type = FlowType::Break };
 	}
 
-	UpflowInfo BreakStatement::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo BreakStatement::impl_upflow(SemanticContext& ctx)
 	{
 		return { .may_break = true, .breaks = { this } };
 	}
@@ -1408,7 +1439,7 @@ namespace lx
 		return { .type = FlowType::Continue };
 	}
 
-	UpflowInfo ContinueStatement::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo ContinueStatement::impl_upflow(SemanticContext& ctx)
 	{
 		return { .may_continue = true, .continues = { this } };
 	}
@@ -1437,6 +1468,8 @@ namespace lx
 
 	void LogStatement::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
+		for (Expression* arg : _args)
+			arg->analyse(ctx, pass);
 	}
 
 	ExecutionFlow LogStatement::execute(Runtime& env) const
@@ -1571,7 +1604,7 @@ namespace lx
 		return env.temporary_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
-	DataType RepeatOperation::impl_evaltype(const SemanticContext& ctx) const
+	DataType RepeatOperation::impl_evaltype(SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1606,7 +1639,7 @@ namespace lx
 		return operate(env, op(), _expression.evaluate(env), _expression.segment());
 	}
 
-	DataType SimpleRepeatOperation::impl_evaltype(const SemanticContext& ctx) const
+	DataType SimpleRepeatOperation::impl_evaltype(SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1637,7 +1670,7 @@ namespace lx
 		return env.temporary_variable(Pattern::make_backref(env.capture_id(_identifier.lexeme)));
 	}
 
-	DataType PatternBackRef::impl_evaltype(const SemanticContext& ctx) const
+	DataType PatternBackRef::impl_evaltype(SemanticContext& ctx) const
 	{
 		return DataType::Pattern;
 	}
@@ -1676,7 +1709,7 @@ namespace lx
 		return env.temporary_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
-	DataType PatternLazy::impl_evaltype(const SemanticContext& ctx) const
+	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
@@ -1733,7 +1766,7 @@ namespace lx
 		return env.temporary_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 
-	DataType PatternCapture::impl_evaltype(const SemanticContext& ctx) const
+	DataType PatternCapture::impl_evaltype(SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
 	}
