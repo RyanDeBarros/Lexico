@@ -80,6 +80,11 @@ namespace lx
 		return lx::can_cast_explicit(static_cast<DataType>(_storage.index()), to);
 	}
 
+	DataType DataPoint::data_type() const
+	{
+		return std::visit([](const auto& v) { return to_enum<std::decay_t<decltype(v)>>; }, _storage);
+	}
+
 	void DataPoint::print(std::stringstream& ss) const
 	{
 		std::visit([&ss](const auto& v) { v.print(ss); }, _storage);

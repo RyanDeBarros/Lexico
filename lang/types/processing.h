@@ -6,7 +6,7 @@
 
 namespace lx
 {
-	extern Variable operate(Runtime& env, BinaryOperator op, const Variable& lhs, const Variable& rhs);
-	extern Variable operate(Runtime& env, PrefixOperator op, const Variable& var);
-	extern Variable operate(Runtime& env, PatternSimpleRepeatOperator op, const Variable& var);
+	extern Variable operate(Runtime& env, BinaryOperator op, Variable lhs, const Variable& rhs);
+	extern Variable operate(Runtime& env, PrefixOperator op, Variable var);
+	extern Variable operate(Runtime& env, PatternSimpleRepeatOperator op, Variable var, const ScriptSegment& var_segment);
 }

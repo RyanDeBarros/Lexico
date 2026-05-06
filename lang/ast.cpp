@@ -53,7 +53,7 @@ namespace lx
 			// TODO better error propogation/ignoring/duplication handling
 			if (e.type() != ErrorType::Internal)
 				ctx.errors().push_back(e);
-			// TODO v0.2 optional debug log for else branch
+			// TODO v0.2 optional debug log for else branch - also internal error should fail?
 		}
 	}
 
@@ -1538,7 +1538,7 @@ namespace lx
 
 	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _expression.evaluate(env));
+		return operate(env, op(), _expression.evaluate(env), _expression.segment());
 	}
 
 	DataType SimpleRepeatOperation::impl_evaltype(const SemanticContext& ctx) const
