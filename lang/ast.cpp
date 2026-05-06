@@ -140,7 +140,7 @@ namespace lx
 	void Block::analyse_subnodes(SemanticContext& ctx)
 	{
 		for (ASTNode* node : _children)
-			node->analyse(ctx); // TODO rename analyse to impl_analyse, then validate to analyse. Make impl_analyse protected to force calling analyse instead of impl_analyse on subnodes
+			node->analyse(ctx);
 	}
 
 	UpflowInfo Block::impl_upflow(const SemanticContext& ctx)
@@ -1020,32 +1020,32 @@ namespace lx
 		return _expression ? _expression->evaltype(ctx) : DataType::Void;
 	}
 
-	IfConditional::IfConditional(Expression& condition)
+	IfConditionalBlock::IfConditionalBlock(Expression& condition)
 		: _condition(condition)
 	{
 	}
 
-	void IfConditional::impl_analyse(SemanticContext& ctx)
+	void IfConditionalBlock::impl_analyse(SemanticContext& ctx)
 	{
 		condition().analyse(ctx);
 		validate_implicitly_casts(ctx, condition(), DataType::Bool);
 
 		Block::impl_analyse(ctx);
 		if (_fallback)
-			_fallback->analyse(ctx);
+			_fallback->fallback_analyse(ctx);
 	}
 
-	const Expression& IfConditional::condition() const
+	const Expression& IfConditionalBlock::condition() const
 	{
 		return _condition;
 	}
 
-	Expression& IfConditional::condition()
+	Expression& IfConditionalBlock::condition()
 	{
 		return _condition;
 	}
 
-	void IfConditional::set_fallback(IfFallbackBlock* fallback)
+	void IfConditionalBlock::set_fallback(IfFallback* fallback)
 	{
 		if (_fallback)
 		{
@@ -1057,22 +1057,22 @@ namespace lx
 			_fallback = fallback;
 	}
 
-	ExecutionFlow IfConditional::execute(Runtime& env) const
+	ExecutionFlow IfConditionalBlock::execute(Runtime& env) const
 	{
 		if (_condition.evaluate(env).dp().move_as<Bool>().value())
 			return Block::execute(env);
 		else if (_fallback)
-			return _fallback->execute(env);
+			return _fallback->fallback_execute(env);
 		else
 			return {};
 	}
 
-	UpflowInfo IfConditional::impl_upflow(const SemanticContext& ctx)
+	UpflowInfo IfConditionalBlock::impl_upflow(const SemanticContext& ctx)
 	{
 		auto info = block_upflow(ctx);
 		if (_fallback)
 		{
-			auto fallback_info = _fallback->upflow(ctx);
+			auto fallback_info = _fallback->fallback_upflow(ctx);
 			info.live_returns.insert(info.live_returns.end(), fallback_info.live_returns.begin(), fallback_info.live_returns.end());
 			info.dead_returns.insert(info.dead_returns.end(), fallback_info.dead_returns.begin(), fallback_info.dead_returns.end());
 			info.always_returns &= fallback_info.always_returns;
@@ -1083,14 +1083,14 @@ namespace lx
 		return info;
 	}
 
-	UpflowInfo IfConditional::block_upflow(const SemanticContext& ctx)
+	UpflowInfo IfConditionalBlock::block_upflow(const SemanticContext& ctx)
 	{
 		if (!_block_upflow)
 			_block_upflow = Block::impl_upflow(ctx);
 		return *_block_upflow;
 	}
 
-	UpflowInfo IfConditional::block_upflow() const
+	UpflowInfo IfConditionalBlock::block_upflow() const
 	{
 		if (!_block_upflow)
 		{
@@ -1103,13 +1103,13 @@ namespace lx
 	}
 
 	IfStatement::IfStatement(Token&& if_token, Expression& condition)
-		: IfConditional(condition), _if_token(std::move(if_token))
+		: IfConditionalBlock(condition), _if_token(std::move(if_token))
 	{
 	}
 
 	UpflowInfo IfStatement::impl_upflow(const SemanticContext& ctx)
 	{
-		return IfConditional::impl_upflow(ctx);
+		return IfConditionalBlock::impl_upflow(ctx);
 	}
 
 	ScriptSegment IfStatement::impl_segment() const
@@ -1123,18 +1123,18 @@ namespace lx
 	}
 
 	ElifStatement::ElifStatement(Token&& elif_token, Expression& condition)
-		: IfConditional(condition), _elif_token(std::move(elif_token))
+		: IfConditionalBlock(condition), _elif_token(std::move(elif_token))
 	{
 	}
 
 	void ElifStatement::impl_analyse(SemanticContext& ctx)
 	{
-		IfConditional::impl_analyse(ctx);
+		IfConditionalBlock::impl_analyse(ctx);
 	}
 
 	UpflowInfo ElifStatement::impl_upflow(const SemanticContext& ctx)
 	{
-		return IfConditional::impl_upflow(ctx);
+		return IfConditionalBlock::impl_upflow(ctx);
 	}
 
 	ScriptSegment ElifStatement::impl_segment() const
@@ -1145,6 +1145,21 @@ namespace lx
 	bool ElifStatement::isolated() const
 	{
 		return false;
+	}
+
+	void ElifStatement::fallback_analyse(SemanticContext& ctx)
+	{
+		analyse(ctx);
+	}
+	
+	ExecutionFlow ElifStatement::fallback_execute(Runtime& env) const
+	{
+		return execute(env);
+	}
+
+	UpflowInfo ElifStatement::fallback_upflow(const SemanticContext& ctx)
+	{
+		return upflow(ctx);
 	}
 
 	ElseStatement::ElseStatement(Token&& else_token)
@@ -1160,6 +1175,21 @@ namespace lx
 	bool ElseStatement::isolated() const
 	{
 		return false;
+	}
+
+	void ElseStatement::fallback_analyse(SemanticContext& ctx)
+	{
+		analyse(ctx);
+	}
+
+	ExecutionFlow ElseStatement::fallback_execute(Runtime& env) const
+	{
+		return execute(env);
+	}
+
+	UpflowInfo ElseStatement::fallback_upflow(const SemanticContext& ctx)
+	{
+		return upflow(ctx);
 	}
 
 	Loop::Loop(Token&& loop_token)

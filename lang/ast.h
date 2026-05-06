@@ -424,20 +424,27 @@ namespace lx
 		DataType evaltype(const SemanticContext& ctx) const;
 	};
 
-	// TODO avoid diamond inheritence by adding virtual methods to IfFallback and just redirecting to Block in Elif/Else
-	class IfFallbackBlock : public virtual Block
+	class IfConditionalBlock;
+	
+	class IfFallback
 	{
+		friend IfConditionalBlock;
+
+	protected:
+		virtual void fallback_analyse(SemanticContext& ctx) = 0;
+		virtual ExecutionFlow fallback_execute(Runtime& env) const = 0;
+		virtual UpflowInfo fallback_upflow(const SemanticContext& ctx) = 0;
 	};
 	
-	class IfConditional : public virtual Block
+	class IfConditionalBlock : public Block
 	{
 		Expression& _condition;
 		std::optional<UpflowInfo> _block_upflow;
 
 	protected:
-		IfFallbackBlock* _fallback = nullptr;
+		IfFallback* _fallback = nullptr;
 
-		IfConditional(Expression& condition);
+		IfConditionalBlock(Expression& condition);
 
 		void impl_analyse(SemanticContext& ctx) override;
 
@@ -445,7 +452,7 @@ namespace lx
 		Expression& condition();
 
 	public:
-		void set_fallback(IfFallbackBlock* fallback);
+		void set_fallback(IfFallback* fallback);
 
 		ExecutionFlow execute(Runtime& env) const override;
 
@@ -457,7 +464,7 @@ namespace lx
 		UpflowInfo block_upflow() const;
 	};
 
-	class IfStatement : public IfConditional
+	class IfStatement : public IfConditionalBlock
 	{
 		Token _if_token;
 
@@ -470,7 +477,7 @@ namespace lx
 		bool isolated() const override;
 	};
 
-	class ElifStatement : public IfConditional, public IfFallbackBlock
+	class ElifStatement : public IfConditionalBlock, public IfFallback
 	{
 		Token _elif_token;
 
@@ -482,9 +489,13 @@ namespace lx
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		bool isolated() const override;
+
+		void fallback_analyse(SemanticContext& ctx) override;
+		ExecutionFlow fallback_execute(Runtime& env) const override;
+		UpflowInfo fallback_upflow(const SemanticContext& ctx) override;
 	};
 
-	class ElseStatement : public IfFallbackBlock
+	class ElseStatement : public IfFallback, public Block
 	{
 		Token _else_token;
 
@@ -494,6 +505,10 @@ namespace lx
 	protected:
 		ScriptSegment impl_segment() const override;
 		bool isolated() const override;
+
+		void fallback_analyse(SemanticContext& ctx) override;
+		ExecutionFlow fallback_execute(Runtime& env) const override;
+		UpflowInfo fallback_upflow(const SemanticContext& ctx) override;
 	};
 
 	class Loop : public Block

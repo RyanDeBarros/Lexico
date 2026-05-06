@@ -566,7 +566,7 @@ namespace lx
 			return true;
 		}
 
-		bool parse_elif_statement(IfConditional& cond)
+		bool parse_elif_statement(IfConditionalBlock& cond)
 		{
 			if (!peek_token_is(0, TokenType::Elif))
 				return false;
@@ -583,7 +583,7 @@ namespace lx
 			return true;
 		}
 
-		bool parse_else_statement(IfConditional& cond)
+		bool parse_else_statement(IfConditionalBlock& cond)
 		{
 			if (!peek_token_is(0, TokenType::Else))
 				return false;
@@ -728,7 +728,7 @@ namespace lx
 			throw_error(missing_end_err, 0);
 		}
 
-		void parse_if_block(IfConditional& cond)
+		void parse_if_block(IfConditionalBlock& cond)
 		{
 			while (!eof())
 			{
