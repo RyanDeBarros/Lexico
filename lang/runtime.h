@@ -67,10 +67,23 @@ namespace lx
 		const std::stringstream& log() const;
 		std::stringstream& log();
 
+	private:
 		void push_local_scope(bool isolated);
 		void pop_local_scope();
 
-		unsigned int scope_depth() const;
+	public:
+		class LocalScope
+		{
+			Runtime& _runtime;
+			bool _alive = false;
+
+		public:
+			LocalScope(Runtime& runtime, bool isolated);
+			LocalScope(const LocalScope&) = delete;
+			LocalScope(LocalScope&&) noexcept;
+			~LocalScope();
+			LocalScope& operator=(LocalScope&&) = delete;
+		};
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;

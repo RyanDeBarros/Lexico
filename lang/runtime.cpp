@@ -69,9 +69,22 @@ namespace lx
 		_scope_stack.pop_back();
 	}
 
-	unsigned int Runtime::scope_depth() const
+	Runtime::LocalScope::LocalScope(Runtime& runtime, bool isolated)
+		: _runtime(runtime), _alive(true)
 	{
-		return _scope_stack.size();
+		_runtime.push_local_scope(isolated);
+	}
+
+	Runtime::LocalScope::LocalScope(LocalScope&& other) noexcept
+		: _runtime(other._runtime), _alive(other._alive)
+	{
+		other._alive = false;
+	}
+
+	Runtime::LocalScope::~LocalScope()
+	{
+		if (_alive)
+			_runtime.pop_local_scope();
 	}
 
 	void Runtime::register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns)
@@ -108,7 +121,7 @@ namespace lx
 				throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 		}
 
-		if (ns == Namespace::Unknown || scope_depth() == 0)
+		if (ns == Namespace::Unknown || _scope_stack.empty())
 		{
 			if (auto sig = _global_table.registered_variable(identifier))
 				return *sig;

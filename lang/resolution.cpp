@@ -122,9 +122,27 @@ namespace lx
 		_scope_stack.pop_back();
 	}
 
-	unsigned int SemanticContext::scope_depth() const
+	SemanticContext::LocalScope::LocalScope(SemanticContext& context, bool isolated)
+		: _context(context), _alive(true)
 	{
-		return _scope_stack.size();
+		_context.push_local_scope(isolated);
+	}
+
+	SemanticContext::LocalScope::LocalScope(LocalScope&& other) noexcept
+		: _context(other._context), _alive(other._alive)
+	{
+		other._alive = false;
+	}
+
+	SemanticContext::LocalScope::~LocalScope()
+	{
+		if (_alive)
+			_context.pop_local_scope();
+	}
+
+	bool SemanticContext::in_local_scope() const
+	{
+		return !_scope_stack.empty();
 	}
 
 	static std::optional<unsigned int> first_line_number(const SemanticSymbolTable& table, const std::string_view identifier)
@@ -156,7 +174,7 @@ namespace lx
 
 			std::optional<unsigned int> line_number = std::nullopt;
 
-			if (ns == Namespace::Unknown || scope_depth() == 0)
+			if (ns == Namespace::Unknown || _scope_stack.empty())
 				line_number = first_line_number(_global_table, identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
@@ -190,7 +208,7 @@ namespace lx
 			if (ns == Namespace::Global)
 				return _global_table.registered_variable(identifier);
 			
-			if (ns == Namespace::Unknown || scope_depth() == 0)
+			if (ns == Namespace::Unknown || _scope_stack.empty())
 			{
 				if (auto sig = _global_table.registered_variable(identifier))
 					return sig;
@@ -243,7 +261,7 @@ namespace lx
 			if (ns == Namespace::Global)
 				return _global_table.registered_function(identifier, arg_types);
 			
-			if (ns == Namespace::Unknown || scope_depth() == 0)
+			if (ns == Namespace::Unknown || _scope_stack.empty())
 			{
 				if (auto ln = _global_table.registered_function(identifier, arg_types))
 					return ln;
@@ -272,7 +290,7 @@ namespace lx
 
 			FunctionCallSet callset;
 
-			if (ns == Namespace::Unknown || scope_depth() == 0)
+			if (ns == Namespace::Unknown || _scope_stack.empty())
 				callset = _global_table.registered_function_calls(identifier);
 
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)

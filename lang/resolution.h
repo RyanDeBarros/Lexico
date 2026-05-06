@@ -27,6 +27,7 @@ namespace lx
 	class SemanticSymbolTable
 	{
 		StringMap<VariableSignature> _variable_table;
+		// TODO don't use map so as to be able to match unresolved arguments
 		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _function_table;
 		StringMap<FunctionCallSet> _function_lut;
 
@@ -61,10 +62,25 @@ namespace lx
 		void add_semantic_warning(const Token& token, const std::string_view cause) const;
 		void add_semantic_warning(const ScriptSegment& segment, const std::string_view cause) const;
 
+	private:
 		void push_local_scope(bool isolated);
 		void pop_local_scope();
 
-		unsigned int scope_depth() const;
+	public:
+		class LocalScope
+		{
+			SemanticContext& _context;
+			bool _alive = false;
+
+		public:
+			LocalScope(SemanticContext& context, bool isolated);
+			LocalScope(const LocalScope&) = delete;
+			LocalScope(LocalScope&&) noexcept;
+			~LocalScope();
+			LocalScope& operator=(LocalScope&&) = delete;
+		};
+
+		bool in_local_scope() const;
 
 		std::optional<unsigned int> identifier_first_decl_line_number(const std::string_view identifier, Namespace ns) const;
 

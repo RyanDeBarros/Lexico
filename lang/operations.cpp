@@ -474,6 +474,11 @@ namespace lx
 		return std::nullopt;
 	}
 
+	bool is_imperative(BinaryOperator op)
+	{
+		return op == BinaryOperator::Assign;
+	}
+
 	PrefixOperator prefix_operator(TokenType type)
 	{
 		switch (type)

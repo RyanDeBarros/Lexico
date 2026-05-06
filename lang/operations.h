@@ -76,8 +76,8 @@ namespace lx
 	};
 
 	extern BinaryOperator binary_operator(TokenType type);
-
 	extern std::optional<DataType> evaltype(BinaryOperator op, DataType lhs, DataType rhs);
+	extern bool is_imperative(BinaryOperator op);
 
 	enum class PrefixOperator
 	{
@@ -94,7 +94,6 @@ namespace lx
 	};
 
 	extern PrefixOperator prefix_operator(TokenType type);
-
 	extern std::optional<DataType> evaltype(PrefixOperator op, DataType type);
 
 	enum class PatternSimpleRepeatOperator

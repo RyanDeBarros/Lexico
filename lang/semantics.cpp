@@ -2,46 +2,10 @@
 
 namespace lx
 {
-	class AnalysisVisitor : public ASTVisitor
-	{
-		SemanticContext& _ctx;
-
-	public:
-		AnalysisVisitor(SemanticContext& ctx)
-			: _ctx(ctx)
-		{
-		}
-
-		void pre_visit(ASTNode& node) override
-		{
-			if (!node.validated())
-				node.pre_analyse(_ctx);
-		}
-
-		void post_visit(ASTNode& node) override
-		{
-			if (node.validated())
-			{
-				try
-				{
-					node.post_analyse(_ctx);
-				}
-				catch (const LxError& e)
-				{
-					// TODO better error propogation/ignoring/duplication handling
-					if (e.type() != ErrorType::Internal)
-						_ctx.errors().push_back(e);
-					// TODO v0.2 optional debug log for else branch
-				}
-			}
-		}
-	};
-
 	void SemanticAnalyser::analyse(Parser& parser)
 	{
 		SemanticContext dry_ctx;
-		AnalysisVisitor visitor(dry_ctx);
-		parser.tree().root().accept(visitor);
+		parser.tree().root().validate(dry_ctx);
 		_errors = std::move(dry_ctx.errors());
 		_warnings = std::move(dry_ctx.warnings());
 	}
