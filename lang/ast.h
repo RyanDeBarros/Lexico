@@ -338,13 +338,28 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class BuiltinSymbolExpression : public Expression
+	class GlobalMatchesExpression : public Expression
+	{
+		Token _symbol_token;
+
+	public:
+		GlobalMatchesExpression(Token&& symbol_token);
+
+		Variable evaluate(Runtime& env) const override;
+
+	protected:
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
+		DataType impl_evaltype(SemanticContext& ctx) const override;
+		ScriptSegment impl_segment() const override;
+	};
+
+	class PatternSymbolExpression : public Expression
 	{
 		Token _symbol_token;
 		BuiltinSymbol _builtin_symbol;
 
 	public:
-		BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
+		PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 
 		Variable evaluate(Runtime& env) const override;
 

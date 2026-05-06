@@ -901,7 +901,10 @@ namespace lx
 				throw_error(errors::UNRECOGNIZED_SYMBOL, 0);
 			auto& symbol_token = ref(0);
 			offset.add(1);
-			return _tree.add(std::make_unique<BuiltinSymbolExpression>(std::move(symbol_token), *symbol));
+			if (*symbol == BuiltinSymbol::Percent)
+				return _tree.add(std::make_unique<GlobalMatchesExpression>(std::move(symbol_token)));
+			else
+				return _tree.add(std::make_unique<PatternSymbolExpression>(std::move(symbol_token), *symbol));
 		}
 
 		Expression& parse_literal_expression(TokenOffset& offset)

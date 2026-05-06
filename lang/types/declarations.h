@@ -23,10 +23,7 @@ namespace lx
 	M(IRange) Sep \
 	M(SRange) Sep \
 	M(List) Sep \
-	M(Unresolved) Sep \
-	M(Marker) Sep \
-	M(Scope) Sep \
-	M(Color)
+	M(Unresolved)
 
 #define LX_EXPAND_BY_PUBLIC_TYPE(M, Sep) \
 	M(Int) Sep \
@@ -44,10 +41,7 @@ namespace lx
 	M(List)
 
 #define LX_EXPAND_BY_INTERNAL_TYPE(M, Sep) \
-	M(Unresolved) Sep \
-	M(Marker) Sep \
-	M(Scope) Sep \
-	M(Color)
+	M(Unresolved)
 
 #define LX_FORWARD_DECLARE(U) class U;
 	LX_EXPAND_BY_TYPE(LX_FORWARD_DECLARE,)

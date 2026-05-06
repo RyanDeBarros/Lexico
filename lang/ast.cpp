@@ -783,12 +783,12 @@ namespace lx
 		return _identifier.segment;
 	}
 
-	BuiltinSymbolExpression::BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
-		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
+	GlobalMatchesExpression::GlobalMatchesExpression(Token&& symbol_token)
+		: _symbol_token(std::move(symbol_token))
 	{
 	}
 
-	void BuiltinSymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	void GlobalMatchesExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		if (pass == AnalysisPass::Validation)
 		{
@@ -797,31 +797,46 @@ namespace lx
 		}
 	}
 
-	Variable BuiltinSymbolExpression::evaluate(Runtime& env) const
+	Variable GlobalMatchesExpression::evaluate(Runtime& env) const
 	{
-		switch (evaltype())
+		return env.global_matches_handle();
+	}
+
+	DataType GlobalMatchesExpression::impl_evaltype(SemanticContext& ctx) const
+	{
+		return DataType::Matches;
+	}
+
+	ScriptSegment GlobalMatchesExpression::impl_segment() const
+	{
+		return _symbol_token.segment;
+	}
+
+	PatternSymbolExpression::PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
+		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
+	{
+	}
+
+	void PatternSymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	{
+		if (pass == AnalysisPass::Validation)
 		{
-		case DataType::Pattern:
-			return env.temporary_variable(Pattern::make_from_symbol(_builtin_symbol));
-		case DataType::Matches:
-			return env.global_matches_handle();
-		case DataType::_Marker:
-			return env.temporary_variable(Marker(marker(_builtin_symbol)));
-		case DataType::_Scope:
-			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unexpected scope symbol");
-		case DataType::_Color:
-			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unexpected color symbol");
-		default:
-			throw LxError::segment_error(_symbol_token.segment, ErrorType::Runtime, "unrecognized symbol");
+			_validated = true;
+			evaltype(ctx);
 		}
 	}
 
-	DataType BuiltinSymbolExpression::impl_evaltype(SemanticContext& ctx) const
+	Variable PatternSymbolExpression::evaluate(Runtime& env) const
 	{
-		return data_type(_builtin_symbol);
+		return env.temporary_variable(Pattern::make_from_symbol(_builtin_symbol));
 	}
 
-	ScriptSegment BuiltinSymbolExpression::impl_segment() const
+	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
+	{
+		return DataType::Pattern;
+	}
+
+	ScriptSegment PatternSymbolExpression::impl_segment() const
 	{
 		return _symbol_token.segment;
 	}
@@ -1552,7 +1567,7 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (_color_token && data_type(_color) != DataType::_Color)
+			if (_color_token && !is_color_symbol(_color))
 				ctx.add_semantic_error(*_color_token, "symbol is not a color");
 
 			if (_highlightable)
@@ -2002,7 +2017,7 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (data_type(_specifier) != DataType::_Scope)
+			if (!is_scope_symbol(_specifier))
 				ctx.add_semantic_error(_symbol_token.segment, "unrecognized scope symbol");
 
 			if (_count)

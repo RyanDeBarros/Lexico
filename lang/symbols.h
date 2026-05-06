@@ -1,6 +1,7 @@
 #pragma once
 
-#include <string_view>
+#include "public.h"
+
 #include <optional>
 
 namespace lx
@@ -44,4 +45,42 @@ namespace lx
 	};
 
 	extern std::optional<BuiltinSymbol> parse_builtin_symbol(const std::string_view symbol);
+
+	enum class MarkerIdentifier
+	{
+		Any,
+		Cap,
+		End,
+		Start,
+	};
+
+	extern MarkerIdentifier marker(BuiltinSymbol symbol);
+
+	class Marker
+	{
+		MarkerIdentifier _identifier;
+
+	public:
+		explicit Marker(MarkerIdentifier identifier);
+	};
+
+	class Scope
+	{
+		std::optional<unsigned int> _lines;
+
+	public:
+		explicit Scope(std::optional<unsigned int> lines);
+	};
+
+	extern bool is_scope_symbol(BuiltinSymbol symbol);
+
+	class Color
+	{
+		HighlightColor _color;
+
+	public:
+		explicit Color(BuiltinSymbol symbol);
+	};
+
+	extern bool is_color_symbol(BuiltinSymbol symbol);
 }

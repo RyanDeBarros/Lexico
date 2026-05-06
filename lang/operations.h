@@ -11,7 +11,6 @@ namespace lx
 {
 	extern DataType data_type(TokenType type);
 	extern DataType literal_type(TokenType type);
-	extern DataType data_type(BuiltinSymbol symbol);
 
 	struct MemberSignature
 	{

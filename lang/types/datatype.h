@@ -23,9 +23,6 @@ namespace lx
 
 		// Internal
 		_Unresolved,
-		_Marker,
-		_Scope,
-		_Color,
 	};
 
 	extern std::string friendly_name(DataType type);

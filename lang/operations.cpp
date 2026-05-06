@@ -67,53 +67,53 @@ namespace lx
 		}
 	}
 
-	DataType data_type(BuiltinSymbol symbol)
-	{
-		switch (symbol)
-		{
-		case BuiltinSymbol::Alphanumeric:
-		case BuiltinSymbol::Digit:
-		case BuiltinSymbol::Letter:
-		case BuiltinSymbol::Lowercase:
-		case BuiltinSymbol::Newline:
-		case BuiltinSymbol::Space:
-		case BuiltinSymbol::Uppercase:
-		case BuiltinSymbol::Varname:
-		case BuiltinSymbol::Whitespace:
-			return DataType::Pattern;
+	//DataType data_type(BuiltinSymbol symbol)
+	//{
+	//	switch (symbol)
+	//	{
+	//	case BuiltinSymbol::Alphanumeric:
+	//	case BuiltinSymbol::Digit:
+	//	case BuiltinSymbol::Letter:
+	//	case BuiltinSymbol::Lowercase:
+	//	case BuiltinSymbol::Newline:
+	//	case BuiltinSymbol::Space:
+	//	case BuiltinSymbol::Uppercase:
+	//	case BuiltinSymbol::Varname:
+	//	case BuiltinSymbol::Whitespace:
+	//		return DataType::Pattern;
 
-		case BuiltinSymbol::Any:
-		case BuiltinSymbol::Cap:
-		case BuiltinSymbol::End:
-		case BuiltinSymbol::Start:
-			return DataType::_Marker;
+	//	case BuiltinSymbol::Any:
+	//	case BuiltinSymbol::Cap:
+	//	case BuiltinSymbol::End:
+	//	case BuiltinSymbol::Start:
+	//		return DataType::_Marker;
 
-		case BuiltinSymbol::Percent:
-			return DataType::Matches;
+	//	case BuiltinSymbol::Percent:
+	//		return DataType::Matches;
 
-		case BuiltinSymbol::Line:
-		case BuiltinSymbol::Lines:
-		case BuiltinSymbol::Page:
-			return DataType::_Scope;
+	//	case BuiltinSymbol::Line:
+	//	case BuiltinSymbol::Lines:
+	//	case BuiltinSymbol::Page:
+	//		return DataType::_Scope;
 
-		case BuiltinSymbol::Yellow:
-		case BuiltinSymbol::Red:
-		case BuiltinSymbol::Green:
-		case BuiltinSymbol::Blue:
-		case BuiltinSymbol::Grey:
-		case BuiltinSymbol::Purple:
-		case BuiltinSymbol::Orange:
-		case BuiltinSymbol::Mono:
-			return DataType::_Color;
+	//	case BuiltinSymbol::Yellow:
+	//	case BuiltinSymbol::Red:
+	//	case BuiltinSymbol::Green:
+	//	case BuiltinSymbol::Blue:
+	//	case BuiltinSymbol::Grey:
+	//	case BuiltinSymbol::Purple:
+	//	case BuiltinSymbol::Orange:
+	//	case BuiltinSymbol::Mono:
+	//		return DataType::_Color;
 
-		default:
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": unrecognized symbol " << static_cast<int>(symbol);
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		}
-	}
+	//	default:
+	//	{
+	//		std::stringstream ss;
+	//		ss << __FUNCTION__ << ": unrecognized symbol " << static_cast<int>(symbol);
+	//		throw LxError(ErrorType::Internal, ss.str());
+	//	}
+	//	}
+	//}
 
 	MemberSignature MemberSignature::make_data(std::string&& identifier, DataType type)
 	{
@@ -233,13 +233,6 @@ namespace lx
 			return to == DataType::Pattern;
 
 		case DataType::List:
-			return false;
-
-		case DataType::_Marker:
-			return to == DataType::Pattern;
-
-		case DataType::_Scope:
-		case DataType::_Color:
 		default:
 			return false;
 		}
@@ -275,9 +268,6 @@ namespace lx
 			return to == DataType::String;
 
 		case DataType::List:
-		case DataType::_Marker:
-		case DataType::_Scope:
-		case DataType::_Color:
 		default:
 			return false;
 		}
@@ -303,9 +293,6 @@ namespace lx
 		case DataType::Void:
 		case DataType::CapId:
 		case DataType::Cap:
-		case DataType::_Marker:
-		case DataType::_Scope:
-		case DataType::_Color:
 		default:
 			return false;
 		}
@@ -331,9 +318,6 @@ namespace lx
 		case DataType::Cap:
 		case DataType::SRange:
 		case DataType::List:
-		case DataType::_Marker:
-		case DataType::_Scope:
-		case DataType::_Color:
 		default:
 			return false;
 		}
@@ -359,9 +343,6 @@ namespace lx
 		case DataType::Cap:
 		case DataType::SRange:
 		case DataType::List:
-		case DataType::_Marker:
-		case DataType::_Scope:
-		case DataType::_Color:
 		default:
 			return false;
 		}

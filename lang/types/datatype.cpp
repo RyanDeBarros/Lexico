@@ -33,9 +33,6 @@ namespace lx
 		case DataType::List:
 			return "'list'";
 		case DataType::_Unresolved:
-		case DataType::_Marker:
-		case DataType::_Scope:
-		case DataType::_Color:
 			return "'symbol'";
 		default:
 			return "''";
