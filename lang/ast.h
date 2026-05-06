@@ -52,7 +52,6 @@ namespace lx
 	class ASTNode
 	{
 	protected:
-		mutable bool _validated = false;
 		mutable std::optional<UpflowInfo> _upflow;
 		mutable std::optional<ScriptSegment> _segment;
 
@@ -61,15 +60,15 @@ namespace lx
 		ASTNode(const ASTNode&) = delete;
 		virtual ~ASTNode() = default;
 		
-		void validate(SemanticContext& ctx);
+		void analyse(SemanticContext& ctx);
 
-		virtual void analyse(SemanticContext& ctx) = 0;
 		virtual ExecutionFlow execute(Runtime& env) const = 0;
 		UpflowInfo upflow(const SemanticContext& ctx);
 		UpflowInfo upflow() const;
 		ScriptSegment segment() const;
 
 	protected:
+		virtual void impl_analyse(SemanticContext& ctx) = 0;
 		virtual UpflowInfo impl_upflow(const SemanticContext& ctx);
 		virtual ScriptSegment impl_segment() const = 0;
 	};
@@ -79,10 +78,10 @@ namespace lx
 		std::vector<ASTNode*> _children;
 
 	public:
-		virtual void analyse(SemanticContext& ctx) override;
 		virtual ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		virtual void impl_analyse(SemanticContext& ctx) override;
 		SemanticContext::LocalScope enter_scope(SemanticContext& ctx);
 		virtual void analyse_subnodes(SemanticContext& ctx);
 		virtual UpflowInfo impl_upflow(const SemanticContext& ctx) override;
@@ -144,6 +143,9 @@ namespace lx
 	{
 		mutable std::optional<DataType> _evaltype;
 
+	protected:
+		mutable bool _validated = false;
+
 	public:
 		ExecutionFlow execute(Runtime& env) const override;
 
@@ -166,10 +168,10 @@ namespace lx
 	public:
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 		
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		
 	public:
@@ -183,10 +185,10 @@ namespace lx
 	public:
 		LiteralExpression(Token&& literal);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -200,10 +202,10 @@ namespace lx
 	public:
 		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -217,10 +219,10 @@ namespace lx
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		bool imperative() const override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
@@ -239,10 +241,10 @@ namespace lx
 	public:
 		MemberAccessExpression(Expression& object, Token&& member);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -262,10 +264,10 @@ namespace lx
 	public:
 		PrefixExpression(Token&& op, Expression& expr);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -281,10 +283,10 @@ namespace lx
 	public:
 		AsExpression(Expression& expr, Token&& type);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -298,10 +300,10 @@ namespace lx
 	public:
 		SubscriptExpression(Expression& container, Expression& subscript);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -317,10 +319,10 @@ namespace lx
 	public:
 		VariableExpression(Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -333,10 +335,10 @@ namespace lx
 	public:
 		BuiltinSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -350,10 +352,10 @@ namespace lx
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -370,11 +372,11 @@ namespace lx
 	public:
 		MethodCallExpression(MemberAccessExpression& member, std::vector<Expression*>&& args, Token&& closing_paren);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 		bool imperative() const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -389,11 +391,11 @@ namespace lx
 	public:
 		FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 		InvokeResult invoke(Runtime& env) const;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -411,10 +413,10 @@ namespace lx
 	public:
 		ReturnStatement(Token&& return_token, Expression* expression);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		
@@ -437,7 +439,7 @@ namespace lx
 
 		IfConditional(Expression& condition);
 
-		void analyse(SemanticContext& ctx) override;
+		void impl_analyse(SemanticContext& ctx) override;
 
 		const Expression& condition() const;
 		Expression& condition();
@@ -475,9 +477,8 @@ namespace lx
 	public:
 		ElifStatement(Token&& elif_token, Expression& condition);
 
-		void analyse(SemanticContext& ctx) override;
-
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 		bool isolated() const override;
@@ -503,9 +504,8 @@ namespace lx
 	public:
 		Loop(Token&& loop_token);
 
-		void analyse(SemanticContext& ctx) override;
-
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		void analyse_subnodes(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
@@ -521,10 +521,10 @@ namespace lx
 	public:
 		WhileLoop(Token&& loop_token, Expression& condition);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		bool isolated() const override;
 	};
 
@@ -536,10 +536,10 @@ namespace lx
 	public:
 		ForLoop(Token&& loop_token, Token&& iterator, Expression& iterable);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		bool isolated() const override;
 	};
 
@@ -551,10 +551,10 @@ namespace lx
 	public:
 		BreakStatement(Token&& break_token);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -570,10 +570,10 @@ namespace lx
 	public:
 		ContinueStatement(Token&& continue_token);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		UpflowInfo impl_upflow(const SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 
@@ -589,10 +589,10 @@ namespace lx
 	public:
 		LogStatement(Token&& log_token, std::vector<Expression*>&& args);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -607,10 +607,10 @@ namespace lx
 	public:
 		HighlightStatement(Token&& highlight_token, bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -622,10 +622,10 @@ namespace lx
 	public:
 		DeletePattern(Token&& delete_token, Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -637,10 +637,10 @@ namespace lx
 	public:
 		PatternDeclaration(Token&& pattern_token, Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -652,10 +652,10 @@ namespace lx
 	public:
 		RepeatOperation(Expression& expression, Expression& range);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -668,10 +668,10 @@ namespace lx
 	public:
 		SimpleRepeatOperation(Expression& expression, Token&& op);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 
@@ -687,10 +687,10 @@ namespace lx
 	public:
 		PatternBackRef(Token&& ref_token, Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -703,10 +703,10 @@ namespace lx
 	public:
 		PatternLazy(Token&& lazy_token, Expression& expression);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -720,10 +720,10 @@ namespace lx
 	public:
 		PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression);
 
-		void analyse(SemanticContext& ctx) override;
 		Variable evaluate(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		DataType impl_evaltype(const SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};
@@ -736,10 +736,10 @@ namespace lx
 	public:
 		AppendStatement(Token&& append_token, Expression& expression);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -751,10 +751,10 @@ namespace lx
 	public:
 		FindStatement(Token&& find_token, Expression& pattern);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -766,10 +766,10 @@ namespace lx
 	public:
 		FilterStatement(Token&& filter_token, Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -782,10 +782,10 @@ namespace lx
 	public:
 		ReplaceStatement(Token&& replace_token, Expression& match, Expression& string);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -797,10 +797,10 @@ namespace lx
 	public:
 		ApplyStatement(Token&& apply_token, Token&& identifier);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -814,14 +814,14 @@ namespace lx
 	public:
 		ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression* count);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
+
+	protected:
+		void impl_analyse(SemanticContext& ctx) override;
+		ScriptSegment impl_segment() const override;
 
 	private:
 		Scope scope(Runtime& env) const;
-
-	protected:
-		ScriptSegment impl_segment() const override;
 	};
 
 	class PagePush : public ASTNode
@@ -832,10 +832,10 @@ namespace lx
 	public:
 		PagePush(Token&& page_token, Expression& page);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -846,10 +846,10 @@ namespace lx
 	public:
 		PagePop(Token&& page_token);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 
@@ -860,10 +860,10 @@ namespace lx
 	public:
 		PageClearStack(Token&& page_token);
 
-		void analyse(SemanticContext& ctx) override;
 		ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		void impl_analyse(SemanticContext& ctx) override;
 		ScriptSegment impl_segment() const override;
 	};
 }
