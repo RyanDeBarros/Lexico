@@ -1,25 +1,11 @@
 #include "resolution.h"
 
 #include "errors.h"
-#include "ast.h"
 
 #include <sstream>
 
 namespace lx
 {
-	size_t FunctionCallHash::operator()(const FunctionCallSignature& fc) const
-	{
-		size_t h = std::hash<std::string>{}(fc.identifier);
-		for (size_t i = 0; i < fc.arg_types.size(); ++i)
-			h ^= std::hash<DataType>{}(fc.arg_types[i]) + 0x9e3779b9 + (h << 6) + (h >> 2);
-		return h;
-	}
-
-	bool FunctionCallEqual::operator()(const FunctionCallSignature& a, const FunctionCallSignature& b) const
-	{
-		return a.identifier == b.identifier && a.arg_types == b.arg_types;
-	}
-
 	std::optional<VariableSignature> SemanticVariableTable::registered_variable(const std::string_view identifier) const
 	{
 		auto it = _map.find(identifier);
@@ -39,43 +25,6 @@ namespace lx
 		}
 
 		_map[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
-	}
-
-	std::optional<FunctionSignature> FunctionTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
-	{
-		auto it = _map.find(FunctionCallSignature{ .identifier = std::string(identifier), .arg_types = arg_types });
-		if (it != _map.end())
-			return it->second;
-		else
-			return std::nullopt;
-	}
-
-	FunctionCallSet FunctionTable::registered_function_calls(const std::string_view identifier) const
-	{
-		auto it = _lut.find(identifier);
-		if (it != _lut.end())
-			return it->second;
-		else
-			return {};
-	}
-
-	void FunctionTable::register_function(	FunctionDefinition& decl_node, const std::string_view identifier,
-		DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
-	{
-		if (!_lut.count(identifier))
-			_lut[std::string(identifier)] = {};
-
-		auto& registered_args = _lut.find(identifier)->second;
-		FunctionCallSignature fc{ .identifier = std::string(identifier), .arg_types = arg_types };
-		if (registered_args.count(fc))
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": function already registered: " << identifier;
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-
-		registered_args.insert(fc);
-		_map.try_emplace(std::move(fc), &decl_node, line_number, return_type, std::move(arg_types));
 	}
 
 	bool VarConsistencyTest::seen(const FunctionDefinition& fn) const
@@ -187,15 +136,14 @@ namespace lx
 			return std::nullopt;
 	}
 
-	static std::optional<unsigned int> first_function_line_number(const FunctionTable& function_table, const std::string_view identifier)
+	static std::optional<unsigned int> first_function_line_number(const SemanticFunctionTable& function_table, const std::string_view identifier)
 	{
-
 		auto calls = function_table.registered_function_calls(identifier);
 		if (!calls.empty())
 		{
 			unsigned int first_line_number = std::numeric_limits<unsigned int>::max();
 			for (const auto& call : calls)
-				first_line_number = std::min(first_line_number, function_table.registered_function(call.identifier, call.arg_types)->decl_line_number);
+				first_line_number = std::min(first_line_number, function_table.known_registered_function(call.identifier, call.arg_types)->decl_line_number);
 
 			return first_line_number;
 		}
@@ -304,9 +252,14 @@ namespace lx
 		}
 	}
 
-	std::optional<FunctionSignature> SemanticContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
+	std::vector<FunctionSignature> SemanticContext::registered_functions(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		return _function_table.registered_function(identifier, arg_types);
+		return _function_table.registered_functions(identifier, arg_types);
+	}
+
+	std::optional<FunctionSignature> SemanticContext::known_registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
+	{
+		return _function_table.known_registered_function(identifier, arg_types);
 	}
 
 	FunctionCallSet SemanticContext::registered_function_calls(const std::string_view identifier) const
@@ -318,5 +271,10 @@ namespace lx
 		DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
 		_function_table.register_function(decl_node, identifier, return_type, std::move(arg_types), line_number);
+	}
+
+	SemanticFunctionTable& SemanticContext::ftable()
+	{
+		return _function_table;
 	}
 }

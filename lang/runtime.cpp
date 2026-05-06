@@ -28,8 +28,8 @@ namespace lx
 	{
 	}
 
-	Runtime::Runtime(const std::string_view input)
-		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }
+	Runtime::Runtime(const std::string_view input, const SemanticFunctionTable& ftable)
+		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }, _function_table(ftable)
 	{
 	}
 
@@ -92,7 +92,7 @@ namespace lx
 		switch (ns)
 		{
 		case lx::Namespace::Global:
-			_global_table.register_variable(identifier, _heap.add(std::move(dp), false));
+			_global_variable_table.register_variable(identifier, _heap.add(std::move(dp), false));
 			break;
 		case lx::Namespace::Local:
 			if (!_scope_stack.empty())
@@ -115,7 +115,7 @@ namespace lx
 	{
 		if (ns == Namespace::Global)
 		{
-			if (auto dp = _global_table.registered_variable(identifier))
+			if (auto dp = _global_variable_table.registered_variable(identifier))
 				return *dp;
 			else
 				throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
@@ -123,7 +123,7 @@ namespace lx
 
 		if (ns == Namespace::Unknown || _scope_stack.empty())
 		{
-			if (auto sig = _global_table.registered_variable(identifier))
+			if (auto sig = _global_variable_table.registered_variable(identifier))
 				return *sig;
 		}
 

@@ -800,7 +800,7 @@ namespace lx
 					arg->analyse(ctx, pass);
 
 				auto argtypes = arg_types(ctx);
-				if (!ctx.registered_function(_identifier.lexeme, argtypes))
+				if (ctx.registered_functions(_identifier.lexeme, argtypes).empty())
 				{
 					std::stringstream ss;
 					ss << "no declaration of '" << _identifier.lexeme << "' matches the argument types (";
@@ -818,20 +818,20 @@ namespace lx
 
 		if (_validated)
 		{
-			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
+			for (const auto& fn : ctx.registered_functions(_identifier.lexeme, arg_types(ctx)))
 			{
 				if (pass == AnalysisPass::VarConsistencySetup)
 				{
-					ctx.var_consistency_test().see(*fn->decl_node);
-					fn->decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
+					ctx.var_consistency_test().see(*fn.decl_node);
+					fn.decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
 					ctx.var_consistency_test().clear_functions();
 				}
 
 				if (pass == AnalysisPass::VarConsistencyExec)
 				{
-					if (!ctx.var_consistency_test().seen(*fn->decl_node))
-						ctx.var_consistency_test().see(*fn->decl_node);
-					fn->decl_node->analyse(ctx, pass);
+					if (!ctx.var_consistency_test().seen(*fn.decl_node))
+						ctx.var_consistency_test().see(*fn.decl_node);
+					fn.decl_node->analyse(ctx, pass);
 				}
 			}
 		}
@@ -845,8 +845,11 @@ namespace lx
 
 	DataType FunctionCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
-			return fn->return_type;
+		auto fns = ctx.registered_functions(_identifier.lexeme, arg_types(ctx));
+		if (fns.size() == 1)
+			return fns[0].return_type;
+		else if (!fns.empty())
+			return DataType::_Unresolved;
 		else
 		{
 			std::stringstream ss;
@@ -969,7 +972,7 @@ namespace lx
 				return;
 			}
 		
-			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types()))
+			if (auto fn = ctx.known_registered_function(_identifier.lexeme, arg_types()))
 			{
 				ctx.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
 				return;
@@ -1835,7 +1838,7 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }))
+			if (auto fn = ctx.known_registered_function(_identifier.lexeme, { DataType::Match }))
 			{
 				if (fn->return_type != DataType::Bool)
 				{
@@ -1901,7 +1904,7 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match }))
+			if (auto fn = ctx.known_registered_function(_identifier.lexeme, { DataType::Match }))
 			{
 				if (fn->return_type != DataType::String)
 				{

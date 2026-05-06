@@ -32,8 +32,10 @@ namespace lx
 		return err;
 	}
 
-	bool exec(const std::string_view script, const std::string_view input, std::stringstream& output, std::stringstream& log)
+	static bool exec(const std::string_view script, const std::string_view input, std::stringstream& output, std::stringstream& log)
 	{
+		// TODO delete lexer, parser, analyser, etc. resources once done with them to save resources for executor
+
 		try
 		{
 			Lexer lexer;

@@ -3,8 +3,7 @@
 #include "util.h"
 #include "namespace.h"
 #include "types/heap.h"
-
-#include <unordered_map>
+#include "ftable.h"
 
 namespace lx
 {
@@ -43,8 +42,9 @@ namespace lx
 		std::stringstream _log;
 
 		DataHeap _heap;
-		RuntimeSymbolTable _global_table;
+		RuntimeSymbolTable _global_variable_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
+		RuntimeFunctionTable _function_table;
 
 		StringMap<Variable> _declared_patterns;
 		std::optional<Variable> _focused_pattern;
@@ -58,7 +58,7 @@ namespace lx
 		StringMap<unsigned int> _capture_ids;
 
 	public:
-		Runtime(const std::string_view input);
+		Runtime(const std::string_view input, const SemanticFunctionTable& ftable);
 		
 		const std::stringstream& output() const;
 		std::stringstream& output();
