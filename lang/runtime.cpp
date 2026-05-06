@@ -29,7 +29,7 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input)
-		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt)
+		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }
 	{
 	}
 
@@ -168,6 +168,47 @@ namespace lx
 			return *_focused_pattern;
 		else
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
+	}
+
+	void Runtime::find()
+	{
+		// TODO iterate over scoped page and accumulate matches
+	}
+
+	void Runtime::add_highlight(const Color& color, const std::optional<Variable>& format)
+	{
+		// TODO
+	}
+
+	void Runtime::remove_highlight(const Color& color, const std::optional<Variable>& format)
+	{
+		// TODO
+	}
+
+	void Runtime::push_page(const Variable& page_desc)
+	{
+		Page page;
+		// TODO set page content
+		_page_stack.push(std::move(page));
+	}
+
+	void Runtime::pop_page(const ScriptSegment& segment)
+	{
+		if (!_page_stack.empty())
+			_page_stack.pop();
+		else
+			_log << LxWarning::segment_warning(segment, ErrorType::Runtime, "page stack is empty").what();
+	}
+
+	void Runtime::clear_page_stack()
+	{
+		while (!_page_stack.empty())
+			_page_stack.pop();
+	}
+
+	const Page& Runtime::focused_page() const
+	{
+		return _page_stack.empty() ? _root_page : _page_stack.top();
 	}
 
 	const Matches& Runtime::global_matches() const

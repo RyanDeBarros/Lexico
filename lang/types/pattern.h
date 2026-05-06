@@ -163,9 +163,9 @@ namespace lx
 	public:
 		Pattern();
 		Pattern(const Pattern& other);
-		Pattern(Pattern&& other) noexcept = default;
+		Pattern(Pattern&&) noexcept = default;
 		Pattern& operator=(const Pattern& other);
-		Pattern& operator=(Pattern&& other) noexcept = default;
+		Pattern& operator=(Pattern&&) noexcept = default;
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);

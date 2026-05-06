@@ -1548,7 +1548,11 @@ namespace lx
 
 	ExecutionFlow HighlightStatement::execute(Runtime& env) const
 	{
-		// TODO
+		if (_clear)
+			env.remove_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(env)) : std::nullopt);
+		else
+			env.add_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(env)) : std::nullopt);
+
 		return {};
 	}
 
@@ -1893,7 +1897,7 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& env) const
 	{
-		// TODO
+		env.find();
 		return {};
 	}
 
@@ -1935,7 +1939,7 @@ namespace lx
 
 	ExecutionFlow FilterStatement::execute(Runtime& env) const
 	{
-		// TODO
+		// TODO get registered function, and iterate over match objects in matches to filter
 		return {};
 	}
 
@@ -2120,7 +2124,7 @@ namespace lx
 
 	ExecutionFlow PagePush::execute(Runtime& env) const
 	{
-		// TODO
+		env.push_page(_page.evaluate(env));
 		return {};
 	}
 
@@ -2152,7 +2156,7 @@ namespace lx
 
 	ExecutionFlow PagePop::execute(Runtime& env) const
 	{
-		// TODO
+		env.pop_page(segment());
 		return {};
 	}
 
@@ -2178,7 +2182,7 @@ namespace lx
 
 	ExecutionFlow PageClearStack::execute(Runtime& env) const
 	{
-		// TODO
+		env.clear_page_stack();
 		return {};
 	}
 

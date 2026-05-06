@@ -2,6 +2,7 @@
 
 #include "declarations.h"
 #include "variable.h"
+#include "public.h"
 
 namespace lx
 {
@@ -10,7 +11,7 @@ namespace lx
 		int _value;
 
 	public:
-		Int(int value);
+		explicit Int(int value);
 
 		static Int make_from_literal(std::string_view resolved);
 
@@ -26,7 +27,7 @@ namespace lx
 		float _value;
 
 	public:
-		Float(float value);
+		explicit Float(float value);
 
 		static Float make_from_literal(std::string_view resolved);
 
@@ -42,7 +43,7 @@ namespace lx
 		bool _value;
 
 	public:
-		Bool(bool value);
+		explicit Bool(bool value);
 
 		static Bool make_from_literal(std::string_view resolved);
 
@@ -58,8 +59,8 @@ namespace lx
 		std::string _value;
 
 	public:
-		String(const std::string& value);
-		String(std::string&& value);
+		explicit String(const std::string& value);
+		explicit String(std::string&& value);
 
 		static String make_from_literal(std::string_view resolved);
 
@@ -100,7 +101,7 @@ namespace lx
 		unsigned int _uid;
 
 	public:
-		CapId(unsigned int uid);
+		explicit CapId(unsigned int uid);
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
@@ -177,7 +178,7 @@ namespace lx
 		MarkerIdentifier _identifier;
 
 	public:
-		Marker(MarkerIdentifier identifier);
+		explicit Marker(MarkerIdentifier identifier);
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
@@ -189,23 +190,11 @@ namespace lx
 		std::optional<unsigned int> _lines;
 
 	public:
-		Scope(std::optional<unsigned int> lines);
+		explicit Scope(std::optional<unsigned int> lines);
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);
 		void print(std::stringstream& ss) const;
-	};
-
-	enum class HighlightColor
-	{
-		Yellow,
-		Red,
-		Green,
-		Blue,
-		Grey,
-		Purple,
-		Orange,
-		Mono,
 	};
 
 	class Color
@@ -213,7 +202,7 @@ namespace lx
 		HighlightColor _color;
 
 	public:
-		Color(BuiltinSymbol symbol);
+		explicit Color(BuiltinSymbol symbol);
 
 		TypeVariant cast_copy(DataType type) const;
 		TypeVariant cast_move(DataType type);

@@ -31,6 +31,11 @@ namespace lx
 		RuntimeScopeContext(RuntimeScopeContext&&) noexcept = default;
 	};
 
+	struct Page
+	{
+		std::string content;
+	};
+
 	// TODO even in SemanticContext, functions should not be declared within one another. All functions should go into a global function table, and Runtime should load that table directly from the built SemanticContext. Stored functions should also store a const FunctionDefinition* node. Should do a full pass first to build the funciton table before normal analysis, so that functions can be declared in any order. So perhaps they should be separate from SemanticContext, and only have a reference to the FunctionTable in SemanticContext/Runtime.
 
 	class Runtime
@@ -48,6 +53,9 @@ namespace lx
 
 		Variable _global_matches;
 		Scope _search_scope;
+
+		Page _root_page;
+		std::stack<Page> _page_stack;
 
 		StringMap<unsigned int> _capture_ids;
 
@@ -72,6 +80,15 @@ namespace lx
 		void declare_pattern(std::string_view identifier);
 		void delete_pattern(std::string_view identifier);
 		Variable focused_pattern(const ScriptSegment& segment) const;
+
+		void find();
+		void add_highlight(const Color& color, const std::optional<Variable>& format);
+		void remove_highlight(const Color& color, const std::optional<Variable>& format);
+
+		void push_page(const Variable& page_desc);
+		void pop_page(const ScriptSegment& segment);
+		void clear_page_stack();
+		const Page& focused_page() const;
 
 		const Matches& global_matches() const;
 		Matches& global_matches();
