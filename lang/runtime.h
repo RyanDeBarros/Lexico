@@ -58,7 +58,7 @@ namespace lx
 		StringMap<unsigned int> _capture_ids;
 
 	public:
-		Runtime(const std::string_view input, const SemanticFunctionTable& ftable);
+		Runtime(const std::string_view input, SemanticFunctionTable&& ftable);
 		
 		const std::stringstream& output() const;
 		std::stringstream& output();

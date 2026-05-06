@@ -51,7 +51,7 @@ namespace lx
 
 	enum class AnalysisPass
 	{
-		RegisterFunctions,
+		Registration,
 		Validation,
 		VarConsistencySetup,
 		VarConsistencyExec,
@@ -260,8 +260,8 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		const MemberSignature& member(SemanticContext& ctx) const;
-		const MemberSignature& member() const;
+		const MemberSignature* member(SemanticContext& ctx) const;
+		const MemberSignature& member(Runtime& env) const;
 		const Expression& object() const;
 
 		void set_callable(bool callable);
@@ -319,8 +319,8 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		const MemberSignature& member(SemanticContext& ctx) const;
-		const MemberSignature& member() const;
+		const MemberSignature* member(SemanticContext& ctx) const;
+		const MemberSignature& member(Runtime& env) const;
 	};
 
 	class VariableExpression : public Expression

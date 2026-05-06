@@ -219,12 +219,16 @@ namespace lx
 				else if (it->isolated)
 					break;
 			}
+
+			if (ns == Namespace::Unknown)
+			{
+			}
 		}
 		catch (const LxError& error)
 		{
 			_errors.push_back(error);
 		}
-
+		
 		return std::nullopt;
 	}
 

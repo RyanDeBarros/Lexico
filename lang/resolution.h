@@ -87,6 +87,7 @@ namespace lx
 
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier, Namespace ns);
 		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns);
+		void register_pattern(const std::string_view identifier);
 
 		std::vector<FunctionSignature> registered_functions(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
 		std::optional<FunctionSignature> known_registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;

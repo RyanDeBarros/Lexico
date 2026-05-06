@@ -260,7 +260,7 @@ namespace lx
 		if (type == DataType::Void)
 			return Void();
 		else
-			throw_bad_cast(DataType::Match, type);
+			throw_bad_cast(DataType::Void, type);
 	}
 
 	TypeVariant Void::cast_move(DataType type)

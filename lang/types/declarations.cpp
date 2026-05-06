@@ -40,6 +40,7 @@ namespace lx
 	{
 		std::stringstream ss;
 		ss << "bad cast from " << from << " to " << to;
+		// TODO throw runtime error - pass script segment
 		throw LxError(ErrorType::Internal, ss.str());
 	}
 }

@@ -35,9 +35,12 @@ namespace lx
 
 	using FunctionCallSet = std::unordered_set<FunctionCallSignature, FunctionCallHash, FunctionCallEqual>;
 
+	class RuntimeFunctionTable;
+	
 	class SemanticFunctionTable
 	{
-		// TODO don't use map so as to be able to match unresolved arguments -> only for SemanticContext. For execution, unresolved types will be resolved, so can use a map. Therefore, distinguish between SemanticFunctionTable and RuntimeFunctionTable.
+		friend RuntimeFunctionTable;
+
 		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _map;
 		StringMap<FunctionCallSet> _lut;
 
@@ -53,7 +56,7 @@ namespace lx
 		std::unordered_map<FunctionCallSignature, FunctionSignature, FunctionCallHash, FunctionCallEqual> _map;
 
 	public:
-		RuntimeFunctionTable(const SemanticFunctionTable& semantic_table);
+		RuntimeFunctionTable(SemanticFunctionTable&& semantic_table);
 
 		const FunctionDefinition* registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
 	};

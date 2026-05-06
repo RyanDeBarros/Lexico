@@ -90,9 +90,10 @@ namespace lx
 		_map.try_emplace(std::move(fc), &decl_node, line_number, return_type, std::move(arg_types));
 	}
 
-	RuntimeFunctionTable::RuntimeFunctionTable(const SemanticFunctionTable& semantic_table)
+	RuntimeFunctionTable::RuntimeFunctionTable(SemanticFunctionTable&& semantic_table)
+		: _map(semantic_table._map)
 	{
-		// TODO load map
+		semantic_table._lut.clear();
 	}
 
 	const FunctionDefinition* RuntimeFunctionTable::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const

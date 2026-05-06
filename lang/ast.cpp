@@ -231,7 +231,7 @@ namespace lx
 
 	void ASTRoot::analyse_tree(SemanticContext& ctx)
 	{
-		analyse(ctx, AnalysisPass::RegisterFunctions);
+		analyse(ctx, AnalysisPass::Registration);
 		analyse(ctx, AnalysisPass::Validation);
 		analyse(ctx, AnalysisPass::VarConsistencySetup);
 	}
@@ -467,7 +467,7 @@ namespace lx
 
 	Variable MemberAccessExpression::evaluate(Runtime& env) const
 	{
-		const MemberSignature& m = member();
+		const MemberSignature& m = member(env);
 		if (m.is_data())
 			return DataAccessor::invoke(_object.evaluate(env), env, m.identifier);
 		else
@@ -480,7 +480,10 @@ namespace lx
 
 	DataType MemberAccessExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		return member(ctx).data_type();
+		if (const MemberSignature* m = member(ctx))
+			return m->data_type();
+		else
+			return DataType::_Unresolved;
 	}
 
 	ScriptSegment MemberAccessExpression::impl_segment() const
@@ -488,12 +491,42 @@ namespace lx
 		return _object.segment().combined_right(_member_name.segment);
 	}
 
-	const MemberSignature& MemberAccessExpression::member(SemanticContext& ctx) const
+	const MemberSignature* MemberAccessExpression::member(SemanticContext& ctx) const
+	{
+		if (_member)
+			return &*_member;
+
+		DataType obj_type = _object.evaltype(ctx);
+		if (obj_type == DataType::_Unresolved)
+			return nullptr;
+
+		if (const auto members = data_type_members(obj_type))
+		{
+			auto it = members->find(_member_name.lexeme);
+			if (it != members->end())
+			{
+				const auto& member = it->second;
+				if (_callable ? member.is_method() : member.is_data())
+				{
+					_member = member;
+					return &*_member;
+				}
+			}
+		}
+
+		std::stringstream ss;
+		ss << "member " << _member_name.lexeme << " does not exist for type " << obj_type;
+		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& MemberAccessExpression::member(Runtime& env) const
 	{
 		if (_member)
 			return *_member;
 
-		if (const auto members = data_type_members(_object.evaltype(ctx)))
+		DataType obj_type = _object.evaluate(env).ref().data_type();
+
+		if (const auto members = data_type_members(obj_type))
 		{
 			auto it = members->find(_member_name.lexeme);
 			if (it != members->end())
@@ -508,20 +541,8 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << "member " << _member_name.lexeme << " does not exist for type " << _object.evaltype(ctx);
-		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
-	}
-
-	const MemberSignature& MemberAccessExpression::member() const
-	{
-		if (!_member)
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": member not set";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		else
-			return *_member;
+		ss << "member " << _member_name.lexeme << " does not exist for type " << obj_type;
+		throw LxError::segment_error(_member_name.segment, ErrorType::Runtime, ss.str());
 	}
 
 	const Expression& MemberAccessExpression::object() const
@@ -639,7 +660,10 @@ namespace lx
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		return member(ctx).return_type({_subscript.evaltype(ctx)}).value();
+		if (const MemberSignature* m = member(ctx))
+			return m->return_type({ _subscript.evaltype(ctx) }).value();
+		else
+			return DataType::_Unresolved;
 	}
 
 	ScriptSegment SubscriptExpression::impl_segment() const
@@ -647,18 +671,52 @@ namespace lx
 		return _container.segment().combined_right(_subscript.segment());
 	}
 
-	const MemberSignature& SubscriptExpression::member(SemanticContext& ctx) const
+	const MemberSignature* SubscriptExpression::member(SemanticContext& ctx) const
 	{
 		if (_member)
-			return *_member;
+			return &*_member;
 
-		if (const auto members = data_type_members(_container.evaltype(ctx)))
+		DataType container_type = _container.evaltype(ctx);
+		DataType subscript_type = _subscript.evaltype(ctx);
+
+		if (container_type == DataType::_Unresolved || subscript_type == DataType::_Unresolved)
+			return nullptr;
+
+		if (const auto members = data_type_members(container_type))
 		{
 			auto it = members->find(constants::SUBSCRIPT_OP);
 			if (it != members->end())
 			{
 				const auto& member = it->second;
-				if (member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
+				if (member.is_method() && member.return_type({ subscript_type }).has_value())
+				{
+					_member = member;
+					return &*_member;
+				}
+			}
+		}
+
+		std::stringstream ss;
+		ss << container_type << " does not support [] with index type " << subscript_type;
+		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& SubscriptExpression::member(Runtime& env) const
+	{
+		// TODO if using unresolved type, member might change. Don't use caching or type checking analysis for situations where unresolved types are unpredictable. Remove MemberSignature class altogether
+		if (_member)
+			return *_member;
+
+		DataType container_type = _container.evaluate(env).ref().data_type();
+		DataType subscript_type = _subscript.evaluate(env).ref().data_type();
+
+		if (const auto members = data_type_members(container_type))
+		{
+			auto it = members->find(constants::SUBSCRIPT_OP);
+			if (it != members->end())
+			{
+				const auto& member = it->second;
+				if (member.is_method() && member.return_type({ subscript_type }).has_value())
 				{
 					_member = member;
 					return *_member;
@@ -667,20 +725,8 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << _container.evaltype(ctx) << " does not support [] with index type " << _subscript.evaltype(ctx);
-		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
-	}
-
-	const MemberSignature& SubscriptExpression::member() const
-	{
-		if (!_member)
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": member not set";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-		else
-			return *_member;
+		ss << container_type << " does not support [] with index type " << subscript_type;
+		throw LxError::segment_error(_container.segment(), ErrorType::Runtime, ss.str());
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -900,7 +946,7 @@ namespace lx
 
 	Variable MethodCallExpression::evaluate(Runtime& env) const
 	{
-		const MemberSignature& m = _member.member();
+		const MemberSignature& m = _member.member(env);
 		if (m.is_method())
 		{
 			std::vector<Variable> args;
@@ -923,33 +969,37 @@ namespace lx
 
 	DataType MethodCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		const auto& m = _member.member(ctx);
-		if (m.is_method())
+		if (const MemberSignature* m = _member.member(ctx))
 		{
-			std::vector<DataType> arg_types;
-			for (Expression* arg : _args)
-				arg_types.push_back(arg->evaltype(ctx));
-
-			if (auto r = m.return_type(arg_types))
-				return *r;
-
-			std::stringstream ss;
-			ss << "no overloads exist for '" << m.identifier << "' with arguments (";
-			for (size_t i = 0; i < arg_types.size(); ++i)
+			if (m->is_method())
 			{
-				ss << arg_types[i];
-				if (i + 1 < arg_types.size())
-					ss << ", ";
+				std::vector<DataType> arg_types;
+				for (Expression* arg : _args)
+					arg_types.push_back(arg->evaltype(ctx));
+
+				if (auto r = m->return_type(arg_types))
+					return *r;
+
+				std::stringstream ss;
+				ss << "no overloads exist for '" << m->identifier << "' with arguments (";
+				for (size_t i = 0; i < arg_types.size(); ++i)
+				{
+					ss << arg_types[i];
+					if (i + 1 < arg_types.size())
+						ss << ", ";
+				}
+				ss << ")";
+				throw LxError(ErrorType::Internal, ss.str());
 			}
-			ss << ")";
-			throw LxError(ErrorType::Internal, ss.str());
+			else
+			{
+				std::stringstream ss;
+				ss << "'" << m->identifier << "' is not callable";
+				throw LxError(ErrorType::Internal, ss.str());
+			}
 		}
 		else
-		{
-			std::stringstream ss;
-			ss << "'" << m.identifier << "' is not callable";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
+			return DataType::_Unresolved;
 	}
 
 	ScriptSegment MethodCallExpression::impl_segment() const
@@ -964,7 +1014,7 @@ namespace lx
 
 	void FunctionDefinition::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
-		if (pass == AnalysisPass::RegisterFunctions)
+		if (pass == AnalysisPass::Registration)
 		{
 			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
 			{
@@ -1561,6 +1611,16 @@ namespace lx
 
 	void PatternDeclaration::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
+		if (pass == AnalysisPass::Registration)
+		{
+			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Global))
+			{
+				if (var->type != DataType::Pattern)
+					ctx.add_semantic_error(_identifier.segment, "global variable with same name already declared on line " + std::to_string(var->decl_line_number));
+			}
+			else
+				ctx.register_variable(_identifier.lexeme, DataType::Pattern, _identifier.segment.start_line, Namespace::Global);
+		}
 	}
 
 	ExecutionFlow PatternDeclaration::execute(Runtime& env) const

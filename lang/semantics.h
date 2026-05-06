@@ -16,6 +16,6 @@ namespace lx
 
 		const std::vector<LxError>& errors() const;
 		const std::vector<LxWarning>& warnings() const;
-		SemanticFunctionTable ftable();
+		SemanticFunctionTable& ftable();
 	};
 }

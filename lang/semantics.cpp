@@ -21,7 +21,7 @@ namespace lx
 		return _warnings;
 	}
 
-	SemanticFunctionTable SemanticAnalyser::ftable()
+	SemanticFunctionTable& SemanticAnalyser::ftable()
 	{
 		return _ftable;
 	}
