@@ -1,6 +1,7 @@
 #include "resolution.h"
 
 #include "errors.h"
+#include "ast.h"
 
 #include <sstream>
 
@@ -32,26 +33,46 @@ namespace lx
 		return _seen_functions.count(&fn);
 	}
 	
-	void VarConsistencyTest::see(const FunctionDefinition& fn)
+	void VarConsistencyTest::see(const FunctionDefinition& fn, const FunctionCallExpression& call_site)
 	{
 		_seen_functions.insert(&fn);
+		_call_stack.push_back(&call_site);
+		_declared_locals.push_back({});
 	}
 
-	void VarConsistencyTest::clear_functions()
+	void VarConsistencyTest::clear_stack()
 	{
 		_seen_functions.clear();
+		_call_stack.clear();
+		_declared_locals.clear();
 	}
 
-	void VarConsistencyTest::declare(const std::string_view var_identifier)
+	void VarConsistencyTest::exit_scope()
 	{
-		_declared_vars.insert(std::string(var_identifier));
+		_declared_locals.pop_back();
+	}
+
+	void VarConsistencyTest::declare_global(const std::string_view identifier)
+	{
+		_declared_vars.insert(std::string(identifier));
+	}
+
+	void VarConsistencyTest::declare_local(const std::string_view identifier)
+	{
+		_declared_locals.back().insert(std::string(identifier));
 	}
 
 	void VarConsistencyTest::test(SemanticContext& ctx, const Token& var) const
 	{
-		if (!_declared_vars.count(var.lexeme))
-			// TODO v0.2 print call stack that caused this
-			ctx.add_semantic_error(var.segment, "global variable may not be defined at this point in function call stack");
+		if (!_declared_vars.count(var.lexeme) && !_declared_locals.back().count(var.lexeme))
+		{
+			std::vector<ScriptSegment> segments;
+			segments.push_back(var.segment);
+			for (auto it = _call_stack.rbegin(); it != _call_stack.rend(); ++it)
+				segments.push_back((*it)->segment());
+
+			ctx.errors().push_back(LxError::batch_error(segments, ErrorType::Semantic, "global variable is not be defined at this point in function call stack"));
+		}
 	}
 
 	std::vector<LxError>& SemanticContext::errors()
@@ -206,18 +227,18 @@ namespace lx
 			if (ns == Namespace::Global)
 				return _global_variable_table.registered_variable(identifier);
 			
-			if (ns == Namespace::Unknown || _scope_stack.empty())
-			{
-				if (auto sig = _global_variable_table.registered_variable(identifier))
-					return sig;
-			}
-
 			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 			{
 				if (auto sig = it->table.registered_variable(identifier))
 					return sig;
 				else if (it->isolated)
 					break;
+			}
+
+			if (ns == Namespace::Unknown || _scope_stack.empty())
+			{
+				if (auto sig = _global_variable_table.registered_variable(identifier))
+					return sig;
 			}
 		}
 		catch (const LxError& error)

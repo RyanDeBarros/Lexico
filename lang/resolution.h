@@ -7,6 +7,8 @@
 
 namespace lx
 {
+	class FunctionCallExpression;
+
 	struct VariableSignature
 	{
 		unsigned int decl_line_number = 0;
@@ -33,14 +35,18 @@ namespace lx
 	class VarConsistencyTest
 	{
 		std::unordered_set<const FunctionDefinition*> _seen_functions;
+		std::vector<const FunctionCallExpression*> _call_stack;
 		StringSet _declared_vars;
+		std::vector<StringSet> _declared_locals;
 
 	public:
 		bool seen(const FunctionDefinition& fn) const;
-		void see(const FunctionDefinition& fn);
-		void clear_functions();
+		void see(const FunctionDefinition& fn, const FunctionCallExpression& call_site);
+		void clear_stack();
+		void exit_scope();
 
-		void declare(const std::string_view var_identifier);
+		void declare_global(const std::string_view identifier);
+		void declare_local(const std::string_view identifier);
 		void test(SemanticContext& ctx, const Token& var) const;
 	};
 

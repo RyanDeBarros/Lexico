@@ -103,6 +103,8 @@ namespace lx
 		virtual ExecutionFlow execute(Runtime& env) const override;
 
 	protected:
+		ExecutionFlow execute_subnodes(Runtime& env) const;
+
 		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		SemanticContext::LocalScope enter_scope(SemanticContext& ctx);
 		virtual void analyse_subnodes(SemanticContext& ctx, AnalysisPass pass);
@@ -394,6 +396,7 @@ namespace lx
 		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren);
 
 		Variable evaluate(Runtime& env) const override;
+		bool imperative() const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -402,6 +405,7 @@ namespace lx
 
 	public:
 		std::vector<DataType> arg_types(SemanticContext& ctx) const;
+		std::vector<DataType> arg_types() const;
 	};
 
 	class MethodCallExpression : public Expression
@@ -433,7 +437,7 @@ namespace lx
 		FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<FullTypeKeyword, Token>>&& arglist, std::optional<FullTypeKeyword>&& return_type);
 
 		ExecutionFlow execute(Runtime& env) const override;
-		InvokeResult invoke(Runtime& env) const;
+		InvokeResult invoke(Runtime& env, std::vector<Variable>&& arguments) const;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;

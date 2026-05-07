@@ -149,6 +149,10 @@ namespace lx
 		std::string_view first_line() const;
 		std::string line_number_prefix() const;
 
+		std::string underline(unsigned int tabs = 1) const;
+		std::string message(const std::string_view header) const;
+		static std::string batch_message(const std::vector<ScriptSegment>& segments, const std::string_view header);
+
 		ScriptSegment combined_right(ScriptSegment right) const;
 	};
 

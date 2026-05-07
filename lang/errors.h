@@ -27,9 +27,6 @@ namespace lx
 		std::string message() const;
 
 		virtual const char* what() const = 0;
-
-		static std::string underline(const ScriptSegment& segment, unsigned int tabs = 1);
-		static std::string segment_message(const ScriptSegment& segment, const std::string_view cause);
 	};
 
 	class LxError : public LxStatusMessage, public std::runtime_error
@@ -48,6 +45,7 @@ namespace lx
 		const char* what() const override;
 
 		static LxError segment_error(const ScriptSegment& segment, ErrorType type, const std::string_view cause);
+		static LxError batch_error(const std::vector<ScriptSegment>& segments, ErrorType type, const std::string_view cause);
 	};
 
 	class LxWarning : public LxStatusMessage

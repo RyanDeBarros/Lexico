@@ -132,9 +132,15 @@ namespace lx
 		auto scope = enter_scope(ctx);
 		analyse_subnodes(ctx, pass);
 	}
+
 	ExecutionFlow Block::execute(Runtime& env) const
 	{
 		Runtime::LocalScope local_scope(env, isolated());
+		return execute_subnodes(env);
+	}
+
+	ExecutionFlow Block::execute_subnodes(Runtime& env) const
+	{
 		ExecutionFlow flow{};
 		for (const ASTNode* node : _children)
 		{
@@ -265,6 +271,8 @@ namespace lx
 
 	ExecutionFlow Expression::execute(Runtime& env) const
 	{
+		if (imperative())
+			evaluate(env);
 		return {};
 	}
 
@@ -320,8 +328,13 @@ namespace lx
 			}
 		}
 
-		if (pass == AnalysisPass::VarConsistencySetup)
-			ctx.var_consistency_test().declare(_identifier.lexeme);
+		if (pass == AnalysisPass::VarConsistencySetup || pass == AnalysisPass::VarConsistencyExec)
+		{
+			if (_global)
+				ctx.var_consistency_test().declare_global(_identifier.lexeme);
+			else
+				ctx.var_consistency_test().declare_local(_identifier.lexeme);
+		}
 	}
 
 	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
@@ -744,8 +757,7 @@ namespace lx
 
 	Variable VariableExpression::evaluate(Runtime& env) const
 	{
-		// TODO should return a reference, not temporary
-		return env.temporary_variable(Void());
+		return env.registered_variable(_identifier.lexeme, Namespace::Unknown, segment());
 	}
 
 	DataType VariableExpression::impl_evaltype(SemanticContext& ctx) const
@@ -865,16 +877,16 @@ namespace lx
 			{
 				if (pass == AnalysisPass::VarConsistencySetup)
 				{
-					ctx.var_consistency_test().see(*fn->decl_node);
+					ctx.var_consistency_test().see(*fn->decl_node, *this);
 					fn->decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
-					ctx.var_consistency_test().clear_functions();
+					ctx.var_consistency_test().clear_stack();
 				}
 
-				if (pass == AnalysisPass::VarConsistencyExec)
+				if (pass == AnalysisPass::VarConsistencyExec && !ctx.var_consistency_test().seen(*fn->decl_node))
 				{
-					if (!ctx.var_consistency_test().seen(*fn->decl_node))
-						ctx.var_consistency_test().see(*fn->decl_node);
+					ctx.var_consistency_test().see(*fn->decl_node, *this);
 					fn->decl_node->analyse(ctx, pass);
+					ctx.var_consistency_test().exit_scope();
 				}
 			}
 		}
@@ -882,8 +894,16 @@ namespace lx
 
 	Variable FunctionCallExpression::evaluate(Runtime& env) const
 	{
-		// TODO return .invoke().data on registered function
-		return env.temporary_variable(Void());
+		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, arg_types(), segment());
+		std::vector<Variable> arguments;
+		for (const Expression* arg : _args)
+			arguments.push_back(arg->evaluate(env));
+		return fn.invoke(env, std::move(arguments)).data;
+	}
+
+	bool FunctionCallExpression::imperative() const
+	{
+		return true;
 	}
 
 	DataType FunctionCallExpression::impl_evaltype(SemanticContext& ctx) const
@@ -908,6 +928,14 @@ namespace lx
 		std::vector<DataType> args;
 		for (const Expression* arg : _args)
 			args.push_back(arg->evaltype(ctx));
+		return args;
+	}
+
+	std::vector<DataType> FunctionCallExpression::arg_types() const
+	{
+		std::vector<DataType> args;
+		for (const Expression* arg : _args)
+			args.push_back(arg->evaltype());
 		return args;
 	}
 
@@ -1052,7 +1080,6 @@ namespace lx
 
 		if (pass == AnalysisPass::Validation)
 		{
-
 			auto flow = block_upflow(ctx);
 
 			if (return_type().simple() != SimpleType::Void && !flow.always_returns)
@@ -1082,13 +1109,18 @@ namespace lx
 
 	ExecutionFlow FunctionDefinition::execute(Runtime& env) const
 	{
-		// TODO transfer function table before execution, so this execute() should do no operation
+		// NOP
 		return {};
 	}
 
-	InvokeResult FunctionDefinition::invoke(Runtime& env) const
+	InvokeResult FunctionDefinition::invoke(Runtime& env, std::vector<Variable>&& arguments) const
 	{
-		auto flow = Block::execute(env);
+		Runtime::LocalScope local_scope(env, isolated());
+
+		for (size_t i = 0; i < _arglist.size(); ++i)
+			env.register_variable(_arglist[i].second.lexeme, arguments[i].dp(), Namespace::Local);
+
+		auto flow = execute_subnodes(env);
 		return { .data = flow.data ? *flow.data : env.temporary_variable(Void()) };
 	}
 
@@ -1910,7 +1942,9 @@ namespace lx
 
 	ExecutionFlow FilterStatement::execute(Runtime& env) const
 	{
-		// TODO get registered function, and iterate over match objects in matches to filter
+		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
+		// TODO iterate over match in env.global_matches():
+		// if not fn.invoke(env, { match }).data.get<Bool>().value() -> discard
 		return {};
 	}
 

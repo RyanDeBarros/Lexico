@@ -121,18 +121,18 @@ namespace lx
 				throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 		}
 
-		if (ns == Namespace::Unknown || _scope_stack.empty())
-		{
-			if (auto sig = _global_variable_table.registered_variable(identifier))
-				return *sig;
-		}
-
 		for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
 		{
 			if (auto sig = it->table.registered_variable(identifier))
 				return *sig;
 			else if (it->isolated)
 				break;
+		}
+
+		if (ns == Namespace::Unknown || _scope_stack.empty())
+		{
+			if (auto sig = _global_variable_table.registered_variable(identifier))
+				return *sig;
 		}
 
 		throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
@@ -148,6 +148,25 @@ namespace lx
 		auto var = _heap.add(std::move(dp), false);
 		owner.own(var);
 		return var;
+	}
+
+	const FunctionDefinition& Runtime::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const
+	{
+		if (const FunctionDefinition* fn = _function_table.registered_function(identifier, arg_types))
+			return *fn;
+		else
+		{
+			std::stringstream ss;
+			ss << "no declaration matches the argument types (";
+			for (size_t i = 0; i < arg_types.size(); ++i)
+			{
+				ss << arg_types[i];
+				if (i + 1 < arg_types.size())
+					ss << ", ";
+			}
+			ss << ")";
+			throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+		}
 	}
 
 	void Runtime::declare_pattern(std::string_view identifier)

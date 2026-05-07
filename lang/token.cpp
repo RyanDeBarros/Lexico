@@ -1,5 +1,7 @@
 #include "token.h"
 
+#include "constants.h"
+
 #include <stdexcept>
 #include <sstream>
 
@@ -66,6 +68,74 @@ namespace lx
 		for (unsigned int i = 0; i < 4 - digit_count % 4; ++i)
 			line_number += " ";
 		return line_number;
+	}
+
+	std::string ScriptSegment::underline(unsigned int tabs) const
+	{
+		std::stringstream ss;
+
+		while (tabs > 0)
+		{
+			ss << constants::SPACED_TAB;
+			--tabs;
+		}
+
+		for (unsigned int i = 1; i < start_column; ++i)
+			ss << ' ';
+
+		ss << '^';
+
+		unsigned int ec = end_column;
+		if (start_line != end_line)
+		{
+			size_t line_length = script_lines[start_line].size();
+			ec = line_length > 0 ? line_length - 1 : 0;
+		}
+
+		for (unsigned int i = start_column + 1; i <= ec; ++i)
+			ss << '~';
+
+		return ss.str();
+	}
+
+	std::string ScriptSegment::message(const std::string_view header) const
+	{
+		std::stringstream ss;
+		ss << header;
+		ss << ":\n";
+		std::string line_number = line_number_prefix();
+		unsigned int tabs = 1 + line_number.size() / 4;
+		ss << constants::SPACED_TAB << line_number << first_line() << '\n' << underline(tabs);
+		return ss.str();
+	}
+
+	std::string ScriptSegment::batch_message(const std::vector<ScriptSegment>& segments, const std::string_view header)
+	{
+		std::stringstream ss;
+		ss << header;
+		ss << ":";
+
+		unsigned int max_tabs = 0;
+		std::vector<std::string> line_numbers;
+
+		for (const ScriptSegment& segment : segments)
+		{
+			std::string line_number = segment.line_number_prefix();
+			const unsigned int tabs = 1 + line_number.size() / 4;
+			max_tabs = std::max(max_tabs, tabs);
+			line_numbers.push_back(std::move(line_number));
+		}
+
+		for (size_t i = 0; i < segments.size(); ++i)
+		{
+			const unsigned int tabs = 1 + line_numbers[i].size() / 4;
+			ss << '\n' << constants::SPACED_TAB << line_numbers[i];
+			for (unsigned int j = 0; j < max_tabs - tabs; ++j)
+				ss << constants::SPACED_TAB;
+			ss << segments[i].first_line();
+		}
+
+		return ss.str();
 	}
 
 	ScriptSegment ScriptSegment::combined_right(ScriptSegment right) const
