@@ -1,6 +1,5 @@
 #include "basic.h"
 
-#include "unresolved.h"
 #include "pattern.h"
 #include "errors.h"
 #include "heap.h"
@@ -29,39 +28,44 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << "could not convert \"" << resolved << "\" to " << DataType::Int;
+			ss << "could not convert \"" << resolved << "\" to " << DataType::Int();
 			throw LxError(ErrorType::Runtime, ss.str());
 		}
 	}
 
-	TypeVariant Int::cast_copy(DataType type) const
+	DataType Int::data_type()
 	{
-		switch (type)
+		return DataType::Int();
+	}
+
+	TypeVariant Int::cast_copy(const DataType& type) const
+	{
+		switch (type.simple())
 		{
-		case DataType::Int:
+		case SimpleType::Int:
 			return *this;
-		case DataType::Float:
+		case SimpleType::Float:
 			return Float(static_cast<float>(_value));
-		case DataType::Bool:
+		case SimpleType::Bool:
 			return Bool(static_cast<bool>(_value));
-		case DataType::String:
+		case SimpleType::String:
 			return String(std::to_string(_value));
-		case DataType::IRange:
+		case SimpleType::IRange:
 			return IRange(_value, _value);
-		case DataType::Pattern:
+		case SimpleType::Pattern:
 		{
 			Pattern ptn;
 			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
 			return ptn;
 		}
-		case DataType::Void:
+		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(DataType::Int, type);
+			throw_bad_cast(data_type(), type);
 		}
 	}
 	
-	TypeVariant Int::cast_move(DataType type)
+	TypeVariant Int::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -91,37 +95,42 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << "could not convert \"" << resolved << "\" to " << DataType::Float;
+			ss << "could not convert \"" << resolved << "\" to " << DataType::Float();
 			throw LxError(ErrorType::Runtime, ss.str());
 		}
 	}
 
-	TypeVariant Float::cast_copy(DataType type) const
+	DataType Float::data_type()
 	{
-		switch (type)
+		return DataType::Float();
+	}
+
+	TypeVariant Float::cast_copy(const DataType& type) const
+	{
+		switch (type.simple())
 		{
-		case DataType::Int:
+		case SimpleType::Int:
 			return Int(static_cast<int>(_value));
-		case DataType::Float:
+		case SimpleType::Float:
 			return *this;
-		case DataType::Bool:
+		case SimpleType::Bool:
 			return Bool(static_cast<bool>(_value));
-		case DataType::String:
+		case SimpleType::String:
 			return String(std::to_string(_value));
-		case DataType::Pattern:
+		case SimpleType::Pattern:
 		{
 			Pattern ptn;
 			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
 			return ptn;
 		}
-		case DataType::Void:
+		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(DataType::Float, type);
+			throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant Float::cast_move(DataType type)
+	TypeVariant Float::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -151,31 +160,36 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << "could not convert \"" << resolved << "\" to " << DataType::Bool;
+			ss << "could not convert \"" << resolved << "\" to " << DataType::Bool();
 			throw LxError(ErrorType::Runtime, ss.str());
 		}
 	}
 
-	TypeVariant Bool::cast_copy(DataType type) const
+	DataType Bool::data_type()
 	{
-		switch (type)
+		return DataType::Bool();
+	}
+
+	TypeVariant Bool::cast_copy(const DataType& type) const
+	{
+		switch (type.simple())
 		{
-		case DataType::Int:
+		case SimpleType::Int:
 			return Int(static_cast<int>(_value));
-		case DataType::Float:
+		case SimpleType::Float:
 			return Float(static_cast<float>(_value));
-		case DataType::Bool:
+		case SimpleType::Bool:
 			return *this;
-		case DataType::String:
+		case SimpleType::String:
 			return String(_value ? "true" : "false");
-		case DataType::Void:
+		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(DataType::Bool, type);
+			throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant Bool::cast_move(DataType type)
+	TypeVariant Bool::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -206,36 +220,41 @@ namespace lx
 		return String(std::string(resolved));
 	}
 
-	TypeVariant String::cast_copy(DataType type) const
+	DataType String::data_type()
 	{
-		switch (type)
+		return DataType::String();
+	}
+
+	TypeVariant String::cast_copy(const DataType& type) const
+	{
+		switch (type.simple())
 		{
-		case DataType::Int:
+		case SimpleType::Int:
 			return Int::make_from_literal(_value);
-		case DataType::Float:
+		case SimpleType::Float:
 			return Float::make_from_literal(_value);
-		case DataType::Bool:
+		case SimpleType::Bool:
 			return Bool::make_from_literal(_value);
-		case DataType::String:
+		case SimpleType::String:
 			return *this;
-		case DataType::Pattern:
+		case SimpleType::Pattern:
 		{
 			Pattern ptn;
 			ptn.append(ptn.add(std::make_unique<SubpatternString>(_value)));
 			return ptn;
 		}
-		case DataType::Void:
+		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(DataType::String, type);
+			throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant String::cast_move(DataType type)
+	TypeVariant String::cast_move(const DataType& type)
 	{
-		if (type == DataType::String)
+		if (type.simple() == SimpleType::String)
 			return std::move(*this);
-		else if (type == DataType::Pattern)
+		else if (type.simple() == SimpleType::Pattern)
 		{
 			Pattern ptn;
 			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::move(_value))));
@@ -255,15 +274,20 @@ namespace lx
 		return _value;
 	}
 
-	TypeVariant Void::cast_copy(DataType type) const
+	DataType Void::data_type()
 	{
-		if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::Void, type);
+		return DataType::Void();
 	}
 
-	TypeVariant Void::cast_move(DataType type)
+	TypeVariant Void::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(data_type(), type);
+	}
+
+	TypeVariant Void::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -274,19 +298,24 @@ namespace lx
 		ss << "";
 	}
 
-	TypeVariant Match::cast_copy(DataType type) const
+	DataType Match::data_type()
 	{
-		if (type == DataType::Match)
-			return *this;
-		else if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::Match, type);
+		return DataType::Match();
 	}
 
-	TypeVariant Match::cast_move(DataType type)
+	TypeVariant Match::cast_copy(const DataType& type) const
 	{
-		if (type == DataType::Match)
+		if (type.simple() == SimpleType::Match)
+			return *this;
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(data_type(), type);
+	}
+
+	TypeVariant Match::cast_move(const DataType& type)
+	{
+		if (type.simple() == SimpleType::Match)
 			return std::move(*this);
 		else
 			return cast_copy(type);
@@ -295,22 +324,27 @@ namespace lx
 	void Match::print(std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of match
-		ss << DataType::Match;
+		ss << DataType::Match();
 	}
 
-	TypeVariant Matches::cast_copy(DataType type) const
+	DataType Matches::data_type()
 	{
-		if (type == DataType::Matches)
+		return DataType::Matches();
+	}
+
+	TypeVariant Matches::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::Matches)
 			return *this;
-		else if (type == DataType::Void)
+		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(DataType::Matches, type);
+			throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Matches::cast_move(DataType type)
+	TypeVariant Matches::cast_move(const DataType& type)
 	{
-		if (type == DataType::Matches)
+		if (type.simple() == SimpleType::Matches)
 			return std::move(*this);
 		else
 			return cast_copy(type);
@@ -319,7 +353,7 @@ namespace lx
 	void Matches::print(std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of matches
-		ss << DataType::Matches;
+		ss << DataType::Matches();
 	}
 
 	CapId::CapId(unsigned int uid)
@@ -327,17 +361,22 @@ namespace lx
 	{
 	}
 
-	TypeVariant CapId::cast_copy(DataType type) const
+	DataType CapId::data_type()
 	{
-		if (type == DataType::CapId)
-			return *this;
-		else if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::CapId, type);
+		return DataType::CapId();
 	}
 
-	TypeVariant CapId::cast_move(DataType type)
+	TypeVariant CapId::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::CapId)
+			return *this;
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(data_type(), type);
+	}
+
+	TypeVariant CapId::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -345,22 +384,27 @@ namespace lx
 
 	void CapId::print(std::stringstream& ss) const
 	{
-		ss << DataType::CapId;
+		ss << DataType::CapId();
 	}
 
-	TypeVariant Cap::cast_copy(DataType type) const
+	DataType Cap::data_type()
 	{
-		if (type == DataType::Cap)
+		return DataType::Cap();
+	}
+
+	TypeVariant Cap::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::Cap)
 			return *this;
-		else if (type == DataType::Void)
+		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(DataType::Cap, type);
+			throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Cap::cast_move(DataType type)
+	TypeVariant Cap::cast_move(const DataType& type)
 	{
-		if (type == DataType::Cap)
+		if (type.simple() == SimpleType::Cap)
 			return std::move(*this);
 		else
 		{
@@ -372,7 +416,7 @@ namespace lx
 	void Cap::print(std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of cap
-		ss << DataType::Cap;
+		ss << DataType::Cap();
 	}
 
 	IRange::IRange(std::optional<int> min, std::optional<int> max)
@@ -380,17 +424,22 @@ namespace lx
 	{
 	}
 
-	TypeVariant IRange::cast_copy(DataType type) const
+	DataType IRange::data_type()
 	{
-		if (type == DataType::IRange)
-			return *this;
-		else if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::IRange, type);
+		return DataType::IRange();
 	}
 
-	TypeVariant IRange::cast_move(DataType type)
+	TypeVariant IRange::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::IRange)
+			return *this;
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(data_type(), type);
+	}
+
+	TypeVariant IRange::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -475,15 +524,20 @@ namespace lx
 			throw LxErrorList(errors);
 	}
 
-	TypeVariant SRange::cast_copy(DataType type) const
+	DataType SRange::data_type()
 	{
-		switch (type)
+		return DataType::SRange();
+	}
+
+	TypeVariant SRange::cast_copy(const DataType& type) const
+	{
+		switch (type.simple())
 		{
-		case DataType::String:
+		case SimpleType::String:
 			return String(string());
-		case DataType::SRange:
+		case SimpleType::SRange:
 			return *this;
-		case DataType::Pattern:
+		case SimpleType::Pattern:
 		{
 			Pattern ptn;
 			auto& sub = ptn.add(std::make_unique<SubpatternDisjunction>());
@@ -492,14 +546,14 @@ namespace lx
 				sub.append(ptn.add(std::make_unique<SubpatternChar>(c)));
 			return ptn;
 		}
-		case DataType::Void:
+		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(DataType::SRange, type);
+			throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant SRange::cast_move(DataType type)
+	TypeVariant SRange::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(type);
@@ -564,19 +618,71 @@ namespace lx
 			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
 	}
 
-	TypeVariant List::cast_copy(DataType type) const
+	List::List(const DataType& underlying)
+		: _underlying(underlying)
 	{
-		if (type == DataType::List)
-			return *this;
-		else if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::List, type);
+		if (_underlying.simple() == SimpleType::Void)
+			// TODO use proper error type
+			throw LxError(ErrorType::Internal, "list cannot have void underlying type");
 	}
 
-	TypeVariant List::cast_move(DataType type)
+	List::List(DataType&& underlying)
+		: _underlying(std::move(underlying))
 	{
-		if (type == DataType::List)
+		if (_underlying.simple() == SimpleType::Void)
+			// TODO use proper error type
+			throw LxError(ErrorType::Internal, "list cannot have void underlying type");
+	}
+
+	static DataType underlying_of(const std::vector<Variable>& elements)
+	{
+		if (elements.empty())
+			// TODO use proper error type
+			throw LxError(ErrorType::Internal, "unresolved list cannot initialize with no elements");
+
+		std::vector<LxError> errors;
+		DataType underlying = elements[0].ref().data_type();
+		for (size_t i = 1; i < elements.size(); ++i)
+		{
+			if (elements[i].ref().data_type() != underlying)
+			{
+				// TODO use proper error type
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": element [" << i << "] has type " << elements[i].ref().data_type() << ", which doesn't match type of first element: " << underlying;
+				errors.push_back(LxError(ErrorType::Internal, ss.str()));
+			}
+		}
+
+		if (errors.empty())
+			return underlying;
+		else
+			throw LxErrorList(errors);
+	}
+
+	List::List(std::vector<Variable>&& elements)
+		: _underlying(underlying_of(elements))
+	{
+		_elements = std::move(elements);
+	}
+
+	DataType List::data_type() const
+	{
+		return DataType::List(_underlying);
+	}
+
+	TypeVariant List::cast_copy(const DataType& type) const
+	{
+		if (type == DataType::List(_underlying))
+			return *this;
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(data_type(), type);
+	}
+
+	TypeVariant List::cast_move(const DataType& type)
+	{
+		if (type == DataType::List(_underlying))
 			return std::move(*this);
 		else
 			return cast_copy(type);
@@ -594,14 +700,27 @@ namespace lx
 		ss << "]";
 	}
 
-	void List::push(const Variable& element)
+	bool List::push(const Variable& element)
 	{
-		// TODO no need for own/disown if List already keeps Variable alive
-		_elements.push_back(element);
+		if (element.ref().data_type() == _underlying)
+		{
+			// TODO no need for own/disown if List already keeps Variable alive
+			_elements.push_back(element);
+			return true;
+		}
+		else
+			return false;
 	}
 
-	void List::push(Variable&& element)
+	bool List::push(Variable&& element)
 	{
-		_elements.push_back(std::move(element));
+		if (element.ref().data_type() == _underlying)
+		{
+			// TODO only push if element matches underlying type
+			_elements.push_back(std::move(element));
+			return true;
+		}
+		else
+			return false;
 	}
 }

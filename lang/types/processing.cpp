@@ -19,7 +19,7 @@ namespace lx
 		if (!var.ref().holds<Pattern>())
 		{
 			std::stringstream ss;
-			ss << "expected " << DataType::Pattern << " but resolved to " << var.ref().data_type() << " instead";
+			ss << "expected " << DataType::Pattern() << " but resolved to " << var.ref().data_type() << " instead";
 			throw LxError::segment_error(var_segment, ErrorType::Runtime, ss.str());
 		}
 

@@ -9,9 +9,23 @@
 #include "resolution.h"
 #include "runtime.h"
 #include "types/datapoint.h"
+#include "types/member.h"
 
 namespace lx
 {
+	class FullTypeKeyword
+	{
+		TokenType _simple;
+		ScriptSegment _segment;
+		std::vector<TokenType> _underlying;
+
+	public:
+		FullTypeKeyword(const Token& simple, const std::vector<Token>& underlying);
+
+		DataType type() const;
+		const ScriptSegment& segment() const;
+	};
+
 	class ReturnStatement;
 	class BreakStatement;
 	class ContinueStatement;
@@ -206,12 +220,13 @@ namespace lx
 
 	class ListExpression : public Expression
 	{
+		mutable std::optional<DataType> _underlying;
 		std::vector<Expression*> _elements;
 		Token _lbracket_token;
 		Token _rbracket_token;
 
 	public:
-		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements);
+		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements, std::optional<DataType>&& underlying);
 
 		Variable evaluate(Runtime& env) const override;
 
@@ -260,8 +275,8 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		const MemberSignature* member(SemanticContext& ctx) const;
-		const MemberSignature& member(Runtime& env) const;
+		const MemberSignature& member(SemanticContext& ctx) const;
+		const MemberSignature& member() const;
 		const Expression& object() const;
 
 		void set_callable(bool callable);
@@ -289,10 +304,10 @@ namespace lx
 	class AsExpression : public Expression
 	{
 		Expression& _expr;
-		Token _type;
+		FullTypeKeyword _type;
 
 	public:
-		AsExpression(Expression& expr, Token&& type);
+		AsExpression(Expression& expr, FullTypeKeyword&& type);
 
 		Variable evaluate(Runtime& env) const override;
 
@@ -319,8 +334,8 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 
 	public:
-		const MemberSignature* member(SemanticContext& ctx) const;
-		const MemberSignature& member(Runtime& env) const;
+		const MemberSignature& member(SemanticContext& ctx) const;
+		const MemberSignature& member() const;
 	};
 
 	class VariableExpression : public Expression
@@ -411,11 +426,11 @@ namespace lx
 	{
 		Token _fn_token;
 		Token _identifier;
-		std::vector<std::pair<Token, Token>> _arglist;
-		std::optional<Token> _return_type;
+		std::vector<std::pair<FullTypeKeyword, Token>> _arglist;
+		std::optional<FullTypeKeyword> _return_type;
 
 	public:
-		FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type);
+		FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<FullTypeKeyword, Token>>&& arglist, std::optional<FullTypeKeyword>&& return_type);
 
 		ExecutionFlow execute(Runtime& env) const override;
 		InvokeResult invoke(Runtime& env) const;

@@ -10,7 +10,7 @@ namespace lx
 	struct VariableSignature
 	{
 		unsigned int decl_line_number = 0;
-		DataType type = DataType::Void;
+		DataType type = DataType::Void();
 	};
 
 	class SemanticVariableTable
@@ -19,7 +19,7 @@ namespace lx
 
 	public:
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier) const;
-		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number);
+		void register_variable(const std::string_view identifier, DataType&& type, unsigned int line_number);
 	};
 
 	struct SemanticScopeContext
@@ -86,13 +86,12 @@ namespace lx
 		std::optional<unsigned int> identifier_first_decl_line_number(const std::string_view identifier, Namespace ns);
 
 		std::optional<VariableSignature> registered_variable(const std::string_view identifier, Namespace ns);
-		void register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns);
+		void register_variable(const std::string_view identifier, DataType&& type, unsigned int line_number, Namespace ns);
 		void register_pattern(const std::string_view identifier);
 
-		std::vector<FunctionSignature> registered_functions(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
-		std::optional<FunctionSignature> known_registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
+		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
 		FunctionCallSet registered_function_calls(const std::string_view identifier) const;
-		void register_function(FunctionDefinition& decl_node, const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
+		void register_function(FunctionDefinition& decl_node, const std::string_view identifier, DataType&& return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 		SemanticFunctionTable& ftable();
 	};
 }

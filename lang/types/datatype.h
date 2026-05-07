@@ -2,10 +2,12 @@
 
 #include <ostream>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace lx
 {
-	enum class DataType
+	enum class SimpleType
 	{
 		Int,
 		Float,
@@ -20,12 +22,56 @@ namespace lx
 		IRange,
 		SRange,
 		List,
-
-		// Internal
-		_Unresolved,
 	};
 
-	extern std::string friendly_name(DataType type);
+	class MemberSignature;
 
-	extern std::ostream& operator<<(std::ostream& os, DataType type);
+	class DataType
+	{
+		SimpleType _simple;
+		std::unique_ptr<DataType> _underlying;
+
+		explicit DataType(SimpleType simple);
+		DataType(SimpleType simple, SimpleType underlying);
+		DataType(SimpleType simple, const DataType& underlying);
+		DataType(SimpleType simple, DataType&& underlying);
+
+	public:
+		DataType(const DataType& other);
+		DataType(DataType&& other) noexcept = default;
+		DataType& operator=(const DataType& other);
+		DataType& operator=(DataType&& other) noexcept = default;
+
+		static DataType Int();
+		static DataType Float();
+		static DataType Bool();
+		static DataType String();
+		static DataType Void();
+		static DataType Pattern();
+		static DataType Match();
+		static DataType Matches();
+		static DataType CapId();
+		static DataType Cap();
+		static DataType IRange();
+		static DataType SRange();
+		static DataType List(const DataType& underlying);
+		static DataType List(DataType&& underlying);
+
+		std::string repr() const;
+		SimpleType simple() const;
+		const DataType& underlying() const;
+		size_t hash() const;
+
+		bool operator==(const DataType& other) const;
+
+		bool member(const std::string_view name, MemberSignature& signature) const;
+	};
+
+	extern std::ostream& operator<<(std::ostream& os, const DataType& type);
 }
+
+template<>
+struct std::hash<lx::DataType>
+{
+	size_t operator()(const lx::DataType&) const;
+};

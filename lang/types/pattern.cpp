@@ -1,7 +1,6 @@
 #include "pattern.h"
 
 #include "basic.h"
-#include "unresolved.h"
 
 #include <sstream>
 
@@ -201,20 +200,25 @@ namespace lx
 		return *this;
 	}
 
-	TypeVariant Pattern::cast_copy(DataType type) const
+	DataType Pattern::data_type()
 	{
-		if (type == DataType::Pattern)
-			return Pattern(*this);
-		else if (type == DataType::Void)
-			return Void();
-		else
-			throw_bad_cast(DataType::Pattern, type);
+		return DataType::Pattern();
 	}
 
-	TypeVariant Pattern::cast_move(DataType type)
+	TypeVariant Pattern::cast_copy(const DataType& type) const
+	{
+		if (type.simple() == SimpleType::Pattern)
+			return Pattern(*this);
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else
+			throw_bad_cast(DataType::Pattern(), type);
+	}
+
+	TypeVariant Pattern::cast_move(const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		if (type == DataType::Pattern)
+		if (type.simple() == SimpleType::Pattern)
 			return Pattern(std::move(*this));
 		else
 			return cast_copy(type);
@@ -223,7 +227,7 @@ namespace lx
 	void Pattern::print(std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of pattern
-		ss << DataType::Pattern;
+		ss << DataType::Pattern();
 	}
 
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)

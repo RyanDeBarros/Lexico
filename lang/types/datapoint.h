@@ -3,7 +3,6 @@
 #include "declarations.h"
 #include "pattern.h"
 #include "basic.h"
-#include "unresolved.h"
 
 namespace lx
 {
@@ -43,27 +42,21 @@ namespace lx
 		}
 
 		template<Type T>
-		T copy_as() const
-		{
-			return std::get<T>(std::visit([](const auto& v) { return v.cast_copy(to_enum<T>); }, _storage));
-		}
-
-		template<Type T>
 		T move_as()
 		{
-			return std::get<T>(std::visit([](auto&& v) { return v.cast_move(to_enum<T>); }, std::move(_storage)));
+			return std::get<T>(std::visit([](auto&& v) { return v.cast_move(T::data_type()); }, std::move(_storage)));
 		}
 
-		DataPoint cast_copy(DataType type) const;
-		DataPoint cast_move(DataType type);
+		DataPoint cast_copy(const DataType& type) const;
+		DataPoint cast_move(const DataType& type);
 
-		template<typename To, typename From> requires Type<std::decay_t<From>>
-		static TypeVariant cast_type(From&& obj)
+		template<typename From> requires Type<std::decay_t<From>>
+		static TypeVariant cast_type(From&& obj, const DataType& to)
 		{
 			if constexpr (std::is_rvalue_reference_v<From&&>)
-				return std::forward<From>(obj).cast_move(to_enum<To>);
+				return std::forward<From>(obj).cast_move(to);
 			else
-				return obj.cast_copy(to_enum<To>);
+				return obj.cast_copy(to);
 		}
 
 		template<typename T> requires Type<std::decay_t<T>>
@@ -71,15 +64,15 @@ namespace lx
 		{
 			std::visit([&](auto& v) {
 				using To = std::decay_t<decltype(v)>;
-				v = std::get<To>(cast_type<To>(std::forward<T>(obj)));
+				v = std::get<To>(cast_type(std::forward<T>(obj), v.data_type()));
 			}, _storage);
 		}
 
 		void set(const DataPoint& other);
 		void set(DataPoint&& other);
 
-		bool can_cast_implicit(DataType to) const;
-		bool can_cast_explicit(DataType to) const;
+		bool can_cast_implicit(const DataType& to) const;
+		bool can_cast_explicit(const DataType& to) const;
 
 		DataType data_type() const;
 

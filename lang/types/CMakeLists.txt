@@ -4,7 +4,7 @@ set(TYPES_SOURCES
 	basic.cpp
 	pattern.cpp
 	declarations.cpp
-	unresolved.cpp
+	member.cpp
 	variable.cpp
 	heap.cpp
 	accessor.cpp

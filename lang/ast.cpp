@@ -34,6 +34,23 @@ namespace lx
 		}
 	}
 
+	FullTypeKeyword::FullTypeKeyword(const Token& simple, const std::vector<Token>& underlying)
+		: _simple(simple.type), _segment(underlying.empty() ? simple.segment : simple.segment.combined_right(underlying.back().segment))
+	{
+		for (const Token& token : underlying)
+			_underlying.push_back(token.type);
+	}
+
+	DataType FullTypeKeyword::type() const
+	{
+		return data_type(_simple, _underlying);
+	}
+
+	const ScriptSegment& FullTypeKeyword::segment() const
+	{
+		return _segment;
+	}
+
 	void UpflowInfo::merge_loop_control(const UpflowInfo& other)
 	{
 		may_break |= other.may_break;
@@ -352,8 +369,8 @@ namespace lx
 		return _literal.segment;
 	}
 
-	ListExpression::ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements)
-		: _lbracket_token(std::move(lbracket_token)), _rbracket_token(std::move(rbracket_token)), _elements(std::move(elements))
+	ListExpression::ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements, std::optional<DataType>&& underlying)
+		: _lbracket_token(std::move(lbracket_token)), _rbracket_token(std::move(rbracket_token)), _elements(std::move(elements)), _underlying(std::move(underlying))
 	{
 	}
 	
@@ -362,6 +379,8 @@ namespace lx
 		if (pass == AnalysisPass::Validation)
 		{
 			_validated = true;
+			for (Expression* expr : _elements)
+				expr->analyse(ctx, pass);
 			evaltype(ctx);
 		}
 	}
@@ -369,19 +388,17 @@ namespace lx
 	Variable ListExpression::evaluate(Runtime& env) const
 	{
 		std::vector<LxError> errors;
-		Variable list_handle = env.temporary_variable(List());
+		Variable list_handle = env.temporary_variable(List(*_underlying));
 		List& list = list_handle.ref().get<List>();
 
 		for (const Expression* expr : _elements)
 		{
 			TypeVariant v = std::move(expr->evaluate(env).dp().variant());
-			try
+			if (!list.push(env.unnamed_variable(list_handle, std::move(v))))
 			{
-				list.push(env.unnamed_variable(list_handle, std::move(v)));
-			}
-			catch (const LxError&)
-			{
-				errors.push_back(LxError::segment_error(expr->segment(), ErrorType::Runtime, "does not resolve to a public type"));
+				std::stringstream ss;
+				ss << "list underlying type is " << *_underlying << ", but element resolved to " << expr->evaltype();
+				errors.push_back(LxError::segment_error(expr->segment(), ErrorType::Runtime, ss.str()));
 			}
 		}
 
@@ -393,7 +410,26 @@ namespace lx
 
 	DataType ListExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		return DataType::List;
+		if (!_underlying)
+		{
+			if (_elements.empty())
+				throw LxError::segment_error(segment(), ErrorType::Internal, "list expression with unresolved type can not analyse type with no elements");
+
+			std::vector<LxError> errors;
+			DataType underlying = _elements[0]->evaltype(ctx);
+			for (size_t i = 1; i < _elements.size(); ++i)
+			{
+				if (_elements[i]->evaltype() != underlying)
+				{
+					std::stringstream ss;
+					ss << "first element in list has type " << *_underlying << ", but element resolved to " << _elements[i]->evaltype();
+					errors.push_back(LxError::segment_error(_elements[i]->segment(), ErrorType::Runtime, ss.str()));
+				}
+			}
+			_underlying = std::move(underlying);
+		}
+
+		return DataType::List(*_underlying);
 	}
 
 	ScriptSegment ListExpression::impl_segment() const
@@ -436,7 +472,7 @@ namespace lx
 			std::stringstream ss;
 			ss << ": operator not defined for types " << _left.evaltype(ctx) << " and " << _right.evaltype(ctx);
 			ctx.add_semantic_error(_op, ss.str());
-			return DataType::Void;
+			return DataType::Void();
 		}
 	}
 
@@ -467,23 +503,20 @@ namespace lx
 
 	Variable MemberAccessExpression::evaluate(Runtime& env) const
 	{
-		const MemberSignature& m = member(env);
+		const MemberSignature& m = member();
 		if (m.is_data())
-			return DataAccessor::invoke(_object.evaluate(env), env, m.identifier);
+			return DataAccessor::invoke(_object.evaluate(env), env, m.identifier());
 		else
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": member \"" << m.identifier << "\" is not data layout";
+			ss << __FUNCTION__ << ": member \"" << m.identifier() << "\" is not data layout";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 	}
 
 	DataType MemberAccessExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		if (const MemberSignature* m = member(ctx))
-			return m->data_type();
-		else
-			return DataType::_Unresolved;
+		return member(ctx).data_type();
 	}
 
 	ScriptSegment MemberAccessExpression::impl_segment() const
@@ -491,58 +524,36 @@ namespace lx
 		return _object.segment().combined_right(_member_name.segment);
 	}
 
-	const MemberSignature* MemberAccessExpression::member(SemanticContext& ctx) const
-	{
-		if (_member)
-			return &*_member;
-
-		DataType obj_type = _object.evaltype(ctx);
-		if (obj_type == DataType::_Unresolved)
-			return nullptr;
-
-		if (const auto members = data_type_members(obj_type))
-		{
-			auto it = members->find(_member_name.lexeme);
-			if (it != members->end())
-			{
-				const auto& member = it->second;
-				if (_callable ? member.is_method() : member.is_data())
-				{
-					_member = member;
-					return &*_member;
-				}
-			}
-		}
-
-		std::stringstream ss;
-		ss << "member " << _member_name.lexeme << " does not exist for type " << obj_type;
-		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
-	}
-
-	const MemberSignature& MemberAccessExpression::member(Runtime& env) const
+	const MemberSignature& MemberAccessExpression::member(SemanticContext& ctx) const
 	{
 		if (_member)
 			return *_member;
 
-		DataType obj_type = _object.evaluate(env).ref().data_type();
-
-		if (const auto members = data_type_members(obj_type))
+		MemberSignature member;
+		if (_object.evaltype(ctx).member(_member_name.lexeme, member))
 		{
-			auto it = members->find(_member_name.lexeme);
-			if (it != members->end())
+			if (_callable ? member.is_method() : member.is_data())
 			{
-				const auto& member = it->second;
-				if (_callable ? member.is_method() : member.is_data())
-				{
-					_member = member;
-					return *_member;
-				}
+				_member = std::move(member);
+				return *_member;
 			}
 		}
 
 		std::stringstream ss;
-		ss << "member " << _member_name.lexeme << " does not exist for type " << obj_type;
-		throw LxError::segment_error(_member_name.segment, ErrorType::Runtime, ss.str());
+		ss << "member " << _member_name.lexeme << " does not exist for type " << _object.evaltype(ctx);
+		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& MemberAccessExpression::member() const
+	{
+		if (_member)
+			return *_member;
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member not set";
+			throw LxError::segment_error(segment(), ErrorType::Internal, ss.str());
+		}
 	}
 
 	const Expression& MemberAccessExpression::object() const
@@ -584,7 +595,7 @@ namespace lx
 			std::stringstream ss;
 			ss << ": operator not defined for type " << _expr.evaltype(ctx);
 			ctx.add_semantic_error(_op, ss.str());
-			return DataType::Void;
+			return DataType::Void();
 		}
 	}
 
@@ -598,7 +609,7 @@ namespace lx
 		return prefix_operator(_op.type);
 	}
 
-	AsExpression::AsExpression(Expression& expr, Token&& type)
+	AsExpression::AsExpression(Expression& expr, FullTypeKeyword&& type)
 		: _expr(expr), _type(std::move(type))
 	{
 	}
@@ -615,26 +626,26 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(data_type(_type.type)));
+		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(_type.type()));
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		DataType return_type = data_type(_type.type);
+		DataType return_type = _type.type();
 		if (can_cast_explicit(_expr.evaltype(ctx), return_type))
 			return return_type;
 		else
 		{
 			std::stringstream ss;
 			ss << "cannot convert from " << _expr.evaltype(ctx) << " to " << return_type;
-			ctx.add_semantic_error(_type, ss.str());
-			return DataType::Void;
+			ctx.add_semantic_error(_type.segment(), ss.str());
+			return DataType::Void();
 		}
 	}
 
 	ScriptSegment AsExpression::impl_segment() const
 	{
-		return _expr.segment().combined_right(_type.segment);
+		return _expr.segment().combined_right(_type.segment());
 	}
 
 	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
@@ -660,10 +671,7 @@ namespace lx
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		if (const MemberSignature* m = member(ctx))
-			return m->return_type({ _subscript.evaltype(ctx) }).value();
-		else
-			return DataType::_Unresolved;
+		return member(ctx).return_type({ _subscript.evaltype(ctx) }).value();
 	}
 
 	ScriptSegment SubscriptExpression::impl_segment() const
@@ -671,62 +679,36 @@ namespace lx
 		return _container.segment().combined_right(_subscript.segment());
 	}
 
-	const MemberSignature* SubscriptExpression::member(SemanticContext& ctx) const
+	const MemberSignature& SubscriptExpression::member(SemanticContext& ctx) const
 	{
-		if (_member)
-			return &*_member;
-
-		DataType container_type = _container.evaltype(ctx);
-		DataType subscript_type = _subscript.evaltype(ctx);
-
-		if (container_type == DataType::_Unresolved || subscript_type == DataType::_Unresolved)
-			return nullptr;
-
-		if (const auto members = data_type_members(container_type))
-		{
-			auto it = members->find(constants::SUBSCRIPT_OP);
-			if (it != members->end())
-			{
-				const auto& member = it->second;
-				if (member.is_method() && member.return_type({ subscript_type }).has_value())
-				{
-					_member = member;
-					return &*_member;
-				}
-			}
-		}
-
-		std::stringstream ss;
-		ss << container_type << " does not support [] with index type " << subscript_type;
-		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
-	}
-
-	const MemberSignature& SubscriptExpression::member(Runtime& env) const
-	{
-		// TODO if using unresolved type, member might change. Don't use caching or type checking analysis for situations where unresolved types are unpredictable. Remove MemberSignature class altogether
 		if (_member)
 			return *_member;
 
-		DataType container_type = _container.evaluate(env).ref().data_type();
-		DataType subscript_type = _subscript.evaluate(env).ref().data_type();
-
-		if (const auto members = data_type_members(container_type))
+		MemberSignature member;
+		if (_container.evaltype(ctx).member(constants::SUBSCRIPT_OP, member))
 		{
-			auto it = members->find(constants::SUBSCRIPT_OP);
-			if (it != members->end())
+			if (member.is_method() && member.return_type({ _subscript.evaltype(ctx) }).has_value())
 			{
-				const auto& member = it->second;
-				if (member.is_method() && member.return_type({ subscript_type }).has_value())
-				{
-					_member = member;
-					return *_member;
-				}
+				_member = std::move(member);
+				return *_member;
 			}
 		}
 
 		std::stringstream ss;
-		ss << container_type << " does not support [] with index type " << subscript_type;
-		throw LxError::segment_error(_container.segment(), ErrorType::Runtime, ss.str());
+		ss << _container.evaltype(ctx) << " does not support [] with index type " << _subscript.evaltype(ctx);
+		throw LxError::segment_error(_container.segment(), ErrorType::Semantic, ss.str());
+	}
+
+	const MemberSignature& SubscriptExpression::member() const
+	{
+		if (_member)
+			return *_member;
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": member not set";
+			throw LxError::segment_error(segment(), ErrorType::Internal, ss.str());
+		}
 	}
 
 	VariableExpression::VariableExpression(Token&& identifier)
@@ -804,7 +786,7 @@ namespace lx
 
 	DataType GlobalMatchesExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		return DataType::Matches;
+		return DataType::Matches();
 	}
 
 	ScriptSegment GlobalMatchesExpression::impl_segment() const
@@ -833,7 +815,7 @@ namespace lx
 
 	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		return DataType::Pattern;
+		return DataType::Pattern();
 	}
 
 	ScriptSegment PatternSymbolExpression::impl_segment() const
@@ -861,7 +843,7 @@ namespace lx
 					arg->analyse(ctx, pass);
 
 				auto argtypes = arg_types(ctx);
-				if (ctx.registered_functions(_identifier.lexeme, argtypes).empty())
+				if (!ctx.registered_function(_identifier.lexeme, argtypes))
 				{
 					std::stringstream ss;
 					ss << "no declaration of '" << _identifier.lexeme << "' matches the argument types (";
@@ -879,20 +861,20 @@ namespace lx
 
 		if (_validated)
 		{
-			for (const auto& fn : ctx.registered_functions(_identifier.lexeme, arg_types(ctx)))
+			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
 			{
 				if (pass == AnalysisPass::VarConsistencySetup)
 				{
-					ctx.var_consistency_test().see(*fn.decl_node);
-					fn.decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
+					ctx.var_consistency_test().see(*fn->decl_node);
+					fn->decl_node->analyse(ctx, AnalysisPass::VarConsistencyExec);
 					ctx.var_consistency_test().clear_functions();
 				}
 
 				if (pass == AnalysisPass::VarConsistencyExec)
 				{
-					if (!ctx.var_consistency_test().seen(*fn.decl_node))
-						ctx.var_consistency_test().see(*fn.decl_node);
-					fn.decl_node->analyse(ctx, pass);
+					if (!ctx.var_consistency_test().seen(*fn->decl_node))
+						ctx.var_consistency_test().see(*fn->decl_node);
+					fn->decl_node->analyse(ctx, pass);
 				}
 			}
 		}
@@ -906,11 +888,8 @@ namespace lx
 
 	DataType FunctionCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		auto fns = ctx.registered_functions(_identifier.lexeme, arg_types(ctx));
-		if (fns.size() == 1)
-			return fns[0].return_type;
-		else if (!fns.empty())
-			return DataType::_Unresolved;
+		if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types(ctx)))
+			return fn->return_type;
 		else
 		{
 			std::stringstream ss;
@@ -926,9 +905,9 @@ namespace lx
 
 	std::vector<DataType> FunctionCallExpression::arg_types(SemanticContext& ctx) const
 	{
-		std::vector<DataType> args(_args.size());
-		for (size_t i = 0; i < args.size(); ++i)
-			args[i] = _args[i]->evaltype(ctx);
+		std::vector<DataType> args;
+		for (const Expression* arg : _args)
+			args.push_back(arg->evaltype(ctx));
 		return args;
 	}
 
@@ -961,18 +940,18 @@ namespace lx
 
 	Variable MethodCallExpression::evaluate(Runtime& env) const
 	{
-		const MemberSignature& m = _member.member(env);
+		const MemberSignature& m = _member.member();
 		if (m.is_method())
 		{
 			std::vector<Variable> args;
 			for (const Expression* expr : _args)
 				args.push_back(expr->evaluate(env));
-			return MethodAccessor::invoke(_member.object().evaluate(env), env, m.identifier, args);
+			return MethodAccessor::invoke(_member.object().evaluate(env), env, m.identifier(), args);
 		}
 		else
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": member \"" << m.identifier << "\" is not method";
+			ss << __FUNCTION__ << ": member \"" << m.identifier() << "\" is not method";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 	}
@@ -984,37 +963,33 @@ namespace lx
 
 	DataType MethodCallExpression::impl_evaltype(SemanticContext& ctx) const
 	{
-		if (const MemberSignature* m = _member.member(ctx))
+		const MemberSignature& m = _member.member(ctx);
+		if (m.is_method())
 		{
-			if (m->is_method())
-			{
-				std::vector<DataType> arg_types;
-				for (Expression* arg : _args)
-					arg_types.push_back(arg->evaltype(ctx));
+			std::vector<DataType> arg_types;
+			for (Expression* arg : _args)
+				arg_types.push_back(arg->evaltype(ctx));
 
-				if (auto r = m->return_type(arg_types))
-					return *r;
+			if (auto r = m.return_type(arg_types))
+				return *r;
 
-				std::stringstream ss;
-				ss << "no overloads exist for '" << m->identifier << "' with arguments (";
-				for (size_t i = 0; i < arg_types.size(); ++i)
-				{
-					ss << arg_types[i];
-					if (i + 1 < arg_types.size())
-						ss << ", ";
-				}
-				ss << ")";
-				throw LxError(ErrorType::Internal, ss.str());
-			}
-			else
+			std::stringstream ss;
+			ss << "no overloads exist for '" << m.identifier() << "' with arguments (";
+			for (size_t i = 0; i < arg_types.size(); ++i)
 			{
-				std::stringstream ss;
-				ss << "'" << m->identifier << "' is not callable";
-				throw LxError(ErrorType::Internal, ss.str());
+				ss << arg_types[i];
+				if (i + 1 < arg_types.size())
+					ss << ", ";
 			}
+			ss << ")";
+			throw LxError(ErrorType::Internal, ss.str());
 		}
 		else
-			return DataType::_Unresolved;
+		{
+			std::stringstream ss;
+			ss << "'" << m.identifier() << "' is not callable";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	ScriptSegment MethodCallExpression::impl_segment() const
@@ -1022,7 +997,7 @@ namespace lx
 		return _member.segment().combined_right(_closing_paren.segment);
 	}
 
-	FunctionDefinition::FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<Token, Token>>&& arglist, std::optional<Token>&& return_type)
+	FunctionDefinition::FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<FullTypeKeyword, Token>>&& arglist, std::optional<FullTypeKeyword>&& return_type)
 		: _fn_token(std::move(fn_token)), _identifier(std::move(identifier)), _arglist(std::move(arglist)), _return_type(std::move(return_type))
 	{
 	}
@@ -1037,7 +1012,7 @@ namespace lx
 				return;
 			}
 		
-			if (auto fn = ctx.known_registered_function(_identifier.lexeme, arg_types()))
+			if (auto fn = ctx.registered_function(_identifier.lexeme, arg_types()))
 			{
 				ctx.add_semantic_error(_identifier, "function with matching argument types already declared on line " + std::to_string(fn->decl_line_number));
 				return;
@@ -1068,8 +1043,9 @@ namespace lx
 
 		if (pass == AnalysisPass::Validation)
 		{
+			auto argtypes = arg_types();
 			for (size_t i = 0; i < _arglist.size(); ++i)
-				ctx.register_variable(_arglist[i].second.lexeme, data_type(_arglist[i].first.type), _arglist[i].second.segment.start_line, Namespace::Local);
+				ctx.register_variable(_arglist[i].second.lexeme, std::move(argtypes[i]), _arglist[i].second.segment.start_line, Namespace::Local);
 		}
 
 		IsolationBlock::analyse_subnodes(ctx, pass);
@@ -1079,7 +1055,7 @@ namespace lx
 
 			auto flow = block_upflow(ctx);
 
-			if (return_type() != DataType::Void && !flow.always_returns)
+			if (return_type().simple() != SimpleType::Void && !flow.always_returns)
 				ctx.add_semantic_error(_identifier, "not all control paths return a value");
 
 			for (const ReturnStatement* r : flow.live_returns)
@@ -1130,7 +1106,7 @@ namespace lx
 	{
 		std::vector<DataType> types;
 		for (const auto& arg : _arglist)
-			types.push_back(data_type(arg.first.type));
+			types.push_back(arg.first.type());
 		return types;
 	}
 	
@@ -1144,7 +1120,7 @@ namespace lx
 	
 	DataType FunctionDefinition::return_type() const
 	{
-		return _return_type ? data_type(_return_type->type) : DataType::Void;
+		return _return_type ? _return_type->type() : DataType::Void();
 	}
 
 	ReturnStatement::ReturnStatement(Token&& return_token, Expression* expression)
@@ -1178,7 +1154,7 @@ namespace lx
 
 	DataType ReturnStatement::evaltype(SemanticContext& ctx) const
 	{
-		return _expression ? _expression->evaltype(ctx) : DataType::Void;
+		return _expression ? _expression->evaltype(ctx) : DataType::Void();
 	}
 
 	IfConditionalBlock::IfConditionalBlock(Expression& condition)
@@ -1191,7 +1167,7 @@ namespace lx
 		_condition.analyse(ctx, pass);
 
 		if (pass == AnalysisPass::Validation)
-			validate_implicitly_casts(ctx, _condition, DataType::Bool);
+			validate_implicitly_casts(ctx, _condition, DataType::Bool());
 
 		Block::impl_analyse(ctx, pass);
 		if (_fallback)
@@ -1401,7 +1377,7 @@ namespace lx
 	{
 		auto scope = enter_scope(ctx);
 		if (pass == AnalysisPass::Validation)
-			validate_implicitly_casts(ctx, _condition, DataType::Bool);
+			validate_implicitly_casts(ctx, _condition, DataType::Bool());
 		Loop::analyse_subnodes(ctx, pass);
 	}
 
@@ -1432,7 +1408,8 @@ namespace lx
 	{
 		auto scope = enter_scope(ctx);
 		if (pass == AnalysisPass::Validation)
-			ctx.register_variable(_iterator.lexeme, DataType::_Unresolved, _iterator.segment.start_line, Namespace::Local);
+			// TODO iterator type (_iterable.evaltype(ctx).itertype())
+			ctx.register_variable(_iterator.lexeme, DataType::Void(), _iterator.segment.start_line, Namespace::Local);
 		Loop::analyse_subnodes(ctx, pass);
 
 		if (pass == AnalysisPass::Validation)
@@ -1630,11 +1607,11 @@ namespace lx
 		{
 			if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Global))
 			{
-				if (var->type != DataType::Pattern)
+				if (var->type.simple() != SimpleType::Pattern)
 					ctx.add_semantic_error(_identifier.segment, "global variable with same name already declared on line " + std::to_string(var->decl_line_number));
 			}
 			else
-				ctx.register_variable(_identifier.lexeme, DataType::Pattern, _identifier.segment.start_line, Namespace::Global);
+				ctx.register_variable(_identifier.lexeme, DataType::Pattern(), _identifier.segment.start_line, Namespace::Global);
 		}
 	}
 
@@ -1662,7 +1639,7 @@ namespace lx
 
 			_expression.analyse(ctx, pass);
 			_range.analyse(ctx, pass);
-			validate_implicitly_casts(ctx, _range, DataType::IRange);
+			validate_implicitly_casts(ctx, _range, DataType::IRange());
 
 			try
 			{
@@ -1684,7 +1661,7 @@ namespace lx
 
 	DataType RepeatOperation::impl_evaltype(SemanticContext& ctx) const
 	{
-		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
 	}
 	
 	ScriptSegment RepeatOperation::impl_segment() const
@@ -1719,7 +1696,7 @@ namespace lx
 
 	DataType SimpleRepeatOperation::impl_evaltype(SemanticContext& ctx) const
 	{
-		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
 	}
 
 	ScriptSegment SimpleRepeatOperation::impl_segment() const
@@ -1750,7 +1727,7 @@ namespace lx
 
 	DataType PatternBackRef::impl_evaltype(SemanticContext& ctx) const
 	{
-		return DataType::Pattern;
+		return DataType::Pattern();
 	}
 
 	ScriptSegment PatternBackRef::impl_segment() const
@@ -1789,7 +1766,7 @@ namespace lx
 
 	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
 	{
-		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
 	}
 
 	ScriptSegment PatternLazy::impl_segment() const
@@ -1824,7 +1801,7 @@ namespace lx
 			{
 				_expression.analyse(ctx, pass);
 
-				ctx.register_variable(_identifier.lexeme, DataType::CapId, _identifier.segment.start_line, Namespace::Global);
+				ctx.register_variable(_identifier.lexeme, DataType::CapId(), _identifier.segment.start_line, Namespace::Global);
 
 				try
 				{
@@ -1846,7 +1823,7 @@ namespace lx
 
 	DataType PatternCapture::impl_evaltype(SemanticContext& ctx) const
 	{
-		return assert_implicitly_casts(ctx, _expression, DataType::Pattern);
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
 	}
 
 	ScriptSegment PatternCapture::impl_segment() const
@@ -1864,7 +1841,7 @@ namespace lx
 		if (pass == AnalysisPass::Validation)
 		{
 			_expression.analyse(ctx, pass);
-			validate_implicitly_casts(ctx, _expression, DataType::Pattern);
+			validate_implicitly_casts(ctx, _expression, DataType::Pattern());
 		}
 	}
 
@@ -1889,7 +1866,7 @@ namespace lx
 		if (pass == AnalysisPass::Validation)
 		{
 			_pattern.analyse(ctx, pass);
-			validate_implicitly_casts(ctx, _pattern, DataType::Pattern);
+			validate_implicitly_casts(ctx, _pattern, DataType::Pattern());
 		}
 	}
 
@@ -1913,19 +1890,19 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (auto fn = ctx.known_registered_function(_identifier.lexeme, { DataType::Match }))
+			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match() }))
 			{
-				if (fn->return_type != DataType::Bool)
+				if (fn->return_type.simple() != SimpleType::Bool)
 				{
 					std::stringstream ss;
-					ss << "function on line " << fn->decl_line_number << " is not a match predicate: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+					ss << "function on line " << fn->decl_line_number << " is not a match predicate: expected signature (" << DataType::Match() << ") -> " << DataType::Bool();
 					ctx.add_semantic_error(_identifier.segment, ss.str());
 				}
 			}
 			else
 			{
 				std::stringstream ss;
-				ss << "no matching predicate function: expected signature (" << DataType::Match << ") -> " << DataType::Bool;
+				ss << "no matching predicate function: expected signature (" << DataType::Match() << ") -> " << DataType::Bool();
 				ctx.add_semantic_error(_identifier.segment, ss.str());
 			}
 		}
@@ -1954,8 +1931,8 @@ namespace lx
 			_match.analyse(ctx, pass);
 			_string.analyse(ctx, pass);
 
-			validate_implicitly_casts(ctx, _match, DataType::Match);
-			validate_implicitly_casts(ctx, _string, DataType::String);
+			validate_implicitly_casts(ctx, _match, DataType::Match());
+			validate_implicitly_casts(ctx, _string, DataType::String());
 		}
 	}
 
@@ -1979,19 +1956,19 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (auto fn = ctx.known_registered_function(_identifier.lexeme, { DataType::Match }))
+			if (auto fn = ctx.registered_function(_identifier.lexeme, { DataType::Match() }))
 			{
-				if (fn->return_type != DataType::String)
+				if (fn->return_type != DataType::String())
 				{
 					std::stringstream ss;
-					ss << "found function on line " << fn->decl_line_number << ": expected signature (" << DataType::Match << ") -> " << DataType::String;
+					ss << "found function on line " << fn->decl_line_number << ": expected signature (" << DataType::Match() << ") -> " << DataType::String();
 					ctx.add_semantic_error(_identifier.segment, ss.str());
 				}
 			}
 			else
 			{
 				std::stringstream ss;
-				ss << "no matching function: expected signature (" << DataType::Match << ") -> " << DataType::String;
+				ss << "no matching function: expected signature (" << DataType::Match() << ") -> " << DataType::String();
 				ctx.add_semantic_error(_identifier.segment, ss.str());
 			}
 		}
@@ -2025,8 +2002,8 @@ namespace lx
 				_count->analyse(ctx, pass);
 
 				const auto range_type = _count->evaltype(ctx);
-				if (!can_cast_explicit(range_type, DataType::Int))
-					ctx.add_semantic_error(_count->segment(), "cannot convert to " + friendly_name(DataType::Int));
+				if (!can_cast_explicit(range_type, DataType::Int()))
+					ctx.add_semantic_error(_count->segment(), "cannot convert to " + DataType::Int().repr());
 			}
 		}
 	}
@@ -2068,7 +2045,7 @@ namespace lx
 				else
 				{
 					std::stringstream ss;
-					ss << "'count' evaluated to " << c << ": but should be a positive " << DataType::Int;
+					ss << "'count' evaluated to " << c << ": but should be a positive " << DataType::Int();
 					throw LxError::segment_error(_count->segment(), ErrorType::Runtime, ss.str());
 				}
 			}

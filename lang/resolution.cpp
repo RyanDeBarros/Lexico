@@ -15,7 +15,7 @@ namespace lx
 			return std::nullopt;
 	}
 
-	void SemanticVariableTable::register_variable(const std::string_view identifier, DataType type, unsigned int line_number)
+	void SemanticVariableTable::register_variable(const std::string_view identifier, DataType&& type, unsigned int line_number)
 	{
 		if (_map.count(identifier))
 		{
@@ -24,7 +24,7 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 
-		_map[std::string(identifier)] = { .decl_line_number = line_number, .type = type };
+		_map[std::string(identifier)] = { .decl_line_number = line_number, .type = std::move(type) };
 	}
 
 	bool VarConsistencyTest::seen(const FunctionDefinition& fn) const
@@ -143,7 +143,7 @@ namespace lx
 		{
 			unsigned int first_line_number = std::numeric_limits<unsigned int>::max();
 			for (const auto& call : calls)
-				first_line_number = std::min(first_line_number, function_table.known_registered_function(call.identifier, call.arg_types)->decl_line_number);
+				first_line_number = std::min(first_line_number, function_table.registered_function(call.identifier, call.arg_types)->decl_line_number);
 
 			return first_line_number;
 		}
@@ -219,10 +219,6 @@ namespace lx
 				else if (it->isolated)
 					break;
 			}
-
-			if (ns == Namespace::Unknown)
-			{
-			}
 		}
 		catch (const LxError& error)
 		{
@@ -232,16 +228,16 @@ namespace lx
 		return std::nullopt;
 	}
 
-	void SemanticContext::register_variable(const std::string_view identifier, DataType type, unsigned int line_number, Namespace ns)
+	void SemanticContext::register_variable(const std::string_view identifier, DataType&& type, unsigned int line_number, Namespace ns)
 	{
 		switch (ns)
 		{
 		case lx::Namespace::Global:
-			_global_variable_table.register_variable(identifier, type, line_number);
+			_global_variable_table.register_variable(identifier, std::move(type), line_number);
 			break;
 		case lx::Namespace::Local:
 			if (!_scope_stack.empty())
-				_scope_stack.back().table.register_variable(identifier, type, line_number);
+				_scope_stack.back().table.register_variable(identifier, std::move(type), line_number);
 			else
 			{
 				std::stringstream ss;
@@ -256,14 +252,9 @@ namespace lx
 		}
 	}
 
-	std::vector<FunctionSignature> SemanticContext::registered_functions(const std::string_view identifier, const std::vector<DataType>& arg_types) const
+	std::optional<FunctionSignature> SemanticContext::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
 	{
-		return _function_table.registered_functions(identifier, arg_types);
-	}
-
-	std::optional<FunctionSignature> SemanticContext::known_registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const
-	{
-		return _function_table.known_registered_function(identifier, arg_types);
+		return _function_table.registered_function(identifier, arg_types);
 	}
 
 	FunctionCallSet SemanticContext::registered_function_calls(const std::string_view identifier) const
@@ -272,9 +263,9 @@ namespace lx
 	}
 
 	void SemanticContext::register_function(FunctionDefinition& decl_node, const std::string_view identifier,
-		DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
+		DataType&& return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		_function_table.register_function(decl_node, identifier, return_type, std::move(arg_types), line_number);
+		_function_table.register_function(decl_node, identifier, std::move(return_type), std::move(arg_types), line_number);
 	}
 
 	SemanticFunctionTable& SemanticContext::ftable()

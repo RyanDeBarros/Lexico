@@ -21,15 +21,15 @@ namespace lx
 
 	DataPoint DataPoint::make_from_literal(DataType type, std::string_view resolved)
 	{
-		switch (type)
+		switch (type.simple())
 		{
-		case DataType::Int:
+		case SimpleType::Int:
 			return Int::make_from_literal(resolved);
-		case DataType::Float:
+		case SimpleType::Float:
 			return Float::make_from_literal(resolved);
-		case DataType::Bool:
+		case SimpleType::Bool:
 			return Bool::make_from_literal(resolved);
-		case DataType::String:
+		case SimpleType::String:
 			return String::make_from_literal(resolved);
 		default:
 		{
@@ -50,14 +50,14 @@ namespace lx
 		return _storage;
 	}
 
-	DataPoint DataPoint::cast_copy(DataType type) const
+	DataPoint DataPoint::cast_copy(const DataType& type) const
 	{
-		return std::visit([type](const auto& v) { return DataPoint(v.cast_copy(type)); }, _storage);
+		return std::visit([&type](const auto& v) { return DataPoint(v.cast_copy(type)); }, _storage);
 	}
 
-	DataPoint DataPoint::cast_move(DataType type)
+	DataPoint DataPoint::cast_move(const DataType& type)
 	{
-		return std::visit([type](auto&& v) { return DataPoint(v.cast_move(type)); }, std::move(_storage));
+		return std::visit([&type](auto&& v) { return DataPoint(v.cast_move(type)); }, std::move(_storage));
 	}
 
 	void DataPoint::set(const DataPoint& other)
@@ -70,19 +70,19 @@ namespace lx
 		std::visit([this](auto&& o) { setval(std::forward<decltype(o)>(o)); }, std::move(other._storage));
 	}
 
-	bool DataPoint::can_cast_implicit(DataType to) const
+	bool DataPoint::can_cast_implicit(const DataType& to) const
 	{
-		return lx::can_cast_implicit(static_cast<DataType>(_storage.index()), to);
+		return lx::can_cast_implicit(data_type(), to);
 	}
 
-	bool DataPoint::can_cast_explicit(DataType to) const
+	bool DataPoint::can_cast_explicit(const DataType& to) const
 	{
-		return lx::can_cast_explicit(static_cast<DataType>(_storage.index()), to);
+		return lx::can_cast_explicit(data_type(), to);
 	}
 
 	DataType DataPoint::data_type() const
 	{
-		return std::visit([](const auto& v) { return to_enum<std::decay_t<decltype(v)>>; }, _storage);
+		return std::visit([](const auto& v) -> DataType { return v.data_type(); }, _storage);
 	}
 
 	void DataPoint::print(std::stringstream& ss) const

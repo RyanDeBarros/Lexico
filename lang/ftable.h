@@ -13,7 +13,7 @@ namespace lx
 	{
 		FunctionDefinition* decl_node = nullptr;
 		unsigned int decl_line_number = 0;
-		DataType return_type = DataType::Void;
+		DataType return_type = DataType::Void();
 		std::vector<DataType> arg_types;
 	};
 
@@ -45,10 +45,9 @@ namespace lx
 		StringMap<FunctionCallSet> _lut;
 
 	public:
-		std::vector<FunctionSignature> registered_functions(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
-		std::optional<FunctionSignature> known_registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
+		std::optional<FunctionSignature> registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types) const;
 		FunctionCallSet registered_function_calls(const std::string_view identifier) const;
-		void register_function(FunctionDefinition& decl_node, const std::string_view identifier, DataType return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
+		void register_function(FunctionDefinition& decl_node, const std::string_view identifier, DataType&& return_type, std::vector<DataType>&& arg_types, unsigned int line_number);
 	};
 
 	class RuntimeFunctionTable

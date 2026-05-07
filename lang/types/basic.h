@@ -15,8 +15,9 @@ namespace lx
 
 		static Int make_from_literal(std::string_view resolved);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		int value() const;
@@ -31,8 +32,9 @@ namespace lx
 
 		static Float make_from_literal(std::string_view resolved);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		float value() const;
@@ -47,8 +49,9 @@ namespace lx
 
 		static Bool make_from_literal(std::string_view resolved);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		bool value() const;
@@ -64,8 +67,9 @@ namespace lx
 
 		static String make_from_literal(std::string_view resolved);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		std::string_view value() const;
@@ -74,16 +78,18 @@ namespace lx
 	class Void
 	{
 	public:
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 	};
 
 	class Match
 	{
 	public:
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 	};
@@ -91,8 +97,9 @@ namespace lx
 	class Matches
 	{
 	public:
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 	};
 
@@ -103,16 +110,18 @@ namespace lx
 	public:
 		explicit CapId(unsigned int uid);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 	};
 
 	class Cap
 	{
 	public:
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 	};
 
@@ -124,8 +133,9 @@ namespace lx
 	public:
 		IRange(std::optional<int> min, std::optional<int> max);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		std::optional<int> min() const;
@@ -141,8 +151,9 @@ namespace lx
 		SRange(std::optional<char> min, std::optional<char> max);
 		SRange(std::optional<std::string> min, std::optional<std::string> max);
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		std::optional<char> min() const;
@@ -152,14 +163,20 @@ namespace lx
 
 	class List
 	{
+		DataType _underlying;
 		std::vector<Variable> _elements;
 
 	public:
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		explicit List(const DataType& underlying);
+		explicit List(DataType&& underlying);
+		explicit List(std::vector<Variable>&& elements);
+
+		DataType data_type() const;
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		void push(const Variable& element);
-		void push(Variable&& element);
+		bool push(const Variable& element);
+		bool push(Variable&& element);
 	};
 }

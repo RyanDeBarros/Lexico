@@ -4,6 +4,7 @@
 #include "basic.h"
 
 #include <memory>
+#include <unordered_map>
 
 namespace lx
 {
@@ -167,8 +168,9 @@ namespace lx
 		Pattern& operator=(const Pattern& other);
 		Pattern& operator=(Pattern&&) noexcept = default;
 
-		TypeVariant cast_copy(DataType type) const;
-		TypeVariant cast_move(DataType type);
+		static DataType data_type();
+		TypeVariant cast_copy(const DataType& type) const;
+		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);

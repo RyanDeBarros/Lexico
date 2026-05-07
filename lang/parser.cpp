@@ -405,6 +405,27 @@ namespace lx
 				throw_error(errors::UNRECOGNIZED_OPERAND, 1);
 		}
 
+		void parse_underlying_type(TokenOffset& offset, std::vector<Token>& underlying_tokens)
+		{
+			if (peek_token_is(0, TokenType::LBracket))
+			{
+				underlying_tokens.push_back(parse_datatype(1));
+				offset.add(2);
+				parse_underlying_type(offset, underlying_tokens);
+				parse_token(0, TokenType::RBracket, errors::EXPECTED_RBRACKET);
+				offset.add(1);
+			}
+		}
+
+		FullTypeKeyword parse_full_type(TokenOffset& offset)
+		{
+			auto& simple_type = parse_datatype(0);
+			offset.add(1);
+			std::vector<Token> underlying_tokens;
+			parse_underlying_type(offset, underlying_tokens);
+			return FullTypeKeyword(simple_type, underlying_tokens);
+		}
+
 		bool parse_function_definition()
 		{
 			if (!peek_token_is(0, TokenType::Fn))
@@ -415,15 +436,15 @@ namespace lx
 			parse_token(2, TokenType::LParen, errors::EXPECTED_LPAREN);
 			auto offset = token_offset(3);
 
-			std::vector<std::pair<Token, Token>> arglist;
+			std::vector<std::pair<FullTypeKeyword, Token>> arglist;
 			bool comma_ended = false;
 
 			while (peek_token_is_not(0, TokenType::RParen))
 			{
-				auto& datatype = parse_datatype(0);
-				auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
-				arglist.push_back(std::make_pair(std::move(datatype), std::move(identifier)));
-				offset.add(2);
+				auto type = parse_full_type(offset);
+				auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+				arglist.push_back(std::make_pair(std::move(type), std::move(identifier)));
+				offset.add(1);
 
 				comma_ended = false;
 				if (peek_token_is_not(0, TokenType::Comma))
@@ -441,17 +462,16 @@ namespace lx
 			parse_token(0, TokenType::RParen, errors::EXPECTED_RPAREN);
 			offset.add(1);
 
-			Token* return_type = nullptr;
+			std::optional<FullTypeKeyword> return_type;
 			if (peek_token_is(0, TokenType::Arrow))
 			{
 				parse_token(0, TokenType::Arrow, errors::EXPECTED_ARROW);
-				return_type = &parse_datatype(1);
-				offset.add(2);
+				offset.add(1);
+				return_type = parse_full_type(offset);
 			}
 
 			offset.submit();
-			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(fn_token), std::move(identifier), std::move(arglist),
-				return_type ? std::make_optional<Token>(std::move(*return_type)) : std::nullopt)));
+			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(fn_token), std::move(identifier), std::move(arglist), std::move(return_type))));
 			parse_simple_block(TokenType::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
 			return true;
 		}
@@ -940,9 +960,13 @@ namespace lx
 			if (comma_ended)
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
 
+			std::optional<DataType> underlying_type;
+			if (elements.empty())
+				underlying_type = parse_full_type(offset).type();
+
 			auto& rbracket_token = parse_token(0, TokenType::RBracket, errors::EXPECTED_RBRACKET);
 			offset.add(1);  // ']'
-			return _tree.add(std::make_unique<ListExpression>(std::move(lbracket_token), std::move(rbracket_token), std::move(elements)));
+			return _tree.add(std::make_unique<ListExpression>(std::move(lbracket_token), std::move(rbracket_token), std::move(elements), std::move(underlying_type)));
 		}
 
 		Expression& parse_group_expression(TokenOffset& offset)
@@ -976,9 +1000,7 @@ namespace lx
 		Expression& parse_as_expression(Expression& lhs, TokenOffset& offset)
 		{
 			offset.add(1);
-			auto& datatype = parse_datatype(0);
-			offset.add(1);
-			return _tree.add(std::make_unique<AsExpression>(lhs, std::move(datatype)));
+			return _tree.add(std::make_unique<AsExpression>(lhs, parse_full_type(offset)));
 		}
 
 		Expression& parse_simple_repeat_expression(Expression& lhs, TokenOffset& offset)
