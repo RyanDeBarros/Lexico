@@ -31,8 +31,6 @@ namespace lx
 		DataPoint dp();
 
 		bool temporary() const;
-		void own(const Variable& var);
-		void disown(const Variable& var);
 
 		size_t hash() const;
 		bool operator==(const Variable& other) const = default;

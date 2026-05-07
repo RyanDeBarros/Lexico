@@ -1243,7 +1243,6 @@ namespace lx
 	{
 		if (element.ref().data_type() == _underlying)
 		{
-			// TODO only push if element matches underlying type
 			_elements.push_back(std::move(element));
 			return true;
 		}

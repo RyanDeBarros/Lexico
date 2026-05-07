@@ -143,11 +143,9 @@ namespace lx
 		return _heap.add(std::move(dp), true);
 	}
 
-	Variable Runtime::unnamed_variable(Variable& owner, DataPoint&& dp)
+	Variable Runtime::unnamed_variable(DataPoint&& dp)
 	{
-		auto var = _heap.add(std::move(dp), false);
-		owner.own(var);
-		return var;
+		return _heap.add(std::move(dp), false);
 	}
 
 	const FunctionDefinition& Runtime::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const

@@ -22,7 +22,5 @@ namespace lx
 		void remove(unsigned int id);
 		const DataPoint& ref(unsigned int id) const;
 		DataPoint& ref(unsigned int id);
-		void own(unsigned int id, const Variable& var);
-		void disown(unsigned int id, const Variable& var);
 	};
 }

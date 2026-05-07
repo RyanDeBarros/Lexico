@@ -401,13 +401,12 @@ namespace lx
 	Variable ListExpression::evaluate(Runtime& env) const
 	{
 		std::vector<LxError> errors;
-		Variable list_handle = env.temporary_variable(List(*_underlying, segment()));
-		List& list = list_handle.ref().get<List>();
+		List list(*_underlying, segment());
 
 		for (const Expression* expr : _elements)
 		{
 			TypeVariant v = std::move(expr->evaluate(env).dp().variant());
-			if (!list.push(env.unnamed_variable(list_handle, std::move(v))))
+			if (!list.push(env.unnamed_variable(std::move(v))))
 			{
 				std::stringstream ss;
 				ss << "list underlying type is " << *_underlying << ", but element resolved to " << expr->evaltype();

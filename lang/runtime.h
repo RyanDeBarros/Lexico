@@ -86,7 +86,7 @@ namespace lx
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable temporary_variable(DataPoint&& dp);
-		Variable unnamed_variable(Variable& owner, DataPoint&& dp);
+		Variable unnamed_variable(DataPoint&& dp);
 
 		const FunctionDefinition& registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const;
 

@@ -108,22 +108,6 @@ namespace lx
 		return _temporary;
 	}
 
-	void Variable::own(const Variable& var)
-	{
-		if (_ref_count)
-			_heap->own(_id, var);
-		else
-			throw LxError(ErrorType::Internal, "variable reference count is null");
-	}
-
-	void Variable::disown(const Variable& var)
-	{
-		if (_ref_count)
-			_heap->disown(_id, var);
-		else
-			throw LxError(ErrorType::Internal, "variable reference count is null");
-	}
-
 	size_t Variable::hash() const
 	{
 		return std::hash<unsigned int>{}(_id);

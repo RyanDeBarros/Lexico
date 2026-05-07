@@ -36,14 +36,4 @@ namespace lx
 	{
 		return _data[id];
 	}
-
-	void DataHeap::own(unsigned int id, const Variable& var)
-	{
-		_unnamed[id].insert(var);
-	}
-
-	void DataHeap::disown(unsigned int id, const Variable& var)
-	{
-		_unnamed[id].erase(var);
-	}
 }
