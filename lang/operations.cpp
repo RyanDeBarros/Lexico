@@ -79,102 +79,6 @@ namespace lx
 		}
 	}
 
-	bool can_cast_implicit(const DataType& from, const DataType& to)
-	{
-		if (to.simple() == SimpleType::Void || from == to)
-			return true;
-
-		switch (from.simple())
-		{
-		case SimpleType::Int:
-			return to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool || to.simple() == SimpleType::IRange;
-
-		case SimpleType::Float:
-			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Bool;
-
-		case SimpleType::Bool:
-			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float;
-
-		case SimpleType::String:
-			return to.simple() == SimpleType::Pattern;
-
-		case SimpleType::SRange:
-			return to.simple() == SimpleType::Pattern;
-
-		default:
-			return false;
-		}
-	}
-
-	bool can_cast_explicit(const DataType& from, const DataType& to)
-	{
-		if (can_cast_implicit(from, to))
-			return true;
-
-		switch (from.simple())
-		{
-		case SimpleType::Int:
-		case SimpleType::Float:
-			return to.simple() == SimpleType::String || to.simple() == SimpleType::Pattern;
-
-		case SimpleType::Bool:
-			return to.simple() == SimpleType::String;
-
-		case SimpleType::String:
-			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool;
-
-		case SimpleType::SRange:
-			return to.simple() == SimpleType::String;
-
-		default:
-			return false;
-		}
-	}
-
-	bool is_iterable(const DataType& type)
-	{
-		switch (type.simple())
-		{
-		case SimpleType::String:
-		case SimpleType::Matches:
-		case SimpleType::Match:
-		case SimpleType::IRange:
-		case SimpleType::SRange:
-		case SimpleType::List:
-			return true;
-
-		default:
-			return false;
-		}
-	}
-
-	bool is_highlightable(const DataType& type)
-	{
-		switch (type.simple())
-		{
-		case SimpleType::Int:
-		case SimpleType::Match:
-		case SimpleType::Matches:
-		case SimpleType::IRange:
-			return true;
-
-		default:
-			return false;
-		}
-	}
-
-	bool is_pageable(const DataType& type)
-	{
-		switch (type.simple())
-		{
-		case SimpleType::String:
-			return true;
-
-		default:
-			return false;
-		}
-	}
-
 	BinaryOperator binary_operator(TokenType type)
 	{
 		switch (type)
@@ -230,12 +134,12 @@ namespace lx
 		{
 		case BinaryOperator::And:
 		case BinaryOperator::Or:
-			if (can_cast_implicit(lhs, DataType::Bool()) && can_cast_implicit(rhs, DataType::Bool()))
+			if (lhs.can_cast_implicit(DataType::Bool()) && rhs.can_cast_implicit(DataType::Bool()))
 				return DataType::Bool();
 			break;
 
 		case BinaryOperator::Assign:
-			if (can_cast_implicit(rhs, lhs))
+			if (rhs.can_cast_implicit(lhs))
 				return lhs;
 			break;
 
@@ -244,16 +148,16 @@ namespace lx
 		case BinaryOperator::Mod:
 		case BinaryOperator::Plus:
 		case BinaryOperator::Slash:
-			if (can_cast_implicit(lhs, DataType::Int()) && can_cast_implicit(rhs, DataType::Int()))
+			if (lhs.can_cast_implicit(DataType::Int()) && rhs.can_cast_implicit(DataType::Int()))
 				return DataType::Int();
-			else if ((can_cast_implicit(lhs, DataType::Int()) || can_cast_implicit(lhs, DataType::Float()))
-					&& (can_cast_implicit(rhs, DataType::Int()) || can_cast_implicit(rhs, DataType::Float())))
+			else if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
+					&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
 				return DataType::Float();
 			break;
 		
 		case BinaryOperator::EqualTo:
 		case BinaryOperator::NotEqualTo:
-			if (can_cast_implicit(lhs, rhs) || can_cast_implicit(rhs, lhs))
+			if (lhs.can_cast_implicit(rhs) || rhs.can_cast_implicit(lhs))
 				return DataType::Bool();
 			break;
 		
@@ -261,22 +165,22 @@ namespace lx
 		case BinaryOperator::GreaterThanOrEqualTo:
 		case BinaryOperator::LessThan:
 		case BinaryOperator::LessThanOrEqualTo:
-			if ((can_cast_implicit(lhs, DataType::Int()) || can_cast_implicit(lhs, DataType::Float()))
-					&& (can_cast_implicit(rhs, DataType::Int()) || can_cast_implicit(rhs, DataType::Float())))
+			if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
+					&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
 				return DataType::Bool();
 			break;
 
 		case BinaryOperator::To:
-			if (can_cast_implicit(lhs, DataType::Int()) && can_cast_implicit(rhs, DataType::Int()))
+			if (lhs.can_cast_implicit(DataType::Int()) && rhs.can_cast_implicit(DataType::Int()))
 				return DataType::IRange();
-			else if (can_cast_implicit(lhs, DataType::String()) && can_cast_implicit(rhs, DataType::String()))
+			else if (lhs.can_cast_implicit(DataType::String()) && rhs.can_cast_implicit(DataType::String()))
 				return DataType::SRange();
 			break;
 
 		case BinaryOperator::Comma:
 		case BinaryOperator::Except:
 		case BinaryOperator::Repeat:
-			if (can_cast_implicit(lhs, DataType::Pattern()) && can_cast_implicit(rhs, DataType::IRange()))
+			if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::IRange()))
 				return DataType::Pattern();
 			break;
 		}
@@ -332,25 +236,25 @@ namespace lx
 		case PrefixOperator::NotBehind:
 		case PrefixOperator::Optional:
 		case PrefixOperator::Ref:
-			if (can_cast_implicit(type, DataType::Pattern()))
+			if (type.can_cast_implicit(DataType::Pattern()))
 				return DataType::Pattern();
 			break;
 
 		case PrefixOperator::Max:
 		case PrefixOperator::Min:
-			if (can_cast_implicit(type, DataType::Int()))
+			if (type.can_cast_implicit(DataType::Int()))
 				return DataType::IRange();
-			else if (can_cast_implicit(type, DataType::String()))
+			else if (type.can_cast_implicit(DataType::String()))
 				return DataType::SRange();
 			break;
 
 		case PrefixOperator::Minus:
-			if (can_cast_implicit(type, DataType::Int()) || can_cast_implicit(type, DataType::Float()))
+			if (type.can_cast_implicit(DataType::Int()) || type.can_cast_implicit(DataType::Float()))
 				return type;
 			break;
 
 		case PrefixOperator::Not:
-			if (can_cast_implicit(type, DataType::Bool()))
+			if (type.can_cast_implicit(DataType::Bool()))
 				return type;
 			break;
 		}

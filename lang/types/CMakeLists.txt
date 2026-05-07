@@ -5,6 +5,7 @@ set(TYPES_SOURCES
 	pattern.cpp
 	declarations.cpp
 	member.cpp
+	iterator.cpp
 	variable.cpp
 	heap.cpp
 	accessor.cpp

@@ -9,12 +9,6 @@ namespace lx
 	extern DataType data_type(TokenType simple_type, const std::vector<TokenType>& underlying_types);
 	extern DataType literal_type(TokenType type);
 
-	extern bool can_cast_implicit(const DataType& from, const DataType& to);
-	extern bool can_cast_explicit(const DataType& from, const DataType& to);
-	extern bool is_iterable(const DataType& type);
-	extern bool is_highlightable(const DataType& type);
-	extern bool is_pageable(const DataType& type);
-
 	enum class BinaryOperator
 	{
 		And,

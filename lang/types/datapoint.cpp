@@ -72,12 +72,12 @@ namespace lx
 
 	bool DataPoint::can_cast_implicit(const DataType& to) const
 	{
-		return lx::can_cast_implicit(data_type(), to);
+		return data_type().can_cast_implicit(to);
 	}
 
 	bool DataPoint::can_cast_explicit(const DataType& to) const
 	{
-		return lx::can_cast_explicit(data_type(), to);
+		return data_type().can_cast_explicit(to);
 	}
 
 	DataType DataPoint::data_type() const
@@ -88,5 +88,31 @@ namespace lx
 	void DataPoint::print(std::stringstream& ss) const
 	{
 		std::visit([&ss](const auto& v) { v.print(ss); }, _storage);
+	}
+
+	size_t DataPoint::iterlen() const
+	{
+		if (data_type().is_iterable())
+			return std::visit([](const auto& v) -> size_t {
+				if constexpr (requires { v.iterlen(); })
+					return v.iterlen();
+				else
+					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterlen' but it doesn't");
+			}, _storage);
+		else
+			return 0;
+	}
+
+	DataPoint DataPoint::iterget(size_t i) const
+	{
+		if (data_type().is_iterable())
+			return std::visit([i](const auto& v) -> DataPoint {
+				if constexpr (requires { v.iterget(i); })
+					return v.iterget(i);
+				else
+					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterget' but it doesn't");
+			}, _storage);
+		else
+			return Void();
 	}
 }

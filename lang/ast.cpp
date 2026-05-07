@@ -2,6 +2,7 @@
 
 #include "types/accessor.h"
 #include "types/processing.h"
+#include "types/iterator.h"
 #include "constants.h"
 
 #include <sstream>
@@ -16,7 +17,7 @@ namespace lx
 
 	static DataType assert_implicitly_casts(SemanticContext& ctx, const Expression& expr, DataType to)
 	{
-		if (can_cast_implicit(expr.evaltype(ctx), to))
+		if (expr.evaltype(ctx).can_cast_implicit(to))
 			return to;
 
 		std::stringstream ss;
@@ -26,7 +27,7 @@ namespace lx
 
 	static void validate_implicitly_casts(SemanticContext& ctx, const Expression& expr, DataType to)
 	{
-		if (!can_cast_implicit(expr.evaltype(ctx), to))
+		if (!expr.evaltype(ctx).can_cast_implicit(to))
 		{
 			std::stringstream ss;
 			ss << errors::DOES_NOT_RESOLVE << to;
@@ -645,7 +646,7 @@ namespace lx
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		DataType return_type = _type.type();
-		if (can_cast_explicit(_expr.evaltype(ctx), return_type))
+		if (_expr.evaltype(ctx).can_cast_explicit(return_type))
 			return return_type;
 		else
 		{
@@ -1439,26 +1440,48 @@ namespace lx
 	void ForLoop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
-		if (pass == AnalysisPass::Validation)
-			// TODO iterator type (_iterable.evaltype(ctx).itertype())
-			ctx.register_variable(_iterator.lexeme, DataType::Void(), _iterator.segment.start_line, Namespace::Local);
-		Loop::analyse_subnodes(ctx, pass);
 
 		if (pass == AnalysisPass::Validation)
 		{
-			if (!is_iterable(_iterable.evaltype(ctx)))
+			if (auto itertype = _iterable.evaltype(ctx).itertype())
+				ctx.register_variable(_iterator.lexeme, std::move(*itertype), _iterator.segment.start_line, Namespace::Local);
+			else
 			{
 				std::stringstream ss;
 				ss << _iterable.evaltype(ctx) << " is not iterable";
 				ctx.add_semantic_error(_iterable.segment(), ss.str());
 			}
 		}
+
+		Loop::analyse_subnodes(ctx, pass);
 	}
 
 	ExecutionFlow ForLoop::execute(Runtime& env) const
 	{
-		// TODO define iterator utility that wraps a Variable for the iterator and a Variable for the iterable
-		return {};
+		try
+		{
+			Iterator iter(_iterable.evaluate(env));
+			while (!iter.done())
+			{
+				Runtime::LocalScope local_scope(env, isolated());
+				env.register_variable(_iterator.lexeme, iter.get(), Namespace::Local);
+				auto flow = execute_subnodes(env);
+				if (flow.type == FlowType::Break)
+					break;
+				else if (flow.type == FlowType::Return)
+					return flow;
+
+				iter.next();
+			}
+			return {};
+		}
+		catch (const LxError& e)
+		{
+			if (e.type() == ErrorType::Runtime)
+				throw LxError::segment_error(segment(), ErrorType::Runtime, e.message());
+			else
+				throw;
+		}
 	}
 
 	bool ForLoop::isolated() const
@@ -1583,7 +1606,7 @@ namespace lx
 			{
 				_highlightable->analyse(ctx, pass);
 
-				if (!is_highlightable(_highlightable->evaltype(ctx)))
+				if (!_highlightable->evaltype(ctx).is_highlightable())
 				{
 					std::stringstream ss;
 					ss << _highlightable->evaltype(ctx) << " is not highlightable";
@@ -2035,8 +2058,7 @@ namespace lx
 			{
 				_count->analyse(ctx, pass);
 
-				const auto range_type = _count->evaltype(ctx);
-				if (!can_cast_explicit(range_type, DataType::Int()))
+				if (!_count->evaltype(ctx).can_cast_explicit(DataType::Int()))
 					ctx.add_semantic_error(_count->segment(), "cannot convert to " + DataType::Int().repr());
 			}
 		}
@@ -2101,7 +2123,7 @@ namespace lx
 		{
 			_page.analyse(ctx, pass);
 
-			if (!is_pageable(_page.evaltype(ctx)))
+			if (!_page.evaltype(ctx).is_pageable())
 			{
 				std::stringstream ss;
 				ss << "cannot push " << _page.evaltype(ctx) << " to page stack";

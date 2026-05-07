@@ -269,6 +269,16 @@ namespace lx
 		ss << _value;
 	}
 
+	size_t String::iterlen() const
+	{
+		return _value.size();
+	}
+
+	DataPoint String::iterget(size_t i) const
+	{
+		return String({ _value[i] });
+	}
+
 	std::string_view String::value() const
 	{
 		return _value;
@@ -327,6 +337,18 @@ namespace lx
 		ss << DataType::Match();
 	}
 
+	size_t Match::iterlen() const
+	{
+		// TODO
+		return 0;
+	}
+
+	DataPoint Match::iterget(size_t i) const
+	{
+		// TODO
+		return Cap();
+	}
+
 	DataType Matches::data_type()
 	{
 		return DataType::Matches();
@@ -354,6 +376,18 @@ namespace lx
 	{
 		// TODO v0.2 string representation of matches
 		ss << DataType::Matches();
+	}
+
+	size_t Matches::iterlen() const
+	{
+		// TODO
+		return 0;
+	}
+
+	DataPoint Matches::iterget(size_t i) const
+	{
+		// TODO
+		return Match();
 	}
 
 	CapId::CapId(unsigned int uid)
@@ -458,6 +492,23 @@ namespace lx
 		else if (_max)
 			ss << "max " << *_max;
 		ss << '>';
+	}
+
+	size_t IRange::iterlen() const
+	{
+		if (!_min || !_max)
+			throw LxError(ErrorType::Runtime, "cannot iterate over unbounded range");
+
+		return static_cast<size_t>(std::abs(*_max - *_min) + 1);
+	}
+
+	DataPoint IRange::iterget(size_t i) const
+	{
+		if (!_min || !_max)
+			throw LxError(ErrorType::Runtime, "cannot iterate over unbounded range");
+
+		int dir = *_max >= *_min ? 1 : -1;
+		return Int(*_min + dir * i);
 	}
 
 	std::optional<int> IRange::min() const
@@ -574,6 +625,73 @@ namespace lx
 		ss << '>';
 	}
 
+	static constexpr bool is_lower(char c)
+	{
+		return c <= LOWER_Z;
+	}
+
+	static size_t range_iterlen(int min, int max)
+	{
+		return static_cast<size_t>(max - min + 1);
+	}
+
+	size_t SRange::iterlen() const
+	{
+		if (!_min && !_max)
+			return 0;
+
+		if (_min && !_max)
+			return range_iterlen(*_min, is_lower(*_min) ? 'z' : 'Z');
+
+		if (_max && !_min)
+			return range_iterlen(is_lower(*_max) ? 'a' : 'A', *_max);
+
+		if (*_min <= *_max)
+			return range_iterlen(*_min, *_max);
+
+		if (is_lower(*_min))
+			return range_iterlen(*_min, 'z') + range_iterlen('A', *_max);
+		else
+			return range_iterlen(*_min, 'Z') + range_iterlen('a', *_max);
+	}
+
+	static String to_string(size_t c)
+	{
+		return String({ static_cast<char>(c) });
+	}
+
+	DataPoint SRange::iterget(size_t i) const
+	{
+		if (!_min && !_max)
+			return String("");
+
+		std::stringstream ss;
+
+		if (_min && !_max)
+			return to_string(*_min + i);
+
+		if (_max && !_min)
+			return to_string((is_lower(*_max) ? 'a' : 'A') + i);
+
+		if (*_min <= *_max)
+			return to_string(*_min + i);
+
+		if (is_lower(*_min))
+		{
+			if (i < range_iterlen(*_min, 'z'))
+				return to_string(*_min + i);
+			else
+				return to_string('A' + i - range_iterlen(*_min, 'z'));
+		}
+		else
+		{
+			if (i < range_iterlen(*_min, 'Z'))
+				return to_string(*_min + i);
+			else
+				return to_string('a' + i - range_iterlen(*_min, 'Z'));
+		}
+	}
+
 	std::optional<char> SRange::min() const
 	{
 		return _min;
@@ -582,11 +700,6 @@ namespace lx
 	std::optional<char> SRange::max() const
 	{
 		return _max;
-	}
-
-	static constexpr bool is_lower(char c)
-	{
-		return c <= LOWER_Z;
 	}
 
 	static std::stringstream& append_range(std::stringstream& ss, int min, int max)
@@ -694,6 +807,16 @@ namespace lx
 				ss << ", ";
 		}
 		ss << "]";
+	}
+
+	size_t List::iterlen() const
+	{
+		return _elements.size();
+	}
+
+	DataPoint List::iterget(size_t i) const
+	{
+		return _elements[i].ref();
 	}
 
 	bool List::push(const Variable& element)

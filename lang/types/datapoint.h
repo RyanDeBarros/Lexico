@@ -77,5 +77,8 @@ namespace lx
 		DataType data_type() const;
 
 		void print(std::stringstream& ss) const;
+
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
 	};
 }

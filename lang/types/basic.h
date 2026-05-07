@@ -72,6 +72,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
+
 		std::string_view value() const;
 	};
 
@@ -92,6 +95,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
+
 	};
 
 	class Matches
@@ -101,6 +107,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
 	};
 
 	class CapId
@@ -138,6 +147,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
+
 		std::optional<int> min() const;
 		std::optional<int> max() const;
 	};
@@ -155,6 +167,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
 
 		std::optional<char> min() const;
 		std::optional<char> max() const;
@@ -175,6 +190,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		size_t iterlen() const;
+		DataPoint iterget(size_t i) const;
 
 		bool push(const Variable& element);
 		bool push(Variable&& element);

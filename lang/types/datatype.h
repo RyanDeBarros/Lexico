@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -61,8 +62,14 @@ namespace lx
 		SimpleType simple() const;
 		const DataType& underlying() const;
 		size_t hash() const;
-
 		bool operator==(const DataType& other) const;
+
+		bool can_cast_implicit(const DataType& to) const;
+		bool can_cast_explicit(const DataType& to) const;
+		bool is_iterable() const;
+		std::optional<DataType> itertype() const;
+		bool is_highlightable() const;
+		bool is_pageable() const;
 
 		bool member(const std::string_view name, MemberSignature& signature) const;
 	};

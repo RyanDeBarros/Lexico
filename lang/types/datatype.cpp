@@ -181,6 +181,129 @@ namespace lx
 			return !other._underlying;
 	}
 
+	bool DataType::can_cast_implicit(const DataType& to) const
+	{
+		if (to.simple() == SimpleType::Void || *this == to)
+			return true;
+
+		switch (_simple)
+		{
+		case SimpleType::Int:
+			return to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool || to.simple() == SimpleType::IRange;
+
+		case SimpleType::Float:
+			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Bool;
+
+		case SimpleType::Bool:
+			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float;
+
+		case SimpleType::String:
+			return to.simple() == SimpleType::Pattern;
+
+		case SimpleType::SRange:
+			return to.simple() == SimpleType::Pattern;
+
+		default:
+			return false;
+		}
+	}
+
+	bool DataType::can_cast_explicit(const DataType& to) const
+	{
+		if (can_cast_implicit(to))
+			return true;
+
+		switch (_simple)
+		{
+		case SimpleType::Int:
+		case SimpleType::Float:
+			return to.simple() == SimpleType::String || to.simple() == SimpleType::Pattern;
+
+		case SimpleType::Bool:
+			return to.simple() == SimpleType::String;
+
+		case SimpleType::String:
+			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool;
+
+		case SimpleType::SRange:
+			return to.simple() == SimpleType::String;
+
+		default:
+			return false;
+		}
+	}
+
+	bool DataType::is_iterable() const
+	{
+		switch (_simple)
+		{
+		case SimpleType::String:
+		case SimpleType::Match:
+		case SimpleType::Matches:
+		case SimpleType::IRange:
+		case SimpleType::SRange:
+		case SimpleType::List:
+			return true;
+
+		default:
+			return false;
+		}
+	}
+
+	std::optional<DataType> DataType::itertype() const
+	{
+		switch (_simple)
+		{
+		case SimpleType::String:
+			return DataType::String();
+
+		case SimpleType::Match:
+			return DataType::Cap();
+
+		case SimpleType::Matches:
+			return DataType::Match();
+
+		case SimpleType::IRange:
+			return DataType::Int();
+
+		case SimpleType::SRange:
+			return DataType::String();
+
+		case SimpleType::List:
+			return *_underlying;
+
+		default:
+			return std::nullopt;
+		}
+	}
+
+	bool DataType::is_highlightable() const
+	{
+		switch (_simple)
+		{
+		case SimpleType::Int:
+		case SimpleType::Match:
+		case SimpleType::Matches:
+		case SimpleType::IRange:
+			return true;
+
+		default:
+			return false;
+		}
+	}
+
+	bool DataType::is_pageable() const
+	{
+		switch (_simple)
+		{
+		case SimpleType::String:
+			return true;
+
+		default:
+			return false;
+		}
+	}
+
 	static StringMap<MemberSignature> string_members()
 	{
 		return {
