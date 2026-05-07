@@ -100,7 +100,7 @@ namespace lx
 					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterlen' but it doesn't");
 			}, _storage);
 		else
-			return 0;
+			throw LxError(ErrorType::Internal, "iterlen(): " + data_type().repr() + " is not iterable");
 	}
 
 	DataPoint DataPoint::iterget(size_t i) const
@@ -113,6 +113,19 @@ namespace lx
 					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterget' but it doesn't");
 			}, _storage);
 		else
-			return Void();
+			throw LxError(ErrorType::Internal, "iterget(): " + data_type().repr() + " is not iterable");
+	}
+
+	std::string DataPoint::page_content() const
+	{
+		if (data_type().is_pageable())
+			return std::visit([](const auto& v) -> std::string {
+			if constexpr (requires { v.page_content(); })
+				return v.page_content();
+			else
+				throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'page_content' but it doesn't");
+				}, _storage);
+		else
+			throw LxError(ErrorType::Internal, "page_content(): " + data_type().repr() + " is not pageable");
 	}
 }

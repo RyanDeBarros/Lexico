@@ -279,6 +279,11 @@ namespace lx
 		return String({ _value[i] });
 	}
 
+	std::string String::page_content() const
+	{
+		return _value;
+	}
+
 	std::string_view String::value() const
 	{
 		return _value;

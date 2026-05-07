@@ -80,5 +80,6 @@ namespace lx
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
+		std::string page_content() const;
 	};
 }

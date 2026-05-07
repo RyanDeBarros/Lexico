@@ -219,9 +219,7 @@ namespace lx
 
 	void Runtime::push_page(const Variable& page_desc)
 	{
-		Page page;
-		// TODO set page content
-		_page_stack.push(std::move(page));
+		_page_stack.push({ .content = page_desc.ref().page_content() });
 	}
 
 	void Runtime::pop_page(const ScriptSegment& segment)
