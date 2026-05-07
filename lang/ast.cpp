@@ -857,14 +857,8 @@ namespace lx
 				if (!ctx.registered_function(_identifier.lexeme, argtypes))
 				{
 					std::stringstream ss;
-					ss << "no declaration of '" << _identifier.lexeme << "' matches the argument types (";
-					for (size_t i = 0; i < argtypes.size(); ++i)
-					{
-						ss << argtypes[i];
-						if (i + 1 < argtypes.size())
-							ss << ", ";
-					}
-					ss << ")";
+					ss << "no declaration of '" << _identifier.lexeme << "' matches the argument types ";
+					print_list(ss, argtypes);
 					ctx.add_semantic_error(segment(), ss.str());
 				}
 			}
@@ -1001,14 +995,8 @@ namespace lx
 				return *r;
 
 			std::stringstream ss;
-			ss << "no overloads exist for '" << m.identifier() << "' with arguments (";
-			for (size_t i = 0; i < arg_types.size(); ++i)
-			{
-				ss << arg_types[i];
-				if (i + 1 < arg_types.size())
-					ss << ", ";
-			}
-			ss << ")";
+			ss << "no overloads exist for '" << m.identifier() << "' with arguments ";
+			print_list(ss, arg_types);
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		else

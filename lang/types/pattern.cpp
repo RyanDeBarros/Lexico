@@ -241,15 +241,8 @@ namespace lx
 	Variable Pattern::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		// TODO list logging utility
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 

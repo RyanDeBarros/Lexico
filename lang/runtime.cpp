@@ -155,14 +155,8 @@ namespace lx
 		else
 		{
 			std::stringstream ss;
-			ss << "no declaration matches the argument types (";
-			for (size_t i = 0; i < arg_types.size(); ++i)
-			{
-				ss << arg_types[i];
-				if (i + 1 < arg_types.size())
-					ss << ", ";
-			}
-			ss << ")";
+			ss << "no declaration matches the argument types ";
+			print_list(ss, arg_types);
 			throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 		}
 	}

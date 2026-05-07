@@ -88,14 +88,8 @@ namespace lx
 	Variable Int::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -174,14 +168,8 @@ namespace lx
 	Variable Float::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -254,14 +242,8 @@ namespace lx
 	Variable Bool::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -358,14 +340,8 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -423,14 +399,8 @@ namespace lx
 	Variable Void::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -521,14 +491,8 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -583,14 +547,8 @@ namespace lx
 	Variable Matches::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -647,14 +605,8 @@ namespace lx
 	Variable CapId::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -736,14 +688,8 @@ namespace lx
 	Variable Cap::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -798,14 +744,8 @@ namespace lx
 	Variable IRange::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -950,14 +890,8 @@ namespace lx
 	Variable SRange::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -1206,14 +1140,8 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
-		for (size_t i = 0; i < args.size(); ++i)
-		{
-			ss << args[i].ref().data_type();
-			if (i + 1 < args.size())
-				ss << ", ";
-		}
-		ss << ")";
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
+		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
