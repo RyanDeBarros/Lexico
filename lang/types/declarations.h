@@ -8,6 +8,7 @@
 
 namespace lx
 {
+	class Runtime;
 	class DataPoint;
 
 #define LX_EXPAND_BY_TYPE(M, Sep) \

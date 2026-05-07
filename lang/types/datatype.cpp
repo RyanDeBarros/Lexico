@@ -309,8 +309,8 @@ namespace lx
 		return {
 			{ "len", MemberSignature::make_data("len", DataType::Int()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = DataType::String(), .arg_types = { DataType::Int() } },
-				{.return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
 			}) },
 		};
 	}

@@ -8,7 +8,6 @@ set(TYPES_SOURCES
 	iterator.cpp
 	variable.cpp
 	heap.cpp
-	accessor.cpp
 	processing.cpp
 )
 

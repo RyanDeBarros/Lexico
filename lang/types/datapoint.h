@@ -81,5 +81,8 @@ namespace lx
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
 		std::string page_content() const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 }

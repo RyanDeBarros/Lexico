@@ -173,6 +173,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
 		static Pattern make_repeat(Pattern&& pattern, const IRange& range);
 		static Pattern make_backref(const CapId& capid);

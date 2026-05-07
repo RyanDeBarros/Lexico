@@ -1,6 +1,7 @@
 #include "pattern.h"
 
 #include "basic.h"
+#include "runtime.h"
 
 #include <sstream>
 
@@ -228,6 +229,28 @@ namespace lx
 	{
 		// TODO v0.2 string representation of pattern
 		ss << DataType::Pattern();
+	}
+
+	Variable Pattern::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	{
+		std::stringstream ss;
+		ss << data_type() << " does not have a data member '" << member << "'";
+		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	Variable Pattern::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	{
+		std::stringstream ss;
+		ss << data_type() << " does not have a method '" << method << "' that matches the argument list (";
+		// TODO list logging utility
+		for (size_t i = 0; i < args.size(); ++i)
+		{
+			ss << args[i].ref().data_type();
+			if (i + 1 < args.size())
+				ss << ", ";
+		}
+		ss << ")";
+		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)

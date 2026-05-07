@@ -1,6 +1,5 @@
 #include "ast.h"
 
-#include "types/accessor.h"
 #include "types/processing.h"
 #include "types/iterator.h"
 #include "constants.h"
@@ -519,7 +518,7 @@ namespace lx
 	{
 		const MemberSignature& m = member();
 		if (m.is_data())
-			return DataAccessor::invoke(_object.evaluate(env), env, m.identifier());
+			return _object.evaluate(env).ref().data_member(env, segment(), m.identifier());
 		else
 		{
 			std::stringstream ss;
@@ -680,7 +679,7 @@ namespace lx
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
-		return MethodAccessor::invoke(_container.evaluate(env), env, constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
+		return _container.evaluate(env).ref().invoke_method(env, segment(), constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
 	}
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
@@ -975,7 +974,7 @@ namespace lx
 			std::vector<Variable> args;
 			for (const Expression* expr : _args)
 				args.push_back(expr->evaluate(env));
-			return MethodAccessor::invoke(_member.object().evaluate(env), env, m.identifier(), args);
+			return _member.object().evaluate(env).ref().invoke_method(env, segment(), m.identifier(), std::move(args));
 		}
 		else
 		{

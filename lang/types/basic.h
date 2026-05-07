@@ -20,6 +20,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+
 		int value() const;
 	};
 
@@ -37,6 +40,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+
 		float value() const;
 	};
 
@@ -53,6 +59,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 
 		bool value() const;
 	};
@@ -72,6 +81,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
 		std::string page_content() const;
@@ -86,6 +98,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 
 	class Match
@@ -95,6 +110,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -108,6 +126,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -124,6 +145,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 
 	class Cap
@@ -133,6 +157,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 
 	class IRange
@@ -147,6 +174,9 @@ namespace lx
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -169,6 +199,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
 
@@ -182,15 +215,26 @@ namespace lx
 		DataType _underlying;
 		std::vector<Variable> _elements;
 
+		explicit List(const DataType& underlying);
+		explicit List(DataType&& underlying);
+		explicit List(std::vector<Variable>&& elements);
+
 	public:
 		List(const DataType& underlying, const ScriptSegment& segment);
 		List(DataType&& underlying, const ScriptSegment& segment);
 		List(std::vector<Variable>&& elements, const ScriptSegment& segment);
 
+		static List make_nonvoid_list(const DataType& underlying);
+		static List make_nonvoid_list(DataType&& underlying);
+		static List make_nonvoid_list(std::vector<Variable>&& elements);
+
 		DataType data_type() const;
 		TypeVariant cast_copy(const DataType& type) const;
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;

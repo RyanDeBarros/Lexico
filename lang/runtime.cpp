@@ -256,8 +256,6 @@ namespace lx
 		return _global_matches;
 	}
 
-	// TODO use search scope in find execution
-
 	const Scope& Runtime::search_scope() const
 	{
 		return _search_scope;
