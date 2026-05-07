@@ -132,14 +132,14 @@ namespace lx
 		}
 	}
 
-	SubpatternLookaround::SubpatternLookaround(LookaroundMode mode)
-		: _mode(mode)
+	SubpatternLookaround::SubpatternLookaround(LookaroundMode mode, SubpatternNode& subject)
+		: _mode(mode), _subject(&subject)
 	{
 	}
 
 	SubpatternNode& SubpatternLookaround::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternLookaround>(this, conv, arena, _mode);
+		return clone_base<SubpatternLookaround>(this, conv, arena, _mode, _subject->refer_node(conv, arena));
 	}
 
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)

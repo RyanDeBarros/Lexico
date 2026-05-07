@@ -235,8 +235,12 @@ namespace lx
 		case PrefixOperator::NotAhead:
 		case PrefixOperator::NotBehind:
 		case PrefixOperator::Optional:
-		case PrefixOperator::Ref:
 			if (type.can_cast_implicit(DataType::Pattern()))
+				return DataType::Pattern();
+			break;
+
+		case PrefixOperator::Ref:
+			if (type.can_cast_implicit(DataType::CapId()))
 				return DataType::Pattern();
 			break;
 

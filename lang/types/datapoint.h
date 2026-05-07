@@ -36,12 +36,6 @@ namespace lx
 		}
 
 		template<Type T>
-		bool holds() const
-		{
-			return std::holds_alternative<T>(_storage);
-		}
-
-		template<Type T>
 		T move_as()
 		{
 			return std::get<T>(std::visit([](auto&& v) { return v.cast_move(T::data_type()); }, std::move(_storage)));

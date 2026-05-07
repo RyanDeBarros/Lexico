@@ -31,6 +31,7 @@ namespace lx
 	Runtime::Runtime(const std::string_view input, SemanticFunctionTable&& ftable)
 		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }, _function_table(std::move(ftable))
 	{
+		push_local_scope(true);
 	}
 
 	const std::stringstream& Runtime::output() const

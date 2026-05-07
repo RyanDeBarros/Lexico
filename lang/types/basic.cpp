@@ -781,19 +781,25 @@ namespace lx
 	{
 	}
 
-	static void assert_valid_srange_char(const std::string& m)
+	static void assert_valid_srange_char(const std::string& m, const ScriptSegment* segment)
 	{
 		if (m.size() != 1)
 		{
 			std::stringstream ss;
 			ss << "\"" << m << "\" should only consist of one character";
-			throw LxError(ErrorType::Runtime, ss.str());
+			if (segment)
+				throw LxError::segment_error(*segment, ErrorType::Runtime, ss.str());
+			else
+				throw LxError(ErrorType::Runtime, ss.str());
 		}
 		else if (m[0] < LOWER_A || (m[0] > LOWER_Z && m[0] < UPPER_A) || m[0] > UPPER_Z)
 		{
 			std::stringstream ss;
 			ss << "\"" << m[0] << "\" out of range \"a-z\" and \"A-Z\"";
-			throw LxError(ErrorType::Runtime, ss.str());
+			if (segment)
+				throw LxError::segment_error(*segment, ErrorType::Runtime, ss.str());
+			else
+				throw LxError(ErrorType::Runtime, ss.str());
 		}
 	}
 	
@@ -806,7 +812,7 @@ namespace lx
 		{
 			try
 			{
-				assert_valid_srange_char(*min);
+				assert_valid_srange_char(*min, nullptr);
 			}
 			catch (LxError& e)
 			{
@@ -818,7 +824,39 @@ namespace lx
 		{
 			try
 			{
-				assert_valid_srange_char(*max);
+				assert_valid_srange_char(*max, nullptr);
+			}
+			catch (LxError& e)
+			{
+				errors.push_back(std::move(e));
+			}
+		}
+
+		if (!errors.empty())
+			throw LxErrorList(errors);
+	}
+
+	SRange::SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment)
+	{
+		std::vector<LxError> errors;
+
+		if (min)
+		{
+			try
+			{
+				assert_valid_srange_char(*min, min_segment);
+			}
+			catch (LxError& e)
+			{
+				errors.push_back(std::move(e));
+			}
+		}
+
+		if (max)
+		{
+			try
+			{
+				assert_valid_srange_char(*max, max_segment);
 			}
 			catch (LxError& e)
 			{

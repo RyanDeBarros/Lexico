@@ -103,10 +103,11 @@ namespace lx
 
 	class SubpatternLookaround : public SubpatternNode
 	{
+		SubpatternNode* _subject;
 		LookaroundMode _mode;
 
 	public:
-		SubpatternLookaround(LookaroundMode mode);
+		SubpatternLookaround(LookaroundMode mode, SubpatternNode& subject);
 
 	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;

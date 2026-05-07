@@ -193,6 +193,7 @@ namespace lx
 	public:
 		SRange(std::optional<char> min, std::optional<char> max);
 		SRange(std::optional<std::string> min, std::optional<std::string> max);
+		SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment);
 
 		static DataType data_type();
 		TypeVariant cast_copy(const DataType& type) const;

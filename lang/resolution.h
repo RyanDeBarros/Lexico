@@ -40,6 +40,7 @@ namespace lx
 		std::vector<StringSet> _declared_locals;
 
 	public:
+		VarConsistencyTest();
 		bool seen(const FunctionDefinition& fn) const;
 		void see(const FunctionDefinition& fn, const FunctionCallExpression& call_site);
 		void clear_stack();
@@ -60,6 +61,8 @@ namespace lx
 		VarConsistencyTest _var_consistency_test;
 
 	public:
+		SemanticContext();
+
 		std::vector<LxError>& errors();
 		void add_semantic_error(const Token& token, const std::string_view cause);
 		void add_semantic_error(const ScriptSegment& segment, const std::string_view cause);

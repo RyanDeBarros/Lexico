@@ -467,7 +467,7 @@ namespace lx
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _left.evaluate(env), _right.evaluate(env));
+		return operate(env, op(), _left.evaluate(env), _left.segment(), _right.evaluate(env), _right.segment());
 	}
 
 	bool BinaryExpression::imperative() const
@@ -595,7 +595,7 @@ namespace lx
 
 	Variable PrefixExpression::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _expr.evaluate(env));
+		return operate(env, op(), _expr.evaluate(env), segment());
 	}
 
 	DataType PrefixExpression::impl_evaltype(SemanticContext& ctx) const

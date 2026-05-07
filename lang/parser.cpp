@@ -663,7 +663,7 @@ namespace lx
 
 			while (continue_statement())
 			{
-				args.push_back(&parse_expression(offset));
+				args.push_back(&parse_expression(offset, false));
 				comma_ended = false;
 				if (peek_token_is_not(0, TokenType::Comma))
 					break;
@@ -767,7 +767,7 @@ namespace lx
 			throw_error(errors::EXPECTED_IF_END, 0);
 		}
 
-		Expression& parse_expression(TokenOffset& offset, Precedence min_precedence = Precedence::Lowest)
+		Expression& parse_expression(TokenOffset& offset, bool consume_commas = true, Precedence min_precedence = Precedence::Lowest)
 		{
 			if (!continue_statement())
 				throw_error(errors::EXPECTED_EXPRESSION, 0);
@@ -801,6 +801,9 @@ namespace lx
 					continue;
 				}
 				
+				if (!consume_commas && peek_token_is(0, TokenType::Comma))
+					break;
+
 				if (peek(0).is_postfix_operator())
 				{
 					if (!(peek(0).is_binary_operator() || peek_token_is(0, TokenType::Assign)) || !(
@@ -830,7 +833,7 @@ namespace lx
 					auto& op = ref(0);
 					offset.add(1);
 					Precedence next_min_precedence = precedence + (op.is_right_associative() ? 0 : 1);
-					Expression& rhs = parse_expression(offset, next_min_precedence);
+					Expression& rhs = parse_expression(offset, true, next_min_precedence);
 					lhs = &_tree.add(std::make_unique<BinaryExpression>(std::move(op), *lhs, rhs));
 
 					continue;
@@ -892,7 +895,7 @@ namespace lx
 
 			while (continue_statement() && peek_token_is_not(0, TokenType::RParen))
 			{
-				Expression& arg = parse_expression(offset, Precedence::Lowest);
+				Expression& arg = parse_expression(offset);
 				args.push_back(&arg);
 
 				if (peek_token_is(0, TokenType::Comma))
@@ -972,7 +975,7 @@ namespace lx
 		Expression& parse_group_expression(TokenOffset& offset)
 		{
 			offset.add(1);  // '('
-			Expression& expr = parse_expression(offset, Precedence::Lowest);
+			Expression& expr = parse_expression(offset);
 			if (!peek_token_is(0, TokenType::RParen))
 				throw_error(errors::EXPECTED_RPAREN, 0);
 			offset.add(1);  // ')'
@@ -982,7 +985,7 @@ namespace lx
 		Expression& parse_subscript_expression(Expression& lhs, TokenOffset& offset)
 		{
 			offset.add(1);  // '['
-			Expression& expr = parse_expression(offset, Precedence::Lowest);
+			Expression& expr = parse_expression(offset);
 			if (!peek_token_is(0, TokenType::RBracket))
 				throw_error(errors::EXPECTED_RBRACKET, 0);
 			offset.add(1);  // ']'
@@ -993,7 +996,7 @@ namespace lx
 		{
 			auto& op = ref(0);
 			offset.add(1);
-			Expression& rhs = parse_expression(offset, Precedence::Prefix);
+			Expression& rhs = parse_expression(offset, true, Precedence::Prefix);
 			return _tree.add(std::make_unique<PrefixExpression>(std::move(op), rhs));
 		}
 
@@ -1018,13 +1021,13 @@ namespace lx
 				offset.add(1);
 				auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset)));
 			}
 			else if (peek_token_is(0, TokenType::Lazy))
 			{
 				auto& lazy_token = ref(0);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset, Precedence::Lowest)));
+				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset)));
 			}
 			else
 				return nullptr;

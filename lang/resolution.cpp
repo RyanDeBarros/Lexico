@@ -28,6 +28,11 @@ namespace lx
 		_map[std::string(identifier)] = { .decl_line_number = line_number, .type = std::move(type) };
 	}
 
+	VarConsistencyTest::VarConsistencyTest()
+	{
+		_declared_locals.push_back({});
+	}
+
 	bool VarConsistencyTest::seen(const FunctionDefinition& fn) const
 	{
 		return _seen_functions.count(&fn);
@@ -45,6 +50,7 @@ namespace lx
 		_seen_functions.clear();
 		_call_stack.clear();
 		_declared_locals.clear();
+		_declared_locals.push_back({});
 	}
 
 	void VarConsistencyTest::exit_scope()
@@ -73,6 +79,11 @@ namespace lx
 
 			ctx.errors().push_back(LxError::batch_error(segments, ErrorType::Semantic, "global variable is not be defined at this point in function call stack"));
 		}
+	}
+
+	SemanticContext::SemanticContext()
+	{
+		push_local_scope(true);
 	}
 
 	std::vector<LxError>& SemanticContext::errors()
