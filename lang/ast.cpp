@@ -388,7 +388,7 @@ namespace lx
 	Variable ListExpression::evaluate(Runtime& env) const
 	{
 		std::vector<LxError> errors;
-		Variable list_handle = env.temporary_variable(List(*_underlying));
+		Variable list_handle = env.temporary_variable(List(*_underlying, segment()));
 		List& list = list_handle.ref().get<List>();
 
 		for (const Expression* expr : _elements)

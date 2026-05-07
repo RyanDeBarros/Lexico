@@ -618,27 +618,24 @@ namespace lx
 			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
 	}
 
-	List::List(const DataType& underlying)
+	List::List(const DataType& underlying, const ScriptSegment& segment)
 		: _underlying(underlying)
 	{
 		if (_underlying.simple() == SimpleType::Void)
-			// TODO use proper error type
-			throw LxError(ErrorType::Internal, "list cannot have void underlying type");
+			throw LxError::segment_error(segment, ErrorType::Runtime, "list cannot have void underlying type");
 	}
 
-	List::List(DataType&& underlying)
+	List::List(DataType&& underlying, const ScriptSegment& segment)
 		: _underlying(std::move(underlying))
 	{
 		if (_underlying.simple() == SimpleType::Void)
-			// TODO use proper error type
-			throw LxError(ErrorType::Internal, "list cannot have void underlying type");
+			throw LxError::segment_error(segment, ErrorType::Runtime, "list cannot have void underlying type");
 	}
 
-	static DataType underlying_of(const std::vector<Variable>& elements)
+	static DataType underlying_of(const std::vector<Variable>& elements, const ScriptSegment& segment)
 	{
 		if (elements.empty())
-			// TODO use proper error type
-			throw LxError(ErrorType::Internal, "unresolved list cannot initialize with no elements");
+			throw LxError::segment_error(segment, ErrorType::Runtime, "unresolved list cannot initialize with no elements");
 
 		std::vector<LxError> errors;
 		DataType underlying = elements[0].ref().data_type();
@@ -646,10 +643,9 @@ namespace lx
 		{
 			if (elements[i].ref().data_type() != underlying)
 			{
-				// TODO use proper error type
 				std::stringstream ss;
 				ss << __FUNCTION__ << ": element [" << i << "] has type " << elements[i].ref().data_type() << ", which doesn't match type of first element: " << underlying;
-				errors.push_back(LxError(ErrorType::Internal, ss.str()));
+				errors.push_back(LxError::segment_error(segment, ErrorType::Runtime, ss.str()));
 			}
 		}
 
@@ -659,8 +655,8 @@ namespace lx
 			throw LxErrorList(errors);
 	}
 
-	List::List(std::vector<Variable>&& elements)
-		: _underlying(underlying_of(elements))
+	List::List(std::vector<Variable>&& elements, const ScriptSegment& segment)
+		: _underlying(underlying_of(elements, segment))
 	{
 		_elements = std::move(elements);
 	}

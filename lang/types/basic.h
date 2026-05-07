@@ -167,9 +167,9 @@ namespace lx
 		std::vector<Variable> _elements;
 
 	public:
-		explicit List(const DataType& underlying);
-		explicit List(DataType&& underlying);
-		explicit List(std::vector<Variable>&& elements);
+		List(const DataType& underlying, const ScriptSegment& segment);
+		List(DataType&& underlying, const ScriptSegment& segment);
+		List(std::vector<Variable>&& elements, const ScriptSegment& segment);
 
 		DataType data_type() const;
 		TypeVariant cast_copy(const DataType& type) const;
