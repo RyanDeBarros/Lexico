@@ -138,13 +138,13 @@ namespace lx
 			throw LxError(ErrorType::Internal, "page_content(): " + data_type().repr() + " is not pageable");
 	}
 
-	Variable DataPoint::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable DataPoint::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
-		return std::visit([&env, &segment, member](const auto& v) -> Variable { return v.data_member(env, segment, member); }, _storage);
+		return std::visit([&self, &env, &segment, member](const auto& v) -> Variable { return v.data_member(std::move(self), env, segment, member); }, _storage);
 	}
 
-	Variable DataPoint::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable DataPoint::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
-		return std::visit([&env, &segment, method, &args](const auto& v) -> Variable { return v.invoke_method(env, segment, method, std::move(args)); }, _storage);
+		return std::visit([&self, &env, &segment, method, &args](const auto& v) -> Variable { return v.invoke_method(std::move(self), env, segment, method, std::move(args)); }, _storage);
 	}
 }

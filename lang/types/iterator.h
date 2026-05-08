@@ -10,7 +10,7 @@ namespace lx
 		size_t _pos = 0;
 
 	public:
-		Iterator(const Variable& iterable);
+		Iterator(Variable iterable);
 
 		bool done() const;
 		void next();

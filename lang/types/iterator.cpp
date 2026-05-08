@@ -4,7 +4,7 @@
 
 namespace lx
 {
-	Iterator::Iterator(const Variable& iterable)
+	Iterator::Iterator(Variable iterable)
 		: _iterable(iterable)
 	{
 	}

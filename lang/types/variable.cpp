@@ -71,11 +71,11 @@ namespace lx
 			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
-	DataPoint Variable::dp()
+	DataPoint Variable::consume() &&
 	{
 		if (_heap)
 		{
-			DataPoint dp = _heap->dp(_id);
+			DataPoint dp = _heap->detach(_id);
 			_heap = nullptr;
 			return dp;
 		}
@@ -94,6 +94,16 @@ namespace lx
 	size_t Variable::hash() const
 	{
 		return std::hash<unsigned int>{}(_id);
+	}
+
+	Variable Variable::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	{
+		return ref().data_member(*this, env, segment, member);
+	}
+
+	Variable Variable::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	{
+		return ref().invoke_method(*this, env, segment, method, std::move(args));
 	}
 }
 

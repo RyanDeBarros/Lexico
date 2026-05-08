@@ -266,18 +266,18 @@ namespace lx
 		ss << DataType::Pattern();
 	}
 
-	Variable Pattern::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Pattern::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Pattern::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Pattern::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 

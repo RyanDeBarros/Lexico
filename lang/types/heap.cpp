@@ -24,6 +24,7 @@ namespace lx
 	void VirtualHeap::remove(unsigned int id)
 	{
 		_free_slots.push(id);
+		_data[id] = Void();
 	}
 
 	const DataPoint& VirtualHeap::get(unsigned int id) const
@@ -36,7 +37,7 @@ namespace lx
 		return _data[id];
 	}
 
-	DataPoint VirtualHeap::dp(unsigned int id)
+	DataPoint VirtualHeap::detach(unsigned int id)
 	{
 		DataPoint dp = unbound(id) ? std::move(_data[id]) : _data[id];
 		--_ref_counts[id];

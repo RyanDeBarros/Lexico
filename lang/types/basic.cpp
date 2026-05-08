@@ -74,18 +74,18 @@ namespace lx
 		ss << _value;
 	}
 
-	Variable Int::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Int::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Int::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Int::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -155,18 +155,18 @@ namespace lx
 		ss << _value;
 	}
 
-	Variable Float::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Float::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Float::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Float::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -234,18 +234,18 @@ namespace lx
 		ss << (_value ? "true" : "false");
 	}
 
-	Variable Bool::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Bool::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Bool::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Bool::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -315,7 +315,7 @@ namespace lx
 		ss << _value;
 	}
 
-	Variable String::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable String::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		if (member == "len")
 			return env.unbound_variable(Int(_value.size()));
@@ -325,7 +325,7 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable String::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable String::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{
@@ -333,7 +333,7 @@ namespace lx
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
 				{
-					int index = args[0].dp().move_as<Int>().value();
+					int index = std::move(args[0]).consume().move_as<Int>().value();
 					if (index < 0 || index >= _value.size())
 					{
 						std::stringstream ss;
@@ -344,13 +344,41 @@ namespace lx
 					return env.unbound_variable(String({ _value[index] })); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
 				}
 				else if (args[0].ref().data_type().simple() == SimpleType::IRange)
+				{
+					IRange range = std::move(args[0]).consume().move_as<IRange>();
+					if (range.min())
+					{
+						if (range.max())
+						{
+							if (*range.min() <= *range.max())
+							{
+								// TODO
+							}
+							else
+							{
+								// TODO
+							}
+						}
+						else
+						{
+							// TODO
+						}
+					}
+					else if (range.max())
+					{
+						// TODO
+					}
+					else
+						return self;
+
 					return env.unbound_variable(String("")); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+				}
 			}
 		}
 
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -403,18 +431,18 @@ namespace lx
 		ss << "";
 	}
 
-	Variable Void::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Void::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Void::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Void::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -452,7 +480,7 @@ namespace lx
 		ss << DataType::Match();
 	}
 
-	Variable Match::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Match::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		// TODO use constants for these member names
 		if (member == "caps")
@@ -491,7 +519,7 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Match::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Match::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{
@@ -512,7 +540,7 @@ namespace lx
 
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -563,18 +591,18 @@ namespace lx
 		ss << DataType::Matches();
 	}
 
-	Variable Matches::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Matches::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Matches::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Matches::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -627,18 +655,18 @@ namespace lx
 		ss << DataType::CapId();
 	}
 
-	Variable CapId::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable CapId::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable CapId::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable CapId::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -679,7 +707,7 @@ namespace lx
 		ss << DataType::Cap();
 	}
 
-	Variable Cap::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Cap::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		if (member == "exists")
 		{
@@ -722,11 +750,11 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable Cap::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Cap::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -777,18 +805,18 @@ namespace lx
 		ss << '>';
 	}
 
-	Variable IRange::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable IRange::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable IRange::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable IRange::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -956,18 +984,18 @@ namespace lx
 		ss << '>';
 	}
 
-	Variable SRange::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable SRange::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable SRange::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable SRange::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -1199,7 +1227,7 @@ namespace lx
 		ss << "]";
 	}
 
-	Variable List::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable List::data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		if (member == "len")
 			return env.unbound_variable(Int(_elements.size()));
@@ -1209,20 +1237,20 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
-	Variable List::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable List::invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{
 			if (args.size() == 1)
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
-					return _elements[args[0].dp().move_as<Int>().value()];
+					return _elements[std::move(args[0]).consume().move_as<Int>().value()];
 			}
 		}
 
 		std::stringstream ss;
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
-		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
+		print_list(ss, args, [](Variable v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
@@ -1248,19 +1276,7 @@ namespace lx
 		return _elements[i].ref();
 	}
 
-	bool List::push(const Variable& element)
-	{
-		if (element.ref().data_type() == _underlying)
-		{
-			// TODO no need for own/disown if List already keeps Variable alive
-			_elements.push_back(element);
-			return true;
-		}
-		else
-			return false;
-	}
-
-	bool List::push(Variable&& element)
+	bool List::push(Variable element)
 	{
 		if (element.ref().data_type() == _underlying)
 		{

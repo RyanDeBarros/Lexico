@@ -4,7 +4,6 @@
 #include "variable.h"
 
 #include <stack>
-#include <unordered_set>
 
 namespace lx
 {
@@ -23,7 +22,7 @@ namespace lx
 		void remove(unsigned int id);
 		const DataPoint& get(unsigned int id) const;
 		DataPoint& get(unsigned int id);
-		DataPoint dp(unsigned int id);
+		DataPoint detach(unsigned int id);
 		bool unbound(unsigned int id) const;
 
 		void increment_ref_count(unsigned int id);

@@ -1,11 +1,15 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
+#include <vector>
 
 namespace lx
 {
 	class DataPoint;
 	class VirtualHeap;
+	class Runtime;
+	struct ScriptSegment;
 
 	class Variable
 	{
@@ -24,12 +28,18 @@ namespace lx
 
 		const DataPoint& ref() const;
 		DataPoint& ref();
-		DataPoint dp();
+		DataPoint consume() &&;
+
+		template<typename T>
+		T consume_as() &&;
 
 		bool unbound() const;
 
 		size_t hash() const;
-		bool operator==(const Variable& other) const = default;
+		bool operator==(const Variable&) const = default;
+
+		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
+		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 }
 
