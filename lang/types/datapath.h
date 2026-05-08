@@ -19,6 +19,7 @@ namespace lx
 	struct PathStep
 	{
 		DataSymbol symbol;
+		// TODO use black box & user pointer + index instead of int. For example, [] might use int indexes or irange indexes
 		int index;
 	};
 

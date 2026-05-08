@@ -8,8 +8,7 @@ namespace lx
 {
 	class DataPoint;
 	class VirtualHeap;
-	class Runtime;
-	struct ScriptSegment;
+	class EvalContext;
 	struct DataPath;
 
 	class Variable
@@ -52,8 +51,8 @@ namespace lx
 		size_t hash() const;
 		bool operator==(const Variable&) const = default;
 
-		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(EvalContext& env, const std::string_view member) const;
+		Variable invoke_method(EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 }
 

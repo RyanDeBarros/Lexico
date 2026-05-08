@@ -42,6 +42,7 @@ namespace lx
 		std::stringstream _log;
 
 		VirtualHeap _heap;
+		DataSymbolTable _data_symbols;
 		RuntimeSymbolTable _global_variable_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 		RuntimeFunctionTable _function_table;
@@ -59,6 +60,7 @@ namespace lx
 
 	public:
 		Runtime(const std::string_view input, SemanticFunctionTable&& ftable);
+		Runtime(const Runtime&) = delete;
 		
 		const std::stringstream& output() const;
 		std::stringstream& output();
@@ -86,6 +88,8 @@ namespace lx
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable unbound_variable(DataPoint&& dp);
+
+		DataSymbol data_symbol(const std::string_view name);
 
 		const FunctionDefinition& registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const;
 

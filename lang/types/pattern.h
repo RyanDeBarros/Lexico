@@ -185,8 +185,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Pattern& o) const;
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);

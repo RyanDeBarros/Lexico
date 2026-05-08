@@ -467,7 +467,9 @@ namespace lx
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _left.evaluate(env), _left.segment(), _right.evaluate(env), _right.segment());
+		ScriptSegment seg = segment();
+		EvalContext ctx(env, &seg);
+		return operate(ctx, op(), _left.evaluate(env), _right.evaluate(env));
 	}
 
 	bool BinaryExpression::imperative() const
@@ -517,7 +519,11 @@ namespace lx
 	{
 		const MemberSignature& m = member();
 		if (m.is_data())
-			return _object.evaluate(env).data_member(env, segment(), m.identifier());
+		{
+			ScriptSegment seg = segment();
+			EvalContext ctx(env, &seg);
+			return _object.evaluate(env).data_member(ctx, m.identifier());
+		}
 		else
 		{
 			std::stringstream ss;
@@ -595,7 +601,9 @@ namespace lx
 
 	Variable PrefixExpression::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _expr.evaluate(env), segment());
+		ScriptSegment seg = segment();
+		EvalContext ctx(env, &seg);
+		return operate(ctx, op(), _expr.evaluate(env));
 	}
 
 	DataType PrefixExpression::impl_evaltype(SemanticContext& ctx) const
@@ -678,7 +686,9 @@ namespace lx
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
-		return _container.evaluate(env).invoke_method(env, segment(), constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
+		ScriptSegment seg = segment();
+		EvalContext ctx(env, &seg);
+		return _container.evaluate(env).invoke_method(ctx, constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
 	}
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
@@ -968,7 +978,9 @@ namespace lx
 			for (const Expression* expr : _args)
 				args.push_back(expr->evaluate(env));
 
-			return _member.object().evaluate(env).invoke_method(env, segment(), m.identifier(), std::move(args));
+			ScriptSegment seg = segment();
+			EvalContext ctx(env, &seg);
+			return _member.object().evaluate(env).invoke_method(ctx, m.identifier(), std::move(args));
 		}
 		else
 		{
@@ -1733,7 +1745,9 @@ namespace lx
 
 	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
 	{
-		return operate(env, op(), _expression.evaluate(env), _expression.segment());
+		ScriptSegment seg = segment();
+		EvalContext ctx(env, &seg);
+		return operate(ctx, op(), _expression.evaluate(env));
 	}
 
 	DataType SimpleRepeatOperation::impl_evaltype(SemanticContext& ctx) const

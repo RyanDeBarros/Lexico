@@ -158,14 +158,16 @@ namespace lx
 		return std::hash<unsigned int>{}(_id);
 	}
 
-	Variable Variable::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
+	Variable Variable::data_member(EvalContext& env, const std::string_view member) const
 	{
-		return ref().data_member(*this, env, segment, member);
+		VarContext ctx(env, *this);
+		return ref().data_member(ctx, member);
 	}
 
-	Variable Variable::invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Variable::invoke_method(EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const
 	{
-		return ref().invoke_method(*this, env, segment, method, std::move(args));
+		VarContext ctx(env, *this);
+		return ref().invoke_method(ctx, method, std::move(args));
 	}
 }
 

@@ -3,9 +3,12 @@
 #include "declarations.h"
 #include "variable.h"
 #include "public.h"
+#include "evalcontext.h"
 
 namespace lx
 {
+	class ResolvedValue;
+
 	class Int
 	{
 		int _value;
@@ -20,8 +23,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Int& o) const;
 
 		int value() const;
@@ -41,8 +44,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Float& o) const;
 
 		float value() const;
@@ -62,8 +65,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Bool& o) const;
 
 		bool value() const;
@@ -84,8 +87,11 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable get(VarContext& ctx, const DataPath* path);
+		void set(VarContext& ctx, const DataPath* path, DataPoint&& to);
+
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const String& o) const;
 
 		size_t iterlen() const;
@@ -103,8 +109,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Void& o) const;
 	};
 
@@ -116,8 +122,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Match& o) const;
 
 		size_t iterlen() const;
@@ -132,8 +138,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Matches& o) const;
 
 		size_t iterlen() const;
@@ -152,8 +158,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const CapId& o) const;
 	};
 
@@ -165,8 +171,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const Cap& o) const;
 	};
 
@@ -183,8 +189,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const IRange& o) const;
 
 		size_t iterlen() const;
@@ -211,8 +217,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const SRange& o) const;
 
 		size_t iterlen() const;
@@ -246,8 +252,8 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable data_member(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
-		Variable invoke_method(Variable self, Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		bool equals(const List& o) const;
 
 		size_t iterlen() const;
