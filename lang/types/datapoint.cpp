@@ -70,6 +70,22 @@ namespace lx
 		std::visit([this](auto&& o) { setval(std::forward<decltype(o)>(o)); }, std::move(other._storage));
 	}
 
+	bool DataPoint::equals(const DataPoint& other) const
+	{
+		if (other.can_cast_implicit(data_type()))
+			return std::visit([o = other.cast_copy(data_type())](const auto& v) { return v.equals(o.get<std::decay_t<decltype(v)>>()); }, _storage);
+		else
+			return false;
+	}
+
+	bool DataPoint::equals(DataPoint&& other) const
+	{
+		if (other.can_cast_implicit(data_type()))
+			return std::visit([o = other.cast_move(data_type())](const auto& v) { return v.equals(o.get<std::decay_t<decltype(v)>>()); }, _storage);
+		else
+			return false;
+	}
+
 	bool DataPoint::can_cast_implicit(const DataType& to) const
 	{
 		return data_type().can_cast_implicit(to);

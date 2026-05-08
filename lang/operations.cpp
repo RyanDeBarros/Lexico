@@ -133,9 +133,14 @@ namespace lx
 		switch (op)
 		{
 		case BinaryOperator::And:
+			if (lhs.can_cast_implicit(DataType::Bool()) && rhs.can_cast_implicit(DataType::Bool()))
+				return DataType::Bool();
+
 		case BinaryOperator::Or:
 			if (lhs.can_cast_implicit(DataType::Bool()) && rhs.can_cast_implicit(DataType::Bool()))
 				return DataType::Bool();
+			else if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::Pattern()))
+				return DataType::Pattern();
 			break;
 
 		case BinaryOperator::Assign:
@@ -179,6 +184,9 @@ namespace lx
 
 		case BinaryOperator::Comma:
 		case BinaryOperator::Except:
+			if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::Pattern()))
+				return DataType::Pattern();
+
 		case BinaryOperator::Repeat:
 			if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::IRange()))
 				return DataType::Pattern();

@@ -69,18 +69,18 @@ namespace lx
 		return clone_base<SubpatternString>(this, conv, arena, _string);
 	}
 
-	SubpatternException::SubpatternException(SubpatternNode& exception)
-		: _exception(&exception)
+	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
+		: _subject(&subject), _exception(&exception)
 	{
 	}
 
 	SubpatternNode& SubpatternException::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternException>(this, conv, arena, _exception->refer_node(conv, arena));
+		return clone_base<SubpatternException>(this, conv, arena, _subject->refer_node(conv, arena), _exception->refer_node(conv, arena));
 	}
 
-	SubpatternRepetition::SubpatternRepetition(SubpatternNode& repeated, const IRange& range)
-		: _repeated(&repeated), _range(range)
+	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
+		: _subject(&subject), _range(range)
 	{
 	}
 
@@ -101,14 +101,14 @@ namespace lx
 		}
 	}
 
-	SubpatternRepetition::SubpatternRepetition(SubpatternNode& repeated, PatternSimpleRepeatOperator op)
-		: _repeated(&repeated), _range(simple_repeat_range(op))
+	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, PatternSimpleRepeatOperator op)
+		: _subject(&subject), _range(simple_repeat_range(op))
 	{
 	}
 
 	SubpatternNode& SubpatternRepetition::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternRepetition>(this, conv, arena, _repeated->refer_node(conv, arena), _range);
+		return clone_base<SubpatternRepetition>(this, conv, arena, _subject->refer_node(conv, arena), _range);
 	}
 
 	LookaroundMode lookaround_mode(PrefixOperator op)
@@ -244,6 +244,12 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool Pattern::equals(const Pattern& o) const
+	{
+		// TODO
+		return false;
 	}
 
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)

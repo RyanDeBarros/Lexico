@@ -93,6 +93,11 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool Int::equals(const Int& o) const
+	{
+		return _value == o._value;
+	}
+
 	int Int::value() const
 	{
 		return _value;
@@ -173,6 +178,11 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool Float::equals(const Float& o) const
+	{
+		return _value == o._value;
+	}
+
 	float Float::value() const
 	{
 		return _value;
@@ -245,6 +255,11 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool Bool::equals(const Bool& o) const
+	{
+		return _value == o._value;
 	}
 
 	bool Bool::value() const
@@ -345,6 +360,11 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool String::equals(const String& o) const
+	{
+		return _value == o._value;
+	}
+
 	size_t String::iterlen() const
 	{
 		return _value.size();
@@ -402,6 +422,11 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool Void::equals(const Void& o) const
+	{
+		return true;
 	}
 
 	DataType Match::data_type()
@@ -496,6 +521,12 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool Match::equals(const Match& o) const
+	{
+		// TODO
+		return false;
+	}
+
 	size_t Match::iterlen() const
 	{
 		// TODO
@@ -550,6 +581,12 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool Matches::equals(const Matches& o) const
+	{
+		// TODO
+		return false;
 	}
 
 	size_t Matches::iterlen() const
@@ -608,6 +645,11 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool CapId::equals(const CapId& o) const
+	{
+		return _uid == o._uid;
 	}
 
 	DataType Cap::data_type()
@@ -693,6 +735,12 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool Cap::equals(const Cap& o) const
+	{
+		// TODO
+		return false;
+	}
+
 	IRange::IRange(std::optional<int> min, std::optional<int> max)
 		: _min(min), _max(max)
 	{
@@ -749,6 +797,11 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
 	}
 
+	bool IRange::equals(const IRange& o) const
+	{
+		return _min == o._min && _max == o._max;
+	}
+
 	size_t IRange::iterlen() const
 	{
 		if (!_min || !_max)
@@ -781,7 +834,7 @@ namespace lx
 	{
 	}
 
-	static void assert_valid_srange_char(const std::string& m, const ScriptSegment* segment)
+	static void assert_valid_srange_char(const std::string_view m, const ScriptSegment* segment)
 	{
 		if (m.size() != 1)
 		{
@@ -802,41 +855,8 @@ namespace lx
 				throw LxError(ErrorType::Runtime, ss.str());
 		}
 	}
-	
-	SRange::SRange(std::optional<std::string> min, std::optional<std::string> max)
-		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
-	{
-		std::vector<LxError> errors;
 
-		if (min)
-		{
-			try
-			{
-				assert_valid_srange_char(*min, nullptr);
-			}
-			catch (LxError& e)
-			{
-				errors.push_back(std::move(e));
-			}
-		}
-
-		if (max)
-		{
-			try
-			{
-				assert_valid_srange_char(*max, nullptr);
-			}
-			catch (LxError& e)
-			{
-				errors.push_back(std::move(e));
-			}
-		}
-
-		if (!errors.empty())
-			throw LxErrorList(errors);
-	}
-
-	SRange::SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment)
+	static void assert_valid_srange(std::optional<std::string_view> min, const ScriptSegment* min_segment, std::optional<std::string_view> max, const ScriptSegment* max_segment)
 	{
 		std::vector<LxError> errors;
 
@@ -866,6 +886,30 @@ namespace lx
 
 		if (!errors.empty())
 			throw LxErrorList(errors);
+	}
+	
+	SRange::SRange(std::optional<std::string> min, std::optional<std::string> max)
+		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
+	{
+		assert_valid_srange(min, nullptr, max, nullptr);
+	}
+
+	SRange::SRange(std::optional<std::string_view> min, std::optional<std::string_view> max)
+		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
+	{
+		assert_valid_srange(min, nullptr, max, nullptr);
+	}
+
+	SRange::SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment)
+		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
+	{
+		assert_valid_srange(min, min_segment, max, max_segment);
+	}
+
+	SRange::SRange(std::optional<std::string_view> min, const ScriptSegment* min_segment, std::optional<std::string_view> max, const ScriptSegment* max_segment)
+		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
+	{
+		assert_valid_srange(min, min_segment, max, max_segment);
 	}
 
 	DataType SRange::data_type()
@@ -931,6 +975,11 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool SRange::equals(const SRange& o) const
+	{
+		return _min == o._min && _max == o._max;
 	}
 
 	static constexpr bool is_lower(char c)
@@ -1039,7 +1088,7 @@ namespace lx
 			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
 	}
 
-	DataType underlying_of(const std::vector<Variable>& elements, const ScriptSegment* segment)
+	static DataType underlying_of(const std::vector<Variable>& elements, const ScriptSegment* segment)
 	{
 		if (elements.empty())
 		{
@@ -1181,6 +1230,18 @@ namespace lx
 		ss << data_type() << " does not have a method '" << method << "' that matches the argument list ";
 		print_list(ss, args, [](const Variable& v) { return v.ref().data_type(); });
 		throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+	}
+
+	bool List::equals(const List& o) const
+	{
+		if (_elements.size() != o._elements.size())
+			return false;
+		
+		for (size_t i = 0; i < _elements.size(); ++i)
+			if (!_elements[i].ref().equals(o._elements[i].ref()))
+				return false;
+
+		return true;
 	}
 
 	size_t List::iterlen() const

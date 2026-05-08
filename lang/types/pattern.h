@@ -69,10 +69,11 @@ namespace lx
 
 	class SubpatternException : public SubpatternNode
 	{
+		SubpatternNode* _subject;
 		SubpatternNode* _exception;
 
 	public:
-		SubpatternException(SubpatternNode& exception);
+		SubpatternException(SubpatternNode& subject, SubpatternNode& exception);
 
 	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
@@ -80,12 +81,12 @@ namespace lx
 
 	class SubpatternRepetition : public SubpatternNode
 	{
-		SubpatternNode* _repeated;
+		SubpatternNode* _subject;
 		IRange _range;
 
 	public:
-		SubpatternRepetition(SubpatternNode& repeated, const IRange& range);
-		SubpatternRepetition(SubpatternNode& repeated, PatternSimpleRepeatOperator op);
+		SubpatternRepetition(SubpatternNode& subject, const IRange& range);
+		SubpatternRepetition(SubpatternNode& subject, PatternSimpleRepeatOperator op);
 
 	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
@@ -176,6 +177,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Pattern& o) const;
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
 		static Pattern make_repeat(Pattern&& pattern, const IRange& range);

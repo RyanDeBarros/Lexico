@@ -64,6 +64,8 @@ namespace lx
 
 		void set(const DataPoint& other);
 		void set(DataPoint&& other);
+		bool equals(const DataPoint& other) const;
+		bool equals(DataPoint&& other) const;
 
 		bool can_cast_implicit(const DataType& to) const;
 		bool can_cast_explicit(const DataType& to) const;

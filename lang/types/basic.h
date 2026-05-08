@@ -22,6 +22,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Int& o) const;
 
 		int value() const;
 	};
@@ -42,6 +43,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Float& o) const;
 
 		float value() const;
 	};
@@ -62,6 +64,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Bool& o) const;
 
 		bool value() const;
 	};
@@ -83,6 +86,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const String& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -101,6 +105,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Void& o) const;
 	};
 
 	class Match
@@ -113,6 +118,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Match& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -129,6 +135,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Matches& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -148,6 +155,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const CapId& o) const;
 	};
 
 	class Cap
@@ -160,6 +168,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const Cap& o) const;
 	};
 
 	class IRange
@@ -177,6 +186,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const IRange& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -193,7 +203,9 @@ namespace lx
 	public:
 		SRange(std::optional<char> min, std::optional<char> max);
 		SRange(std::optional<std::string> min, std::optional<std::string> max);
+		SRange(std::optional<std::string_view> min, std::optional<std::string_view> max);
 		SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment);
+		SRange(std::optional<std::string_view> min, const ScriptSegment* min_segment, std::optional<std::string_view> max, const ScriptSegment* max_segment);
 
 		static DataType data_type();
 		TypeVariant cast_copy(const DataType& type) const;
@@ -202,6 +214,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const SRange& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
@@ -236,6 +249,7 @@ namespace lx
 
 		Variable data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const;
 		Variable invoke_method(Runtime& env, const ScriptSegment& segment, const std::string_view method, std::vector<Variable>&& args) const;
+		bool equals(const List& o) const;
 
 		size_t iterlen() const;
 		DataPoint iterget(size_t i) const;
