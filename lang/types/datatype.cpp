@@ -164,9 +164,14 @@ namespace lx
 
 	size_t DataType::hash() const
 	{
-		size_t h = std::hash<SimpleType>{}(_simple);
-		if (_underlying)
-			h ^= _underlying->hash() << 1; // TODO better hash function
+		size_t h = static_cast<size_t>(_simple);
+		const DataType* cur = _underlying.get();
+		while (cur)
+		{
+			h = (h << 3) ^ 0xA;
+			h ^= static_cast<size_t>(cur->_simple);
+			cur = cur->_underlying.get();
+		}
 		return h;
 	}
 

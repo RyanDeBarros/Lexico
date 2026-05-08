@@ -1954,8 +1954,15 @@ namespace lx
 	ExecutionFlow FilterStatement::execute(Runtime& env) const
 	{
 		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
-		// TODO iterate over match in env.global_matches():
-		// if not fn.invoke(env, { match }).data.get<Bool>().value() -> discard
+
+		Iterator iter(env.global_matches_handle());
+		while (!iter.done())
+		{
+			if (fn.invoke(env, { env.unbound_variable(iter.get()) }).data.consume_as<Bool>().value())
+				; // TODO add to new matches
+			iter.next();
+		}
+
 		return {};
 	}
 
