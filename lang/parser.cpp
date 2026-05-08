@@ -895,7 +895,7 @@ namespace lx
 
 			while (continue_statement() && peek_token_is_not(0, TokenType::RParen))
 			{
-				Expression& arg = parse_expression(offset);
+				Expression& arg = parse_expression(offset, false);
 				args.push_back(&arg);
 
 				if (peek_token_is(0, TokenType::Comma))
