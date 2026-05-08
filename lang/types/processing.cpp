@@ -95,9 +95,9 @@ namespace lx
 			{
 				Pattern res;
 				auto cat = std::make_unique<SubpatternCatenation>();
-				cat->append(res.add(lhs.dp().move_as<Pattern>()));
-				cat->append(res.add(rhs.dp().move_as<Pattern>()));
-				res.append(res.add(std::move(cat)));
+				cat->append(res.take(lhs.dp().move_as<Pattern>()));
+				cat->append(res.take(rhs.dp().move_as<Pattern>()));
+				res.set_proxy_root(std::move(cat));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -122,9 +122,9 @@ namespace lx
 			if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(lhs.dp().move_as<Pattern>());
-				Pattern& exception = res.add(rhs.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternException>(subject, exception)));
+				auto& subject = res.take(lhs.dp().move_as<Pattern>());
+				auto& exception = res.take(rhs.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternException>(subject, exception));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -172,9 +172,9 @@ namespace lx
 			{
 				Pattern res;
 				auto disj = std::make_unique<SubpatternDisjunction>();
-				disj->append(res.add(lhs.dp().move_as<Pattern>()));
-				disj->append(res.add(rhs.dp().move_as<Pattern>()));
-				res.append(res.add(std::move(disj)));
+				disj->append(res.take(lhs.dp().move_as<Pattern>()));
+				disj->append(res.take(rhs.dp().move_as<Pattern>()));
+				res.set_proxy_root(std::move(disj));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -208,8 +208,8 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(var.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternLookaround>(LookaroundMode::Ahead, subject)));
+				auto& subject = res.take(var.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::Ahead, subject));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -219,8 +219,8 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(var.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternLookaround>(LookaroundMode::Behind, subject)));
+				auto& subject = res.take(var.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::Behind, subject));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -260,8 +260,8 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(var.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternLookaround>(LookaroundMode::NotAhead, subject)));
+				auto& subject = res.take(var.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::NotAhead, subject));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -271,8 +271,8 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(var.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternLookaround>(LookaroundMode::NotBehind, subject)));
+				auto& subject = res.take(var.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::NotBehind, subject));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -282,8 +282,8 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				Pattern& subject = res.add(var.dp().move_as<Pattern>());
-				res.append(res.add(std::make_unique<SubpatternOptional>(subject)));
+				auto& subject = res.take(var.dp().move_as<Pattern>());
+				res.set_proxy_root(std::make_unique<SubpatternOptional>(subject));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -293,7 +293,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::CapId()))
 			{
 				Pattern res;
-				res.append(res.add(std::make_unique<SubpatternBackRef>(var.dp().move_as<CapId>())));
+				res.set_proxy_root(std::make_unique<SubpatternBackRef>(var.dp().move_as<CapId>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else

@@ -152,7 +152,7 @@ namespace lx
 
 	bool SemanticContext::in_local_scope() const
 	{
-		return !_scope_stack.empty();
+		return _scope_stack.size() > 1;
 	}
 
 	VarConsistencyTest& SemanticContext::var_consistency_test()

@@ -19,7 +19,6 @@ namespace lx
 		Varname,
 		Whitespace,
 
-		// Marker
 		Any,
 		Cap,
 		End,

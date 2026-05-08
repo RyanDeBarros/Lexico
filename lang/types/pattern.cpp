@@ -26,9 +26,46 @@ namespace lx
 		return base;
 	}
 
-	void SubpatternArray::append(SubpatternNode& node)
+	SubpatternRoot::SubpatternRoot(SubpatternNode& proxy)
+		: _proxy(&proxy)
 	{
-		_array.push_back(&node);
+	}
+
+	SubpatternRoot& SubpatternRoot::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		if (_proxy)
+			return clone_base<SubpatternRoot>(this, conv, arena, _proxy->refer_node(conv, arena));
+		else
+			return clone_base<SubpatternRoot>(this, conv, arena);
+	}
+
+	const SubpatternNode& SubpatternRoot::proxy() const
+	{
+		if (_proxy)
+			return *_proxy;
+		else
+			throw LxError(ErrorType::Internal, "pattern root proxy is null");
+	}
+
+	SubpatternNode& SubpatternRoot::proxy()
+	{
+		if (_proxy)
+			return *_proxy;
+		else
+			throw LxError(ErrorType::Internal, "pattern root proxy is null");
+	}
+
+	void SubpatternRoot::set_proxy(SubpatternNode& proxy)
+	{
+		if (_proxy)
+			throw LxError(ErrorType::Internal, "cannot replace pattern root");
+		else
+			_proxy = &proxy;
+	}
+
+	SubpatternArray::SubpatternArray(std::vector<SubpatternNode*>&& array)
+		: _array(std::move(array))
+	{
 	}
 
 	SubpatternNode& SubpatternArray::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -39,9 +76,9 @@ namespace lx
 		return array;
 	}
 
-	const std::vector<SubpatternNode*>& SubpatternArray::array() const
+	void SubpatternArray::append(SubpatternNode& node)
 	{
-		return _array;
+		_array.push_back(&node);
 	}
 
 	SubpatternChar::SubpatternChar(char ch)
@@ -67,6 +104,16 @@ namespace lx
 	SubpatternNode& SubpatternString::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
 		return clone_base<SubpatternString>(this, conv, arena, _string);
+	}
+
+	SubpatternMarker::SubpatternMarker(PatternMark marker)
+		: _marker(marker)
+	{
+	}
+
+	SubpatternNode& SubpatternMarker::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternMarker>(this, conv, arena, _marker);
 	}
 
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
@@ -184,20 +231,46 @@ namespace lx
 
 	Pattern::Pattern()
 	{
+		_root = &own(std::make_unique<SubpatternRoot>());
 	}
 
 	Pattern::Pattern(const Pattern& other)
 	{
-		NodeConvertMap conv;
-		conv[&other] = this;
-		for (const SubpatternNode* el : array())
-			append(el->refer_node(conv, _subnodes));
+		if (other._root)
+		{
+			NodeConvertMap conv;
+			_root = &other._root->clone(conv, _subnodes);
+		}
+	}
+
+	Pattern::Pattern(Pattern&& other) noexcept
+		: _subnodes(std::move(other._subnodes)), _root(other._root)
+	{
+		other._root = nullptr;
 	}
 
 	Pattern& Pattern::operator=(const Pattern& other)
 	{
 		if (this != &other)
-			*this = Pattern(other);
+		{
+			_subnodes.clear();
+			NodeConvertMap conv;
+			if (other._root)
+				_root = &other._root->clone(conv, _subnodes);
+			else
+				_root = nullptr;
+		}
+		return *this;
+	}
+
+	Pattern& Pattern::operator=(Pattern&& other) noexcept
+	{
+		if (this != &other)
+		{
+			_subnodes = std::move(other._subnodes);
+			_root = other._root;
+			other._root = nullptr;
+		}
 		return *this;
 	}
 
@@ -261,89 +334,101 @@ namespace lx
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
 			for (int i = 'A'; i <= 'Z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
 			for (int i = '0'; i <= '9'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Digit:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = '0'; i <= '9'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Letter:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
 			for (int i = 'A'; i <= 'Z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Lowercase:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Newline:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
-			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
-			ptn.append(ptn.add(std::move(sub)));
+			sub->append(ptn.own(std::make_unique<SubpatternString>("\r\n")));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\n')));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\r')));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Space:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
-			sub->append(ptn.add(std::make_unique<SubpatternChar>(' ')));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\t')));
-			ptn.append(ptn.add(std::move(sub)));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>(' ')));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\t')));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Uppercase:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'A'; i <= 'Z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Varname:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
 			for (int i = 'A'; i <= 'Z'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
 			for (int i = '0'; i <= '9'; ++i)
-				sub->append(ptn.add(std::make_unique<SubpatternChar>(i)));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('_')));
-			ptn.append(ptn.add(std::move(sub)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(i)));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('_')));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
 		case BuiltinSymbol::Whitespace:
 		{
 			auto sub = std::make_unique<SubpatternDisjunction>();
-			sub->append(ptn.add(std::make_unique<SubpatternChar>(' ')));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\t')));
-			sub->append(ptn.add(std::make_unique<SubpatternString>("\r\n")));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\n')));
-			sub->append(ptn.add(std::make_unique<SubpatternChar>('\r')));
-			ptn.append(ptn.add(std::move(sub)));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>(' ')));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\t')));
+			sub->append(ptn.own(std::make_unique<SubpatternString>("\r\n")));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\n')));
+			sub->append(ptn.own(std::make_unique<SubpatternChar>('\r')));
+			ptn.set_proxy_root(std::move(sub));
 			break;
 		}
+		case BuiltinSymbol::Any:
+			ptn.set_proxy_root(std::make_unique<SubpatternMarker>(PatternMark::Any));
+			break;
+		case BuiltinSymbol::Cap:
+			ptn.set_proxy_root(std::make_unique<SubpatternMarker>(PatternMark::Cap));
+			break;
+		case BuiltinSymbol::End:
+			ptn.set_proxy_root(std::make_unique<SubpatternMarker>(PatternMark::End));
+			break;
+		case BuiltinSymbol::Start:
+			ptn.set_proxy_root(std::make_unique<SubpatternMarker>(PatternMark::Start));
+			break;
 		default:
 		{
 			std::stringstream ss;
@@ -357,49 +442,69 @@ namespace lx
 	Pattern Pattern::make_repeat(Pattern&& pattern, const IRange& range)
 	{
 		Pattern ptn;
-		Pattern& subptn = ptn.add(std::move(pattern));
-		ptn.append(ptn.add(std::make_unique<SubpatternRepetition>(subptn, range)));
+		SubpatternNode& subptn = ptn.take(std::move(pattern));
+		ptn.set_proxy_root(std::make_unique<SubpatternRepetition>(subptn, range));
 		return ptn;
 	}
 
 	Pattern Pattern::make_backref(const CapId& capid)
 	{
 		Pattern ptn;
-		ptn.append(ptn.add(std::make_unique<SubpatternBackRef>(capid)));
+		ptn.set_proxy_root(std::make_unique<SubpatternBackRef>(capid));
 		return ptn;
 	}
 
 	Pattern Pattern::make_lazy(Pattern&& pattern)
 	{
 		Pattern ptn;
-		Pattern& subptn = ptn.add(std::move(pattern));
-		ptn.append(ptn.add(std::make_unique<SubpatternLazy>(subptn)));
+		SubpatternNode& subptn = ptn.take(std::move(pattern));
+		ptn.set_proxy_root(std::make_unique<SubpatternLazy>(subptn));
 		return ptn;
 	}
 
 	Pattern Pattern::make_capture(Pattern&& pattern, const CapId& capid)
 	{
 		Pattern ptn;
-		Pattern& subptn = ptn.add(std::move(pattern));
-		ptn.append(ptn.add(std::make_unique<SubpatternCapture>(capid, subptn)));
+		SubpatternNode& subptn = ptn.take(std::move(pattern));
+		ptn.set_proxy_root(std::make_unique<SubpatternCapture>(capid, subptn));
 		return ptn;
 	}
 
-	void Pattern::impl_add(std::unique_ptr<SubpatternNode>&& node)
+	void Pattern::impl_own(std::unique_ptr<SubpatternNode>&& node)
 	{
 		_subnodes.push_back(std::move(node));
 	}
 
-	void Pattern::append_pattern(Pattern&& pattern)
+	SubpatternNode& Pattern::take(Pattern&& pattern)
 	{
-		append(add(std::move(pattern)));
+		_subnodes.insert(_subnodes.end(), std::make_move_iterator(pattern._subnodes.begin()), std::make_move_iterator(pattern._subnodes.end()));
+		pattern._subnodes.clear();
+		SubpatternNode* root = pattern._root;
+		pattern._root = nullptr;
+		if (root)
+			return *root;
+		else
+			throw LxError(ErrorType::Internal, "cannot take over pattern with null root");
 	}
 
-	Pattern& Pattern::add(Pattern&& pattern)
+	const SubpatternRoot& Pattern::root() const
 	{
-		auto ptn = std::make_unique<Pattern>(std::move(pattern));
-		Pattern& p = *ptn;
-		_subnodes.push_back(std::move(ptn));
-		return p;
+		if (_root)
+			return *_root;
+		else
+			throw LxError(ErrorType::Internal, "pattern root is null");
+	}
+
+	SubpatternRoot& Pattern::root()
+	{
+		if (_root)
+			return *_root;
+		else
+			throw LxError(ErrorType::Internal, "pattern root is null");
+	}
+
+	void Pattern::set_proxy_root(std::unique_ptr<SubpatternNode>&& node)
+	{
+		root().set_proxy(own(std::move(node)));
 	}
 }

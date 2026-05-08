@@ -57,7 +57,7 @@ namespace lx
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
-			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
+			ptn.set_proxy_root(std::make_unique<SubpatternString>(std::to_string(_value)));
 			return ptn;
 		}
 		case SimpleType::Void:
@@ -142,7 +142,7 @@ namespace lx
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
-			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::to_string(_value))));
+			ptn.set_proxy_root(std::make_unique<SubpatternString>(std::to_string(_value)));
 			return ptn;
 		}
 		case SimpleType::Void:
@@ -302,7 +302,7 @@ namespace lx
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
-			ptn.append(ptn.add(std::make_unique<SubpatternString>(_value)));
+			ptn.set_proxy_root(std::make_unique<SubpatternString>(_value));
 			return ptn;
 		}
 		case SimpleType::Void:
@@ -319,7 +319,7 @@ namespace lx
 		else if (type.simple() == SimpleType::Pattern)
 		{
 			Pattern ptn;
-			ptn.append(ptn.add(std::make_unique<SubpatternString>(std::move(_value))));
+			ptn.set_proxy_root(std::make_unique<SubpatternString>(std::move(_value)));
 			return ptn;
 		}
 		else
@@ -928,10 +928,10 @@ namespace lx
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
-			auto& sub = ptn.add(std::make_unique<SubpatternDisjunction>());
-			ptn.append(sub);
+			auto sub = std::make_unique<SubpatternDisjunction>();
 			for (char c : string())
-				sub.append(ptn.add(std::make_unique<SubpatternChar>(c)));
+				sub->append(ptn.own(std::make_unique<SubpatternChar>(c)));
+			ptn.set_proxy_root(std::move(sub));
 			return ptn;
 		}
 		case SimpleType::Void:

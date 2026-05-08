@@ -15,25 +15,40 @@ namespace lx
 	class SubpatternNode
 	{
 	public:
+		SubpatternNode() = default;
+		SubpatternNode(const SubpatternNode&) = delete;
 		virtual ~SubpatternNode() = default;
 
-	protected:
 		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const = 0;
+		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
+	};
+
+	class SubpatternRoot : public SubpatternNode
+	{
+		SubpatternNode* _proxy = nullptr;
 
 	public:
-		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
+		SubpatternRoot() = default;
+		SubpatternRoot(SubpatternNode& proxy);
+
+		SubpatternRoot& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+
+		const SubpatternNode& proxy() const;
+		SubpatternNode& proxy();
+		void set_proxy(SubpatternNode& proxy);
 	};
 
 	class SubpatternArray : public SubpatternNode
 	{
+	protected:
 		std::vector<SubpatternNode*> _array;
 
 	public:
-		void append(SubpatternNode& node);
+		SubpatternArray() = default;
+		SubpatternArray(std::vector<SubpatternNode*>&& array);
 
-	protected:
 		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		const std::vector<SubpatternNode*>& array() const;
+		void append(SubpatternNode& node);
 	};
 
 	class SubpatternChar : public SubpatternNode
@@ -43,7 +58,6 @@ namespace lx
 	public:
 		SubpatternChar(char ch);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -55,7 +69,24 @@ namespace lx
 		SubpatternString(const std::string& string);
 		SubpatternString(std::string&& string);
 
-	protected:
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+	};
+
+	enum class PatternMark
+	{
+		Any,
+		Cap,
+		End,
+		Start
+	};
+
+	class SubpatternMarker : public SubpatternNode
+	{
+		PatternMark _marker;
+
+	public:
+		SubpatternMarker(PatternMark marker);
+
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -75,7 +106,6 @@ namespace lx
 	public:
 		SubpatternException(SubpatternNode& subject, SubpatternNode& exception);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -88,7 +118,6 @@ namespace lx
 		SubpatternRepetition(SubpatternNode& subject, const IRange& range);
 		SubpatternRepetition(SubpatternNode& subject, PatternSimpleRepeatOperator op);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -110,7 +139,6 @@ namespace lx
 	public:
 		SubpatternLookaround(LookaroundMode mode, SubpatternNode& subject);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -121,7 +149,6 @@ namespace lx
 	public:
 		SubpatternOptional(SubpatternNode& optional);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -132,7 +159,6 @@ namespace lx
 	public:
 		SubpatternBackRef(CapId capid);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -144,7 +170,6 @@ namespace lx
 	public:
 		SubpatternCapture(CapId capid, SubpatternNode& captured);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
@@ -155,20 +180,20 @@ namespace lx
 	public:
 		SubpatternLazy(SubpatternNode& lazy);
 
-	protected:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 	};
 
-	class Pattern : public SubpatternArray
+	class Pattern
 	{
 		std::vector<std::unique_ptr<SubpatternNode>> _subnodes;
+		SubpatternRoot* _root = nullptr;
 
 	public:
 		Pattern();
 		Pattern(const Pattern& other);
-		Pattern(Pattern&&) noexcept = default;
+		Pattern(Pattern&& other) noexcept;
 		Pattern& operator=(const Pattern& other);
-		Pattern& operator=(Pattern&&) noexcept = default;
+		Pattern& operator=(Pattern&& other) noexcept;
 
 		static DataType data_type();
 		TypeVariant cast_copy(const DataType& type) const;
@@ -186,18 +211,22 @@ namespace lx
 		static Pattern make_capture(Pattern&& pattern, const CapId& capid);
 
 	private:
-		void impl_add(std::unique_ptr<SubpatternNode>&& node);
+		void impl_own(std::unique_ptr<SubpatternNode>&& node);
 
 	public:
-		template<std::derived_from<SubpatternNode> T>
-		T& add(std::unique_ptr<T>&& node)
+		template<std::derived_from<SubpatternNode> T> requires (!std::is_same_v<std::decay_t<T>, Pattern>)
+		T& own(std::unique_ptr<T>&& node)
 		{
 			T* ptr = node.get();
-			impl_add(std::move(node));
+			impl_own(std::move(node));
 			return *ptr;
 		}
 
-		void append_pattern(Pattern&& pattern);
-		Pattern& add(Pattern&& pattern);
+		SubpatternNode& take(Pattern&& pattern);
+		
+		const SubpatternRoot& root() const;
+		SubpatternRoot& root();
+
+		void set_proxy_root(std::unique_ptr<SubpatternNode>&& node);
 	};
 }
