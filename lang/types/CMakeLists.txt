@@ -7,6 +7,7 @@ set(TYPES_SOURCES
 	member.cpp
 	iterator.cpp
 	variable.cpp
+	datapath.cpp
 	heap.cpp
 	processing.cpp
 )

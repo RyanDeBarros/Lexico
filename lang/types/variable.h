@@ -10,14 +10,17 @@ namespace lx
 	class VirtualHeap;
 	class Runtime;
 	struct ScriptSegment;
+	struct DataPath;
 
 	class Variable
 	{
-		VirtualHeap* _heap;
+		VirtualHeap* _heap = nullptr;
 		unsigned int _id;
+		unsigned int _path = 0;
 
 		friend class VirtualHeap;
 		Variable(VirtualHeap& heap, unsigned int id);
+		Variable(VirtualHeap& heap, unsigned int id, unsigned int path);
 
 	public:
 		Variable(const Variable&);
@@ -26,12 +29,23 @@ namespace lx
 		Variable& operator=(const Variable&);
 		Variable& operator=(Variable&&) noexcept;
 
+		Variable root() const;
+		Variable subpath(DataPath&& path) const;
+
+	private:
+		void increment() const;
+		void decrement() const;
+
+	public:
 		const DataPoint& ref() const;
 		DataPoint& ref();
 		DataPoint consume() &&;
 
 		template<typename T>
 		T consume_as() &&;
+
+		const DataPath* path() const;
+		DataPath* path();
 
 		bool unbound() const;
 

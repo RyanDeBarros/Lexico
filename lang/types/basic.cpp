@@ -503,7 +503,7 @@ namespace lx
 			// TODO
 			return env.unbound_variable(Int(0));
 		}
-		else if (member == "pos")
+		else if (member == "range")
 		{
 			// TODO
 			return env.unbound_variable(IRange(0, 0));
@@ -729,7 +729,7 @@ namespace lx
 			// TODO
 			return env.unbound_variable(Int(0));
 		}
-		else if (member == "pos")
+		else if (member == "range")
 		{
 			// TODO
 			return env.unbound_variable(IRange(0, 0));

@@ -25,7 +25,7 @@ TODO v0.4 recursion built into patterns (see parentheses balancing example)
 | `start` | `int` | starting position |
 | `end` | `int` | ending position (one after last character) |
 | `len` | `int` | length of group |
-| `pos` | `irange` | position range of group |
+| `range` | `irange` | position range of group |
 | `str` | `string` | string of characters captured |
 | `sub` | `match` | characters captured as a submatch |
 
@@ -38,7 +38,7 @@ TODO v0.4 recursion built into patterns (see parentheses balancing example)
 | `start` | `int` | starting position |
 | `end` | `int` | ending position (one after last character) |
 | `len` | `int` | length of group |
-| `pos` | `irange` | position range of group |
+| `range` | `irange` | position range of group |
 | `str` | `string` | character subtext as a string |
 
 ### `irange`

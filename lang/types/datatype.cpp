@@ -308,6 +308,8 @@ namespace lx
 		}
 	}
 
+	// TODO should get these maps directly from Type Structs, since they handle the actual evaluation
+
 	static StringMap<MemberSignature> string_members()
 	{
 		return {
@@ -326,7 +328,7 @@ namespace lx
 			{ "start", MemberSignature::make_data("start", DataType::Int()) },
 			{ "end", MemberSignature::make_data("end", DataType::Int()) },
 			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "pos", MemberSignature::make_data("pos", DataType::IRange()) },
+			{ "range", MemberSignature::make_data("range", DataType::IRange()) },
 			{ "str", MemberSignature::make_data("str", DataType::String()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
 				{.return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
@@ -342,7 +344,7 @@ namespace lx
 			{ "start", MemberSignature::make_data("start", DataType::Int()) },
 			{ "end", MemberSignature::make_data("end", DataType::Int()) },
 			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "pos", MemberSignature::make_data("pos", DataType::IRange()) },
+			{ "range", MemberSignature::make_data("range", DataType::IRange()) },
 			{ "str", MemberSignature::make_data("str", DataType::String()) },
 			{ "sub", MemberSignature::make_data("sub", DataType::Match()) },
 		};
