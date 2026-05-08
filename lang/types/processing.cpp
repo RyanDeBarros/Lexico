@@ -94,10 +94,9 @@ namespace lx
 			if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto cat = std::make_unique<SubpatternCatenation>();
-				cat->append(res.take(lhs.dp().move_as<Pattern>()));
-				cat->append(res.take(rhs.dp().move_as<Pattern>()));
-				res.set_proxy_root(std::move(cat));
+				auto& cat = res.make_root<SubpatternCatenation>();
+				cat.append(res.take(lhs.dp().move_as<Pattern>()));
+				cat.append(res.take(rhs.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -122,9 +121,10 @@ namespace lx
 			if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(lhs.dp().move_as<Pattern>());
-				auto& exception = res.take(rhs.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternException>(subject, exception));
+				res.make_root<SubpatternException>(
+					res.take(lhs.dp().move_as<Pattern>()),
+					res.take(rhs.dp().move_as<Pattern>())
+				);
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -171,10 +171,9 @@ namespace lx
 			else if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto disj = std::make_unique<SubpatternDisjunction>();
-				disj->append(res.take(lhs.dp().move_as<Pattern>()));
-				disj->append(res.take(rhs.dp().move_as<Pattern>()));
-				res.set_proxy_root(std::move(disj));
+				auto& disj = res.make_root<SubpatternDisjunction>();
+				disj.append(res.take(lhs.dp().move_as<Pattern>()));
+				disj.append(res.take(rhs.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -208,8 +207,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(var.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::Ahead, subject));
+				res.make_root<SubpatternLookaround>(LookaroundMode::Ahead, res.take(var.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -219,8 +217,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(var.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::Behind, subject));
+				res.make_root<SubpatternLookaround>(LookaroundMode::Behind, res.take(var.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -260,8 +257,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(var.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::NotAhead, subject));
+				res.make_root<SubpatternLookaround>(LookaroundMode::NotAhead, res.take(var.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -271,8 +267,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(var.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternLookaround>(LookaroundMode::NotBehind, subject));
+				res.make_root<SubpatternLookaround>(LookaroundMode::NotBehind, res.take(var.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -282,8 +277,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				auto& subject = res.take(var.dp().move_as<Pattern>());
-				res.set_proxy_root(std::make_unique<SubpatternOptional>(subject));
+				res.make_root<SubpatternOptional>(res.take(var.dp().move_as<Pattern>()));
 				return env.temporary_variable(std::move(res));
 			}
 			else
@@ -293,7 +287,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::CapId()))
 			{
 				Pattern res;
-				res.set_proxy_root(std::make_unique<SubpatternBackRef>(var.dp().move_as<CapId>()));
+				res.make_root<SubpatternBackRef>(var.dp().move_as<CapId>());
 				return env.temporary_variable(std::move(res));
 			}
 			else

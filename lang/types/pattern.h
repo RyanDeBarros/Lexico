@@ -23,21 +23,6 @@ namespace lx
 		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 	};
 
-	class SubpatternRoot : public SubpatternNode
-	{
-		SubpatternNode* _proxy = nullptr;
-
-	public:
-		SubpatternRoot() = default;
-		SubpatternRoot(SubpatternNode& proxy);
-
-		SubpatternRoot& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-
-		const SubpatternNode& proxy() const;
-		SubpatternNode& proxy();
-		void set_proxy(SubpatternNode& proxy);
-	};
-
 	class SubpatternArray : public SubpatternNode
 	{
 	protected:
@@ -186,7 +171,7 @@ namespace lx
 	class Pattern
 	{
 		std::vector<std::unique_ptr<SubpatternNode>> _subnodes;
-		SubpatternRoot* _root = nullptr;
+		SubpatternNode* _root = nullptr;
 
 	public:
 		Pattern();
@@ -209,12 +194,12 @@ namespace lx
 		static Pattern make_backref(const CapId& capid);
 		static Pattern make_lazy(Pattern&& pattern);
 		static Pattern make_capture(Pattern&& pattern, const CapId& capid);
-
+		
 	private:
 		void impl_own(std::unique_ptr<SubpatternNode>&& node);
 
 	public:
-		template<std::derived_from<SubpatternNode> T> requires (!std::is_same_v<std::decay_t<T>, Pattern>)
+		template<std::derived_from<SubpatternNode> T>
 		T& own(std::unique_ptr<T>&& node)
 		{
 			T* ptr = node.get();
@@ -224,9 +209,33 @@ namespace lx
 
 		SubpatternNode& take(Pattern&& pattern);
 		
-		const SubpatternRoot& root() const;
-		SubpatternRoot& root();
+	private:
+		void set_root(std::unique_ptr<SubpatternNode>&& node);
 
-		void set_proxy_root(std::unique_ptr<SubpatternNode>&& node);
+	public:
+		template<std::derived_from<SubpatternNode> T, typename... Args>
+		T& make_root(Args&&... args)
+		{
+			auto sub = std::make_unique<T>(std::forward<Args>(args)...);
+			T* n = sub.get();
+			set_root(std::move(sub));
+			return *n;
+		}
+
+		template<std::derived_from<SubpatternNode> T, typename... Args>
+		T& make_node(Args&&... args)
+		{
+			return own(std::make_unique<T>(std::forward<Args>(args)...));
+		}
+
+		template<std::derived_from<SubpatternNode> T, typename... Args>
+		static Pattern make_from_subpattern(Args&&... args)
+		{
+			Pattern ptn;
+			ptn.make_root<T>(std::forward<Args>(args)...);
+			return ptn;
+		}
+
+		void append(Pattern&& pattern);
 	};
 }

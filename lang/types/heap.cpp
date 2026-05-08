@@ -8,7 +8,6 @@ namespace lx
 		{
 			unsigned int id = _data.size();
 			_data.push_back(std::move(dp));
-			_unnamed.push_back({});
 			return Variable(*this, id, temporary);
 		}
 		else
@@ -16,7 +15,6 @@ namespace lx
 			unsigned int id = _free_slots.top();
 			_free_slots.pop();
 			_data[id] = std::move(dp);
-			_unnamed[id] = {};
 			return Variable(*this, id, temporary);
 		}
 	}
@@ -24,7 +22,6 @@ namespace lx
 	void DataHeap::remove(unsigned int id)
 	{
 		_free_slots.push(id);
-		_unnamed[id].clear();
 	}
 
 	const DataPoint& DataHeap::ref(unsigned int id) const

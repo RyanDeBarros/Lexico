@@ -11,7 +11,6 @@ namespace lx
 	class DataHeap
 	{
 		std::vector<DataPoint> _data;
-		std::vector<std::unordered_set<Variable>> _unnamed;
 		std::stack<unsigned int> _free_slots;
 
 	public:

@@ -1888,13 +1888,8 @@ namespace lx
 
 	ExecutionFlow AppendStatement::execute(Runtime& env) const
 	{
-		Variable pattern = env.focused_pattern(segment());
-		Pattern new_pattern;
-		auto cat = std::make_unique<SubpatternCatenation>();
-		cat->append(new_pattern.take(std::move(pattern.ref().get<Pattern>())));
-		cat->append(new_pattern.take(_expression.evaluate(env).dp().move_as<Pattern>()));
-		new_pattern.set_proxy_root(std::move(cat));
-		pattern.ref().set(DataPoint(new_pattern));
+		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
+		env.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
 		return {};
 	}
 

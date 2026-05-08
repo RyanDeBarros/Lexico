@@ -4,11 +4,6 @@
 
 namespace lx
 {
-	DataPoint::DataPoint(const DataPoint& other)
-		: _storage(other._storage)
-	{
-	}
-
 	DataPoint::DataPoint(const TypeVariant& v)
 		: _storage(v)
 	{

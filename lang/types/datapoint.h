@@ -11,7 +11,6 @@ namespace lx
 		TypeVariant _storage;
 
 	public:
-		DataPoint(const DataPoint&);
 		DataPoint(const TypeVariant&);
 		DataPoint(TypeVariant&&);
 
