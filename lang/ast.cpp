@@ -369,7 +369,7 @@ namespace lx
 	
 	Variable LiteralExpression::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(DataPoint::make_from_literal(literal_type(_literal.type), _literal.resolved()));
+		return env.unbound_variable(DataPoint::make_from_literal(literal_type(_literal.type), _literal.resolved()));
 	}
 
 	DataType LiteralExpression::impl_evaltype(SemanticContext& ctx) const
@@ -406,7 +406,7 @@ namespace lx
 		for (const Expression* expr : _elements)
 		{
 			TypeVariant v = std::move(expr->evaluate(env).dp().variant());
-			if (!list.push(env.unnamed_variable(std::move(v))))
+			if (!list.push(env.unbound_variable(std::move(v))))
 			{
 				std::stringstream ss;
 				ss << "list underlying type is " << *_underlying << ", but element resolved to " << expr->evaltype();
@@ -415,7 +415,7 @@ namespace lx
 		}
 
 		if (errors.empty())
-			return env.temporary_variable(std::move(list));
+			return env.unbound_variable(std::move(list));
 		else
 			throw errors;
 	}
@@ -638,7 +638,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(_expr.evaluate(env).dp().cast_move(_type.type()));
+		return env.unbound_variable(_expr.evaluate(env).dp().cast_move(_type.type()));
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -821,7 +821,7 @@ namespace lx
 
 	Variable PatternSymbolExpression::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(Pattern::make_from_symbol(_builtin_symbol));
+		return env.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
 	}
 
 	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
@@ -1108,7 +1108,7 @@ namespace lx
 			env.register_variable(_arglist[i].second.lexeme, arguments[i].dp(), Namespace::Local);
 
 		auto flow = execute_subnodes(env);
-		return { .data = flow.data ? *flow.data : env.temporary_variable(Void()) };
+		return { .data = flow.data ? *flow.data : env.unbound_variable(Void()) };
 	}
 
 	UpflowInfo FunctionDefinition::impl_upflow(SemanticContext& ctx)
@@ -1158,7 +1158,7 @@ namespace lx
 		if (_expression)
 			return { .type = FlowType::Return, .data = _expression->evaluate(env) };
 		else
-			return { .type = FlowType::Return, .data = env.temporary_variable(Void()) };
+			return { .type = FlowType::Return, .data = env.unbound_variable(Void()) };
 	}
 
 	UpflowInfo ReturnStatement::impl_upflow(SemanticContext& ctx)
@@ -1697,7 +1697,7 @@ namespace lx
 	{
 		IRange range = _range.evaluate(env).dp().move_as<IRange>();
 		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
-		return env.temporary_variable(Pattern::make_repeat(std::move(ptn), range));
+		return env.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
 	DataType RepeatOperation::impl_evaltype(SemanticContext& ctx) const
@@ -1763,7 +1763,7 @@ namespace lx
 
 	Variable PatternBackRef::evaluate(Runtime& env) const
 	{
-		return env.temporary_variable(Pattern::make_backref(env.capture_id(_identifier.lexeme)));
+		return env.unbound_variable(Pattern::make_backref(env.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternBackRef::impl_evaltype(SemanticContext& ctx) const
@@ -1802,7 +1802,7 @@ namespace lx
 	Variable PatternLazy::evaluate(Runtime& env) const
 	{
 		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
-		return env.temporary_variable(Pattern::make_lazy(std::move(ptn)));
+		return env.unbound_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
 	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
@@ -1859,7 +1859,7 @@ namespace lx
 	Variable PatternCapture::evaluate(Runtime& env) const
 	{
 		Pattern ptn = _expression.evaluate(env).dp().move_as<Pattern>();
-		return env.temporary_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
+		return env.unbound_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternCapture::impl_evaltype(SemanticContext& ctx) const

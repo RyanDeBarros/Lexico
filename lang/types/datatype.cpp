@@ -2,16 +2,15 @@
 
 #include "member.h"
 #include "constants.h"
+#include "errors.h"
+
+#include "basic.h"
+#include "pattern.h"
 
 namespace lx
 {
 	DataType::DataType(SimpleType simple)
 		: _simple(simple)
-	{
-	}
-
-	DataType::DataType(SimpleType simple, SimpleType underlying)
-		: _simple(simple), _underlying(std::make_unique<DataType>(DataType(underlying)))
 	{
 	}
 
@@ -110,12 +109,12 @@ namespace lx
 
 	DataType DataType::List(const DataType& underlying)
 	{
-		return DataType(SimpleType::List, underlying);
+		return DataType(SimpleType::List);
 	}
 
 	DataType DataType::List(DataType&& underlying)
 	{
-		return DataType(SimpleType::List, std::move(underlying));
+		return DataType(SimpleType::List);
 	}
 
 	std::string DataType::repr() const

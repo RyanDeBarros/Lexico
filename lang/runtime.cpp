@@ -29,7 +29,7 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input, SemanticFunctionTable&& ftable)
-		: _input(input), _global_matches(_heap.add(Matches(), false)), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }, _function_table(std::move(ftable))
+		: _input(input), _global_matches(_heap.add(Matches())), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }, _function_table(std::move(ftable))
 	{
 		push_local_scope(true);
 	}
@@ -93,11 +93,11 @@ namespace lx
 		switch (ns)
 		{
 		case lx::Namespace::Global:
-			_global_variable_table.register_variable(identifier, _heap.add(std::move(dp), false));
+			_global_variable_table.register_variable(identifier, _heap.add(std::move(dp)));
 			break;
 		case lx::Namespace::Local:
 			if (!_scope_stack.empty())
-				_scope_stack.back().table.register_variable(identifier, _heap.add(std::move(dp), false));
+				_scope_stack.back().table.register_variable(identifier, _heap.add(std::move(dp)));
 			else
 			{
 				std::stringstream ss;
@@ -139,14 +139,9 @@ namespace lx
 		throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 	}
 
-	Variable Runtime::temporary_variable(DataPoint&& dp)
+	Variable Runtime::unbound_variable(DataPoint&& dp)
 	{
-		return _heap.add(std::move(dp), true);
-	}
-
-	Variable Runtime::unnamed_variable(DataPoint&& dp)
-	{
-		return _heap.add(std::move(dp), false);
+		return _heap.add(std::move(dp));
 	}
 
 	const FunctionDefinition& Runtime::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const
@@ -170,7 +165,7 @@ namespace lx
 		else
 		{
 			// TODO v0.3 allow for passing initial pattern expression in pattern declaration
-			Variable var = _heap.add(Pattern(), false);
+			Variable var = _heap.add(Pattern());
 			_declared_patterns.try_emplace(std::string(identifier), var);
 			_focused_pattern = var;
 		}

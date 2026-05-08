@@ -33,7 +33,6 @@ namespace lx
 		std::unique_ptr<DataType> _underlying;
 
 		explicit DataType(SimpleType simple);
-		DataType(SimpleType simple, SimpleType underlying);
 		DataType(SimpleType simple, const DataType& underlying);
 		DataType(SimpleType simple, DataType&& underlying);
 

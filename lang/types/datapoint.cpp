@@ -1,7 +1,5 @@
 #include "datapoint.h"
 
-#include <sstream>
-
 namespace lx
 {
 	DataPoint::DataPoint(const TypeVariant& v)

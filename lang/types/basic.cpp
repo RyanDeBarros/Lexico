@@ -318,7 +318,7 @@ namespace lx
 	Variable String::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		if (member == "len")
-			return env.temporary_variable(Int(_value.size()));
+			return env.unbound_variable(Int(_value.size()));
 
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";
@@ -332,9 +332,19 @@ namespace lx
 			if (args.size() == 1)
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
-					return env.temporary_variable(String("")); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+				{
+					int index = args[0].dp().move_as<Int>().value();
+					if (index < 0 || index >= _value.size())
+					{
+						std::stringstream ss;
+						ss << "index " << std::to_string(index) << " is out of range for " << DataType::String().repr() << " of length " << _value.size();
+						throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+					}
+
+					return env.unbound_variable(String({ _value[index] })); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+				}
 				else if (args[0].ref().data_type().simple() == SimpleType::IRange)
-					return env.temporary_variable(String("")); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+					return env.unbound_variable(String("")); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
 			}
 		}
 
@@ -444,35 +454,36 @@ namespace lx
 
 	Variable Match::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
+		// TODO use constants for these member names
 		if (member == "caps")
 		{
 			// TODO
-			return env.temporary_variable(List::make_nonvoid_list(DataType::Cap()));
+			return env.unbound_variable(List::make_nonvoid_list(DataType::Cap()));
 		}
 		else if (member == "start")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "end")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "len")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "pos")
 		{
 			// TODO
-			return env.temporary_variable(IRange(0, 0));
+			return env.unbound_variable(IRange(0, 0));
 		}
 		else if (member == "str")
 		{
 			// TODO
-			return env.temporary_variable(String(""));
+			return env.unbound_variable(String(""));
 		}
 
 		std::stringstream ss;
@@ -489,12 +500,12 @@ namespace lx
 				if (args[0].ref().data_type().simple() == SimpleType::CapId)
 				{
 					// TODO
-					return env.temporary_variable(Cap());
+					return env.unbound_variable(Cap());
 				}
 				else if (args[0].ref().data_type().simple() == SimpleType::Int)
 				{
 					// TODO
-					return env.temporary_variable(Cap());
+					return env.unbound_variable(Cap());
 				}
 			}
 		}
@@ -673,37 +684,37 @@ namespace lx
 		if (member == "exists")
 		{
 			// TODO
-			return env.temporary_variable(Bool(true));
+			return env.unbound_variable(Bool(true));
 		}
 		else if (member == "start")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "end")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "len")
 		{
 			// TODO
-			return env.temporary_variable(Int(0));
+			return env.unbound_variable(Int(0));
 		}
 		else if (member == "pos")
 		{
 			// TODO
-			return env.temporary_variable(IRange(0, 0));
+			return env.unbound_variable(IRange(0, 0));
 		}
 		else if (member == "str")
 		{
 			// TODO
-			return env.temporary_variable(String(""));
+			return env.unbound_variable(String(""));
 		}
 		else if (member == "sub")
 		{
 			// TODO
-			return env.temporary_variable(Match());
+			return env.unbound_variable(Match());
 		}
 
 		std::stringstream ss;
@@ -1191,7 +1202,7 @@ namespace lx
 	Variable List::data_member(Runtime& env, const ScriptSegment& segment, const std::string_view member) const
 	{
 		if (member == "len")
-			return env.temporary_variable(Int(_elements.size()));
+			return env.unbound_variable(Int(_elements.size()));
 
 		std::stringstream ss;
 		ss << data_type() << " does not have a data member '" << member << "'";

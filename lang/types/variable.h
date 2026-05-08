@@ -5,32 +5,28 @@
 namespace lx
 {
 	class DataPoint;
-	class DataHeap;
+	class VirtualHeap;
 
 	class Variable
 	{
-		DataHeap* _heap;
+		VirtualHeap* _heap;
 		unsigned int _id;
-		bool _temporary;
-		std::shared_ptr<unsigned int> _ref_count;
+
+		friend class VirtualHeap;
+		Variable(VirtualHeap& heap, unsigned int id);
 
 	public:
-		Variable(DataHeap& heap, unsigned int id, bool temporary);
 		Variable(const Variable&);
 		Variable(Variable&&) noexcept;
 		~Variable();
 		Variable& operator=(const Variable&);
 		Variable& operator=(Variable&&) noexcept;
 
-	private:
-		void decrement();
-
-	public:
 		const DataPoint& ref() const;
 		DataPoint& ref();
 		DataPoint dp();
 
-		bool temporary() const;
+		bool unbound() const;
 
 		size_t hash() const;
 		bool operator==(const Variable& other) const = default;

@@ -4,39 +4,40 @@
 
 namespace lx
 {
-	Variable::Variable(DataHeap& heap, unsigned int id, bool temporary)
-		: _heap(&heap), _id(id), _temporary(temporary), _ref_count(std::make_shared<unsigned int>(1))
+	Variable::Variable(VirtualHeap& heap, unsigned int id)
+		: _heap(&heap), _id(id)
 	{
 	}
 
 	Variable::Variable(const Variable& other)
-		: _heap(other._heap), _id(other._id), _temporary(other._temporary), _ref_count(other._ref_count)
+		: _heap(other._heap), _id(other._id)
 	{
-		if (_ref_count)
-			++*_ref_count;
+		if (_heap)
+			_heap->increment_ref_count(_id);
 	}
 
 	Variable::Variable(Variable&& other) noexcept
-		: _heap(other._heap), _id(other._id), _temporary(other._temporary), _ref_count(std::move(other._ref_count))
+		: _heap(other._heap), _id(other._id)
 	{
+		other._heap = nullptr;
 	}
 
 	Variable::~Variable()
 	{
-		decrement();
+		if (_heap)
+			_heap->decrement_ref_count(_id);
 	}
 
 	Variable& Variable::operator=(const Variable& other)
 	{
 		if (this != &other)
 		{
-			decrement();
+			if (_heap)
+				_heap->decrement_ref_count(_id);
 			_heap = other._heap;
 			_id = other._id;
-			_temporary = other._temporary;
-			_ref_count = other._ref_count;
-			if (_ref_count)
-				++*_ref_count;
+			if (_heap)
+				_heap->increment_ref_count(_id);
 		}
 		return *this;
 	}
@@ -45,67 +46,49 @@ namespace lx
 	{
 		if (this != &other)
 		{
-			decrement();
+			if (_heap)
+				_heap->decrement_ref_count(_id);
 			_heap = other._heap;
 			_id = other._id;
-			_temporary = other._temporary;
-			_ref_count = std::move(other._ref_count);
+			other._heap = nullptr;
 		}
 		return *this;
 	}
 
-	void Variable::decrement()
-	{
-		if (_ref_count)
-		{
-			--*_ref_count;
-			if (*_ref_count == 0)
-			{
-				_heap->remove(_id);
-				_ref_count.reset();
-			}
-		}
-	}
-
 	const DataPoint& Variable::ref() const
 	{
-		if (_ref_count)
-			return _heap->ref(_id);
+		if (_heap)
+			return _heap->get(_id);
 		else
-			throw LxError(ErrorType::Internal, "variable reference count is null");
+			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
 	DataPoint& Variable::ref()
 	{
-		if (_ref_count)
-			return _heap->ref(_id);
+		if (_heap)
+			return _heap->get(_id);
 		else
-			throw LxError(ErrorType::Internal, "variable reference count is null");
+			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
 	DataPoint Variable::dp()
 	{
-		if (_ref_count)
+		if (_heap)
 		{
-			if (_temporary)
-			{
-				if (*_ref_count != 1)
-					throw LxError(ErrorType::Internal, "variable temporary reference count is not 1");
-
-				DataPoint dp = std::move(_heap->ref(_id));
-				decrement();
-				return dp;
-			}
-			else
-				return _heap->ref(_id);
+			DataPoint dp = _heap->dp(_id);
+			_heap = nullptr;
+			return dp;
 		}
 		else
-			throw LxError(ErrorType::Internal, "variable reference count is null");
+			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
-	bool Variable::temporary() const
+	bool Variable::unbound() const
 	{
-		return _temporary;
+		if (_heap)
+			return _heap->unbound(_id);
+		else
+			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
 	size_t Variable::hash() const

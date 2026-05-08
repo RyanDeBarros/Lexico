@@ -8,6 +8,7 @@ namespace lx
 {
 	class DataPoint
 	{
+		// TODO variant is 56 bytes and potentially climbing, which is inefficient for smaller types like Int and Bool, especially for being stored in the heap
 		TypeVariant _storage;
 
 	public:
