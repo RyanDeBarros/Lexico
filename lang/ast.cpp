@@ -668,8 +668,8 @@ namespace lx
 		return _expr.segment().combined_right(_type.segment());
 	}
 
-	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript)
-		: _container(container), _subscript(subscript)
+	SubscriptExpression::SubscriptExpression(Expression& container, Expression& subscript, Token&& closing_bracket)
+		: _container(container), _subscript(subscript), _closing_bracket(std::move(closing_bracket))
 	{
 	}
 
@@ -698,7 +698,7 @@ namespace lx
 
 	ScriptSegment SubscriptExpression::impl_segment() const
 	{
-		return _container.segment().combined_right(_subscript.segment());
+		return _container.segment().combined_right(_closing_bracket.segment);
 	}
 
 	const MemberSignature& SubscriptExpression::member(SemanticContext& ctx) const

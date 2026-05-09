@@ -1,7 +1,6 @@
 #include "declarations.h"
 
-#include "basic.h"
-#include "pattern.h"
+#include "primitives/include.h"
 
 namespace lx
 {

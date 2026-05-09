@@ -3,9 +3,7 @@
 #include "member.h"
 #include "constants.h"
 #include "errors.h"
-
-#include "basic.h"
-#include "pattern.h"
+#include "primitives/include.h"
 
 namespace lx
 {

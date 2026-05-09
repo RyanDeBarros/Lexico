@@ -1,9 +1,9 @@
 #pragma once
 
-#include "declarations.h"
-#include "basic.h"
+#include "types/declarations.h"
+#include "capid.h"
+#include "irange.h"
 
-#include <memory>
 #include <unordered_map>
 
 namespace lx

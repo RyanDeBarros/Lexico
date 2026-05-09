@@ -323,10 +323,11 @@ namespace lx
 	{
 		Expression& _container;
 		Expression& _subscript;
+		Token _closing_bracket;
 		mutable std::optional<MemberSignature> _member;
 
 	public:
-		SubscriptExpression(Expression& container, Expression& subscript);
+		SubscriptExpression(Expression& container, Expression& subscript, Token&& closing_bracket);
 
 		Variable evaluate(Runtime& env) const override;
 

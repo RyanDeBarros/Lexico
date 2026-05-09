@@ -8,8 +8,11 @@
 
 namespace lx
 {
-	class Runtime;
 	class DataPoint;
+	struct PathStep;
+	class Runtime;
+	struct VarContext;
+	class Variable;
 
 #define LX_EXPAND_BY_TYPE(M, Sep) \
 	M(Int) Sep \

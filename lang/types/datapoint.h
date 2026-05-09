@@ -1,9 +1,8 @@
 #pragma once
 
 #include "declarations.h"
-#include "pattern.h"
-#include "basic.h"
 #include "evalcontext.h"
+#include "primitives/include.h"
 
 namespace lx
 {

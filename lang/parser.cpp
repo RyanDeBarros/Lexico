@@ -988,8 +988,9 @@ namespace lx
 			Expression& expr = parse_expression(offset);
 			if (!peek_token_is(0, TokenType::RBracket))
 				throw_error(errors::EXPECTED_RBRACKET, 0);
+			auto& closing_bracket = ref(0);
 			offset.add(1);  // ']'
-			return _tree.add(std::make_unique<SubscriptExpression>(lhs, expr));
+			return _tree.add(std::make_unique<SubscriptExpression>(lhs, expr, std::move(closing_bracket)));
 		}
 
 		Expression& parse_prefix_expression(TokenOffset& offset)

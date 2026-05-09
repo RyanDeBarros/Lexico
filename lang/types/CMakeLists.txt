@@ -1,8 +1,6 @@
 set(TYPES_SOURCES
 	datatype.cpp
 	datapoint.cpp
-	basic.cpp
-	pattern.cpp
 	declarations.cpp
 	member.cpp
 	iterator.cpp
@@ -14,3 +12,5 @@ set(TYPES_SOURCES
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_SOURCES})
+
+add_subdirectory(primitives)

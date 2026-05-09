@@ -1,11 +1,9 @@
 #pragma once
 
 #include "symbolizer.h"
-#include "basic.h"
-#include "pattern.h"
+#include "primitives/include.h"
 
 #include <vector>
-#include <any>
 
 namespace lx
 {

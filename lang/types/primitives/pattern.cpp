@@ -1,9 +1,7 @@
 #include "pattern.h"
 
-#include "basic.h"
+#include "include.h"
 #include "runtime.h"
-
-#include <sstream>
 
 namespace lx
 {
