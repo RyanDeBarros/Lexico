@@ -42,6 +42,24 @@ namespace lx
 			return std::get<T>(std::visit([](auto&& v) { return v.cast_move(T::data_type()); }, std::move(_storage)));
 		}
 
+		template<Type T>
+		const T* as() const
+		{
+			if (data_type() == T::data_type())
+				return &get<T>();
+			else
+				return nullptr;
+		}
+
+		template<Type T>
+		T* as()
+		{
+			if (data_type() == T::data_type())
+				return &get<T>();
+			else
+				return nullptr;
+		}
+
 		DataPoint cast_copy(const DataType& type) const;
 		DataPoint cast_move(const DataType& type);
 

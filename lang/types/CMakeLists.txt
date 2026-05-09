@@ -8,9 +8,9 @@ set(TYPES_SOURCES
 	iterator.cpp
 	variable.cpp
 	heap.cpp
-	datapath.cpp
 	processing.cpp
 	evalcontext.cpp
+	symbolizer.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_SOURCES})

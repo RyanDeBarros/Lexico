@@ -42,7 +42,7 @@ namespace lx
 		std::stringstream _log;
 
 		VirtualHeap _heap;
-		DataSymbolTable _data_symbols;
+		Symbolizer _symbolizer;
 		RuntimeSymbolTable _global_variable_table;
 		std::vector<RuntimeScopeContext> _scope_stack;
 		RuntimeFunctionTable _function_table;
@@ -89,7 +89,7 @@ namespace lx
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable unbound_variable(DataPoint&& dp);
 
-		DataSymbol data_symbol(const std::string_view name);
+		Symbol symbolize(const std::string_view name);
 
 		const FunctionDefinition& registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const;
 

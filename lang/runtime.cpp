@@ -144,9 +144,9 @@ namespace lx
 		return _heap.add(std::move(dp));
 	}
 
-	DataSymbol Runtime::data_symbol(const std::string_view name)
+	Symbol Runtime::symbolize(const std::string_view name)
 	{
-		return _data_symbols.intern(name);
+		return _symbolizer.intern(name);
 	}
 
 	const FunctionDefinition& Runtime::registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const

@@ -7,7 +7,7 @@
 
 namespace lx
 {
-	class ResolvedValue;
+	struct PathStep;
 
 	class Int
 	{
@@ -87,8 +87,9 @@ namespace lx
 		TypeVariant cast_move(const DataType& type);
 		void print(std::stringstream& ss) const;
 
-		Variable get(VarContext& ctx, const DataPath* path);
-		void set(VarContext& ctx, const DataPath* path, DataPoint&& to);
+		DataPoint resolve_path(VarContext& ctx, const PathStep& step);
+		DataPoint consume_path(VarContext& ctx, const PathStep& step) &&;
+		void assign_path(VarContext& ctx, const PathStep& step, DataPoint&& to);
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;

@@ -300,49 +300,130 @@ namespace lx
 		ss << _value;
 	}
 
-	// TODO handle paths of size > 1
-
-	Variable String::get(VarContext& ctx, const DataPath* path)
+	static void assert_valid_string_subscript(VarContext& ctx, const std::string_view value, const Int& index)
 	{
-		if (path)
+		if (index.value() < 0 || index.value() >= value.size())
 		{
-			if (path->steps[0].symbol == ctx.data_symbol(constants::SUBSCRIPT_OP))
-			{
-				// TODO only if index is int
-				return ctx.variable(String({ _value[path->steps[0].symbol] }));
-			}
-			else
-				ctx.throw_unsupported_datapath_symbol_get();
+			std::stringstream ss;
+			ss << "index ";
+			index.print(ss);
+			ss << " is out of range for " << DataType::String() << " of length " << value.size();
+			throw ctx.env.runtime_error(ss.str());
 		}
-		else
-			return ctx.self;
 	}
 
-	void String::set(VarContext& ctx, const DataPath* path, DataPoint&& to)
+	static std::pair<int, int> convert_string_subscript_range(const std::string_view value, const IRange& range)
 	{
-		if (path)
+		return { range.min() ? *range.min() : 0, range.max() ? *range.max() : static_cast<int>(value.size()) - 1 };
+	}
+
+	static void assert_valid_string_subscript(VarContext& ctx, const std::string_view value, const IRange& range)
+	{
+		const auto [min, max] = convert_string_subscript_range(value, range);
+		if (value.empty() || min < 0 || min >= value.size() || max < 0 || max >= value.size())
 		{
-			// TODO cache data symbols somehow
-			if (path->steps[0].symbol == ctx.data_symbol(constants::SUBSCRIPT_OP))
+			std::stringstream ss;
+			ss << "range ";
+			range.print(ss);
+			ss << " is out of range for " << DataType::String() << " of length " << value.size();
+			throw ctx.env.runtime_error(ss.str());
+		}
+	}
+
+	DataPoint String::resolve_path(VarContext& ctx, const PathStep& step)
+	{
+		if (step.symbol == ctx.symbolize(constants::SUBSCRIPT_OP))
+		{
+			const DataPoint& aux = step.aux;
+			if (const Int* index = aux.as<Int>())
 			{
-				if (to.can_cast_implicit(DataType::String()))
+				assert_valid_string_subscript(ctx, _value, *index);
+				return String({ _value[index->value()] });
+			}
+			else if (const IRange* range = aux.as<IRange>())
+			{
+				assert_valid_string_subscript(ctx, _value, *range);
+				const auto [min, max] = convert_string_subscript_range(_value, *range);
+				if (min <= max)
+					return String(_value.substr(min, static_cast<size_t>(max - min + 1)));
+				else
+					return String(std::string(_value.rbegin() + _value.size() - 1 - min, _value.rbegin() + _value.size() - max));
+			}
+			else
+				ctx.throw_unsupported_aux_type_get(aux);
+		}
+		else
+			ctx.throw_unsupported_datapath_symbol_get();
+	}
+
+	DataPoint String::consume_path(VarContext& ctx, const PathStep& step) &&
+	{
+		if (step.symbol == ctx.symbolize(constants::SUBSCRIPT_OP))
+		{
+			const DataPoint& aux = step.aux;
+			if (const Int* index = aux.as<Int>())
+			{
+				assert_valid_string_subscript(ctx, _value, *index);
+				return String({ _value[index->value()] });
+			}
+			else if (const IRange* range = aux.as<IRange>())
+			{
+				assert_valid_string_subscript(ctx, _value, *range);
+				const auto [min, max] = convert_string_subscript_range(_value, *range);
+				if (min == 0 && max == _value.size() - 1)
+					return String(std::move(_value));
+				else if (max == 0 && min == _value.size() - 1)
 				{
+					std::reverse(_value.begin(), _value.end());
+					return String(std::move(_value));
+				}
+				else if (min <= max)
+					return String(_value.substr(min, static_cast<size_t>(max - min + 1)));
+				else
+					return String(std::string(_value.rbegin() + _value.size() - 1 - min, _value.rbegin() + _value.size() - max));
+			}
+			else
+				ctx.throw_unsupported_aux_type_get(aux);
+		}
+		else
+			ctx.throw_unsupported_datapath_symbol_get();
+	}
+
+	void String::assign_path(VarContext& ctx, const PathStep& step, DataPoint&& to)
+	{
+		// TODO cache data symbols somehow
+		if (step.symbol == ctx.symbolize(constants::SUBSCRIPT_OP))
+		{
+			if (to.can_cast_implicit(DataType::String()))
+			{
+				const DataPoint& aux = step.aux;
+				if (const Int* index = aux.as<Int>())
+				{
+					assert_valid_string_subscript(ctx, _value, *index);
 					std::string s = std::move(to.move_as<String>()._value);
 					if (s.size() == 1)
-						_value[path->steps[0].symbol] = s[0];
+						_value[index->value()] = s[0];
 					else
 						throw ctx.env.runtime_error("cannot set character to multi-character string");
 				}
+				else if (const IRange* range = aux.as<IRange>())
+				{
+					assert_valid_string_subscript(ctx, _value, *range);
+					std::string s = std::move(to.move_as<String>()._value);
+					const auto [min, max] = convert_string_subscript_range(_value, *range);
+					_value.erase(std::min(min, max), static_cast<size_t>(std::abs(max - min) + 1));
+					if (min > max)
+						std::reverse(s.begin(), s.end());
+					_value.insert(std::min(min, max), s);
+				}
 				else
-					ctx.throw_bad_set_expression(to);
+					ctx.throw_unsupported_aux_type_set(aux);
 			}
 			else
-				ctx.throw_unsupported_datapath_symbol_set();
+				ctx.throw_bad_set_expression(to);
 		}
-		else if (to.can_cast_implicit(DataType::String()))
-			_value = std::move(to.move_as<String>()._value);
 		else
-			ctx.throw_bad_set_expression(to);
+			ctx.throw_unsupported_datapath_symbol_set();
 	}
 
 	Variable String::data_member(VarContext& ctx, const std::string_view member) const
@@ -359,49 +440,17 @@ namespace lx
 		{
 			if (args.size() == 1)
 			{
-				if (args[0].ref().data_type().simple() == SimpleType::Int)
+				if (args[0].ref().data_type() == DataType::Int())
 				{
-					int index = std::move(args[0]).consume().move_as<Int>().value();
-					if (index < 0 || index >= _value.size())
-					{
-						std::stringstream ss;
-						ss << "index " << std::to_string(index) << " is out of range for " << DataType::String().repr() << " of length " << _value.size();
-						throw ctx.env.runtime_error(ss.str());
-					}
-
-					return ctx.self.subpath({ .steps = { { .symbol = ctx.data_symbol(constants::SUBSCRIPT_OP), .index = index }}});
-
-					return ctx.variable(String({ _value[index] })); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+					Int index = std::move(args[0]).consume().move_as<Int>();
+					assert_valid_string_subscript(ctx, _value, index);
+					return ctx.self.subpath({ .steps = { { .symbol = ctx.symbolize(constants::SUBSCRIPT_OP), .aux = std::move(index) }}});
 				}
-				else if (args[0].ref().data_type().simple() == SimpleType::IRange)
+				else if (args[0].ref().data_type() == DataType::IRange())
 				{
 					IRange range = std::move(args[0]).consume().move_as<IRange>();
-					if (range.min())
-					{
-						if (range.max())
-						{
-							if (*range.min() <= *range.max())
-							{
-								// TODO
-							}
-							else
-							{
-								// TODO
-							}
-						}
-						else
-						{
-							// TODO
-						}
-					}
-					else if (range.max())
-					{
-						// TODO
-					}
-					else
-						return ctx.self;
-
-					return ctx.variable(String("")); // TODO return reference to substring: allow Variable to reference part of another Variable, or at least associate in some way.
+					assert_valid_string_subscript(ctx, _value, range);
+					return ctx.self.subpath({ .steps = { {.symbol = ctx.symbolize(constants::SUBSCRIPT_OP), .aux = std::move(range) }} });
 				}
 			}
 		}

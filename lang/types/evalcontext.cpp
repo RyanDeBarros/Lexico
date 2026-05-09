@@ -40,9 +40,9 @@ namespace lx
 		return env.runtime.unbound_variable(std::move(dp));
 	}
 
-	DataSymbol VarContext::data_symbol(const std::string_view name) const
+	Symbol VarContext::symbolize(const std::string_view name) const
 	{
-		return env.runtime.data_symbol(name);
+		return env.runtime.symbolize(name);
 	}
 
 	void VarContext::throw_bad_set_expression(const DataType& to) const
@@ -82,5 +82,29 @@ namespace lx
 		std::stringstream ss;
 		ss << "unrecognized data path symbol in " << self.ref().data_type() << " set()";
 		throw env.internal_error(ss.str());
+	}
+
+	void VarContext::throw_unsupported_aux_type_get(const DataType& aux_type) const
+	{
+		std::stringstream ss;
+		ss << "unrecognized data path aux type " << aux_type << " in " << self.ref().data_type() << " get()";
+		throw env.internal_error(ss.str());
+	}
+
+	void VarContext::throw_unsupported_aux_type_get(const DataPoint& aux) const
+	{
+		throw_unsupported_aux_type_get(aux.data_type());
+	}
+
+	void VarContext::throw_unsupported_aux_type_set(const DataType& aux_type) const
+	{
+		std::stringstream ss;
+		ss << "unrecognized data path aux type " << aux_type << " in " << self.ref().data_type() << " set()";
+		throw env.internal_error(ss.str());
+	}
+
+	void VarContext::throw_unsupported_aux_type_set(const DataPoint& aux) const
+	{
+		throw_unsupported_aux_type_set(aux.data_type());
 	}
 }

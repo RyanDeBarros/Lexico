@@ -1,26 +1,18 @@
 #pragma once
 
-#include <vector>
+#include "symbolizer.h"
+#include "basic.h"
+#include "pattern.h"
 
-#include "util.h"
+#include <vector>
+#include <any>
 
 namespace lx
 {
-	using DataSymbol = unsigned int;
-
-	class DataSymbolTable
-	{
-		StringMap<DataSymbol> _map;
-
-	public:
-		DataSymbol intern(const std::string_view name);
-	};
-
 	struct PathStep
 	{
-		DataSymbol symbol;
-		// TODO use black box & user pointer + index instead of int. For example, [] might use int indexes or irange indexes
-		int index;
+		Symbol symbol;
+		DataPoint aux = Void();
 	};
 
 	struct DataPath

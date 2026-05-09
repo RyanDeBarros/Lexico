@@ -1,7 +1,7 @@
 #pragma once
 
 #include "errors.h"
-#include "datapath.h"
+#include "symbolizer.h"
 #include "variable.h"
 
 namespace lx
@@ -9,6 +9,7 @@ namespace lx
 	class Runtime;
 	struct ScriptSegment;
 	class DataType;
+	class DataPoint;
 
 	struct EvalContext
 	{
@@ -29,7 +30,7 @@ namespace lx
 		VarContext(EvalContext& env, Variable self);
 
 		Variable variable(DataPoint&& dp) const;
-		DataSymbol data_symbol(const std::string_view name) const;
+		Symbol symbolize(const std::string_view name) const;
 
 		[[noreturn]] void throw_bad_set_expression(const DataType& to) const;
 		[[noreturn]] void throw_bad_set_expression(const DataPoint& to) const;
@@ -37,5 +38,9 @@ namespace lx
 		[[noreturn]] void throw_no_method(const std::string_view method, const std::vector<Variable>& args) const;
 		[[noreturn]] void throw_unsupported_datapath_symbol_get() const;
 		[[noreturn]] void throw_unsupported_datapath_symbol_set() const;
+		[[noreturn]] void throw_unsupported_aux_type_get(const DataType& aux_type) const;
+		[[noreturn]] void throw_unsupported_aux_type_get(const DataPoint& aux) const;
+		[[noreturn]] void throw_unsupported_aux_type_set(const DataType& aux_type) const;
+		[[noreturn]] void throw_unsupported_aux_type_set(const DataPoint& aux) const;
 	};
 }
