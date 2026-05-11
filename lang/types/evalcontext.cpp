@@ -30,7 +30,14 @@ namespace lx
 		throw runtime_error(ss.str());
 	}
 
-	VarContext::VarContext(EvalContext& env, Variable self)
+	void EvalContext::throw_bad_cast(const DataType& from, const DataType& to) const
+	{
+		std::stringstream ss;
+		ss << "bad cast from " << from << " to " << to;
+		throw runtime_error(ss.str());
+	}
+
+	VarContext::VarContext(const EvalContext& env, Variable self)
 		: env(env), self(std::move(self))
 	{
 	}
@@ -70,41 +77,13 @@ namespace lx
 		throw env.runtime_error(ss.str());
 	}
 
-	void VarContext::throw_unsupported_datapath_symbol_get() const
+	void VarContext::throw_bad_cast(const DataType& to) const
 	{
-		std::stringstream ss;
-		ss << "unrecognized data path symbol in " << self.ref().data_type() << " get()";
-		throw env.internal_error(ss.str());
+		env.throw_bad_cast(self.ref().data_type(), to);
 	}
 
-	void VarContext::throw_unsupported_datapath_symbol_set() const
+	void VarContext::throw_bad_cast(const DataPoint& to) const
 	{
-		std::stringstream ss;
-		ss << "unrecognized data path symbol in " << self.ref().data_type() << " set()";
-		throw env.internal_error(ss.str());
-	}
-
-	void VarContext::throw_unsupported_aux_type_get(const DataType& aux_type) const
-	{
-		std::stringstream ss;
-		ss << "unrecognized data path aux type " << aux_type << " in " << self.ref().data_type() << " get()";
-		throw env.internal_error(ss.str());
-	}
-
-	void VarContext::throw_unsupported_aux_type_get(const DataPoint& aux) const
-	{
-		throw_unsupported_aux_type_get(aux.data_type());
-	}
-
-	void VarContext::throw_unsupported_aux_type_set(const DataType& aux_type) const
-	{
-		std::stringstream ss;
-		ss << "unrecognized data path aux type " << aux_type << " in " << self.ref().data_type() << " set()";
-		throw env.internal_error(ss.str());
-	}
-
-	void VarContext::throw_unsupported_aux_type_set(const DataPoint& aux) const
-	{
-		throw_unsupported_aux_type_set(aux.data_type());
+		throw_bad_cast(to.data_type());
 	}
 }

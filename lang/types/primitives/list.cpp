@@ -6,6 +6,8 @@
 
 namespace lx
 {
+	// TODO ListView
+
 	static DataType underlying_of(const std::vector<Variable>& elements, const ScriptSegment* segment)
 	{
 		if (elements.empty())
@@ -93,30 +95,30 @@ namespace lx
 		return DataType::List(_underlying);
 	}
 
-	TypeVariant List::cast_copy(const DataType& type) const
+	TypeVariant List::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type == DataType::List(_underlying))
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant List::cast_move(const DataType& type)
+	TypeVariant List::cast_move(const EvalContext& env, const DataType& type)
 	{
 		if (type == DataType::List(_underlying))
 			return std::move(*this);
 		else
-			return cast_copy(type);
+			return cast_copy(env, type);
 	}
 
-	void List::print(std::stringstream& ss) const
+	void List::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << "[";
 		for (size_t i = 0; i < _elements.size(); ++i)
 		{
-			_elements[i].ref().print(ss);
+			_elements[i].ref().print(env, ss);
 			if (i + 1 < _elements.size())
 				ss << ", ";
 		}
@@ -138,31 +140,36 @@ namespace lx
 			if (args.size() == 1)
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
-					return _elements[std::move(args[0]).consume().move_as<Int>().value()];
+					return _elements[std::move(args[0]).consume().move_as<Int>(ctx.env).value()];
 			}
 		}
 
 		ctx.throw_no_method(method, args);
 	}
 
-	bool List::equals(const List& o) const
+	void List::assign(const EvalContext& env, List&& o)
+	{
+		// TODO
+	}
+
+	bool List::equals(const EvalContext& env, const List& o) const
 	{
 		if (_elements.size() != o._elements.size())
 			return false;
 		
 		for (size_t i = 0; i < _elements.size(); ++i)
-			if (!_elements[i].ref().equals(o._elements[i].ref()))
+			if (!_elements[i].ref().equals(env, o._elements[i].ref()))
 				return false;
 
 		return true;
 	}
 
-	size_t List::iterlen() const
+	size_t List::iterlen(const EvalContext& env) const
 	{
 		return _elements.size();
 	}
 
-	DataPoint List::iterget(size_t i) const
+	DataPoint List::iterget(const EvalContext& env, size_t i) const
 	{
 		return _elements[i].ref();
 	}

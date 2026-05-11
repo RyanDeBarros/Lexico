@@ -210,9 +210,9 @@ namespace lx
 		// TODO
 	}
 
-	void Runtime::push_page(Variable page_desc)
+	void Runtime::push_page(Variable page_desc, const ScriptSegment& segment)
 	{
-		_page_stack.push({ .content = page_desc.ref().page_content() });
+		_page_stack.push({ .content = page_desc.ref().page_content(EvalContext{ .runtime = *this, .segment = &segment }) });
 	}
 
 	void Runtime::pop_page(const ScriptSegment& segment)

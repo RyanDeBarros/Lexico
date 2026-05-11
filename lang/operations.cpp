@@ -20,6 +20,8 @@ namespace lx
 			return DataType::Bool();
 		case TokenType::StringType:
 			return DataType::String();
+		case TokenType::StringViewType:
+			return DataType::StringView();
 		case TokenType::VoidType:
 			return DataType::Void();
 		case TokenType::PatternType:

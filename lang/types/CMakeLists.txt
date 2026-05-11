@@ -1,7 +1,6 @@
 set(TYPES_SOURCES
 	datatype.cpp
 	datapoint.cpp
-	declarations.cpp
 	member.cpp
 	iterator.cpp
 	variable.cpp

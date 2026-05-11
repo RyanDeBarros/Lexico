@@ -9,8 +9,8 @@
 namespace lx
 {
 	class DataPoint;
-	struct PathStep;
 	class Runtime;
+	struct EvalContext;
 	struct VarContext;
 	class Variable;
 
@@ -19,6 +19,7 @@ namespace lx
 	M(Float) Sep \
 	M(Bool) Sep \
 	M(String) Sep \
+	M(StringView) Sep \
 	M(Void) Sep \
 	M(Pattern) Sep \
 	M(Match) Sep \
@@ -51,8 +52,6 @@ namespace lx
 
 #undef LX_IS_SAME_V
 #undef LX_OR
-
-	[[noreturn]] extern void throw_bad_cast(const DataType& from, const DataType& to);
 }
 
 #undef LX_EXPAND_BY_TYPE

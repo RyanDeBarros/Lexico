@@ -12,7 +12,7 @@ namespace lx
 	{
 	}
 
-	Int Int::make_from_literal(std::string_view resolved)
+	Int Int::make_from_literal(const EvalContext& env, std::string_view resolved)
 	{
 		int value;
 		auto result = std::from_chars(resolved.data(), resolved.data() + resolved.size(), value);
@@ -22,7 +22,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << "could not convert \"" << resolved << "\" to " << DataType::Int();
-			throw LxError(ErrorType::Runtime, ss.str());
+			throw env.runtime_error(ss.str());
 		}
 	}
 
@@ -31,7 +31,7 @@ namespace lx
 		return DataType::Int();
 	}
 
-	TypeVariant Int::cast_copy(const DataType& type) const
+	TypeVariant Int::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -50,17 +50,19 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 		}
 	}
 	
-	TypeVariant Int::cast_move(const DataType& type)
+	// TODO make cast_move() &&
+
+	TypeVariant Int::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void Int::print(std::stringstream& ss) const
+	void Int::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << _value;
 	}
@@ -75,7 +77,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Int::equals(const Int& o) const
+	void Int::assign(const EvalContext& env, Int&& o)
+	{
+		// TODO
+	}
+
+	bool Int::equals(const EvalContext& env, const Int& o) const
 	{
 		return _value == o._value;
 	}

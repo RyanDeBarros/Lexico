@@ -181,13 +181,14 @@ namespace lx
 		Pattern& operator=(Pattern&& other) noexcept;
 
 		static DataType data_type();
-		TypeVariant cast_copy(const DataType& type) const;
-		TypeVariant cast_move(const DataType& type);
-		void print(std::stringstream& ss) const;
+		TypeVariant cast_copy(const EvalContext& env, const DataType& type) const;
+		TypeVariant cast_move(const EvalContext& env, const DataType& type);
+		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
-		bool equals(const Pattern& o) const;
+		void assign(const EvalContext& env, Pattern&& o);
+		bool equals(const EvalContext& env, const Pattern& o) const;
 
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
 		static Pattern make_repeat(Pattern&& pattern, const IRange& range);

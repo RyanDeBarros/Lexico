@@ -10,21 +10,21 @@ namespace lx
 		return DataType::Void();
 	}
 
-	TypeVariant Void::cast_copy(const DataType& type) const
+	TypeVariant Void::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Void::cast_move(const DataType& type)
+	TypeVariant Void::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void Void::print(std::stringstream& ss) const
+	void Void::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << "";
 	}
@@ -39,7 +39,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Void::equals(const Void& o) const
+	void Void::assign(const EvalContext& env, Void&& o)
+	{
+		// NOP
+	}
+
+	bool Void::equals(const EvalContext& env, const Void& o) const
 	{
 		return true;
 	}

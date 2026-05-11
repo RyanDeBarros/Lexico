@@ -12,9 +12,9 @@ namespace lx
 	public:
 		Iterator(Variable iterable);
 
-		bool done() const;
+		bool done(const EvalContext& env) const;
 		void next();
 
-		DataPoint get() const;
+		DataPoint get(const EvalContext& env) const;
 	};
 }

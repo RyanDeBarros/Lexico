@@ -98,7 +98,7 @@ namespace lx
 		return DataType::SRange();
 	}
 
-	TypeVariant SRange::cast_copy(const DataType& type) const
+	TypeVariant SRange::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -117,17 +117,17 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant SRange::cast_move(const DataType& type)
+	TypeVariant SRange::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void SRange::print(std::stringstream& ss) const
+	void SRange::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << '<';
 		if (_min)
@@ -152,7 +152,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool SRange::equals(const SRange& o) const
+	void SRange::assign(const EvalContext& env, SRange&& o)
+	{
+		// TODO
+	}
+
+	bool SRange::equals(const EvalContext& env, const SRange& o) const
 	{
 		return _min == o._min && _max == o._max;
 	}
@@ -167,7 +172,7 @@ namespace lx
 		return static_cast<size_t>(max - min + 1);
 	}
 
-	size_t SRange::iterlen() const
+	size_t SRange::iterlen(const EvalContext& env) const
 	{
 		if (!_min && !_max)
 			return 0;
@@ -192,7 +197,7 @@ namespace lx
 		return String({ static_cast<char>(c) });
 	}
 
-	DataPoint SRange::iterget(size_t i) const
+	DataPoint SRange::iterget(const EvalContext& env, size_t i) const
 	{
 		if (!_min && !_max)
 			return String("");

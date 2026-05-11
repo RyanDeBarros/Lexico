@@ -12,7 +12,7 @@ namespace lx
 	{
 	}
 
-	Float Float::make_from_literal(std::string_view resolved)
+	Float Float::make_from_literal(const EvalContext& env, std::string_view resolved)
 	{
 		float value;
 		auto result = std::from_chars(resolved.data(), resolved.data() + resolved.size(), value);
@@ -22,7 +22,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << "could not convert \"" << resolved << "\" to " << DataType::Float();
-			throw LxError(ErrorType::Runtime, ss.str());
+			throw env.runtime_error(ss.str());
 		}
 	}
 
@@ -31,7 +31,7 @@ namespace lx
 		return DataType::Float();
 	}
 
-	TypeVariant Float::cast_copy(const DataType& type) const
+	TypeVariant Float::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -48,17 +48,17 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant Float::cast_move(const DataType& type)
+	TypeVariant Float::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void Float::print(std::stringstream& ss) const
+	void Float::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << _value;
 	}
@@ -73,7 +73,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Float::equals(const Float& o) const
+	void Float::assign(const EvalContext& env, Float&& o)
+	{
+		// TODO
+	}
+
+	bool Float::equals(const EvalContext& env, const Float& o) const
 	{
 		return _value == o._value;
 	}

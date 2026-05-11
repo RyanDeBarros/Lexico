@@ -31,6 +31,7 @@ namespace lx
 		FloatType,
 		BoolType,
 		StringType,
+		StringViewType,
 		VoidType,
 		PatternType,
 		MatchType,

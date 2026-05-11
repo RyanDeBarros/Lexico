@@ -10,7 +10,7 @@ namespace lx
 	{
 	}
 
-	Bool Bool::make_from_literal(std::string_view resolved)
+	Bool Bool::make_from_literal(const EvalContext& env, std::string_view resolved)
 	{
 		if (resolved == "true")
 			return Bool(true);
@@ -20,7 +20,7 @@ namespace lx
 		{
 			std::stringstream ss;
 			ss << "could not convert \"" << resolved << "\" to " << DataType::Bool();
-			throw LxError(ErrorType::Runtime, ss.str());
+			throw env.runtime_error(ss.str());
 		}
 	}
 
@@ -29,7 +29,7 @@ namespace lx
 		return DataType::Bool();
 	}
 
-	TypeVariant Bool::cast_copy(const DataType& type) const
+	TypeVariant Bool::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -44,17 +44,17 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant Bool::cast_move(const DataType& type)
+	TypeVariant Bool::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void Bool::print(std::stringstream& ss) const
+	void Bool::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << (_value ? "true" : "false");
 	}
@@ -69,7 +69,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Bool::equals(const Bool& o) const
+	void Bool::assign(const EvalContext& env, Bool&& o)
+	{
+		// TODO
+	}
+
+	bool Bool::equals(const EvalContext& env, const Bool& o) const
 	{
 		return _value == o._value;
 	}

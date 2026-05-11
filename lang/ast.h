@@ -87,12 +87,13 @@ namespace lx
 		virtual ExecutionFlow execute(Runtime& env) const = 0;
 		UpflowInfo upflow(SemanticContext& ctx);
 		UpflowInfo upflow() const;
-		ScriptSegment segment() const;
+		const ScriptSegment& segment() const;
 
 	protected:
 		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
 		virtual UpflowInfo impl_upflow(SemanticContext& ctx);
 		virtual ScriptSegment impl_segment() const = 0;
+		EvalContext eval_context(Runtime& env) const;
 	};
 
 	class Block : public ASTNode

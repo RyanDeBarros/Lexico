@@ -20,14 +20,15 @@ namespace lx
 		LxError internal_error(const std::string_view message) const;
 
 		[[noreturn]] void throw_bad_set_expression(const DataType& from, const DataType& to) const;
+		[[noreturn]] void throw_bad_cast(const DataType& from, const DataType& to) const;
 	};
 
 	struct VarContext
 	{
-		EvalContext& env;
+		const EvalContext& env;
 		Variable self;
 
-		VarContext(EvalContext& env, Variable self);
+		VarContext(const EvalContext& env, Variable self);
 
 		Variable variable(DataPoint&& dp) const;
 		Symbol symbolize(const std::string_view name) const;
@@ -36,11 +37,7 @@ namespace lx
 		[[noreturn]] void throw_bad_set_expression(const DataPoint& to) const;
 		[[noreturn]] void throw_no_data_member(const std::string_view member) const;
 		[[noreturn]] void throw_no_method(const std::string_view method, const std::vector<Variable>& args) const;
-		[[noreturn]] void throw_unsupported_datapath_symbol_get() const;
-		[[noreturn]] void throw_unsupported_datapath_symbol_set() const;
-		[[noreturn]] void throw_unsupported_aux_type_get(const DataType& aux_type) const;
-		[[noreturn]] void throw_unsupported_aux_type_get(const DataPoint& aux) const;
-		[[noreturn]] void throw_unsupported_aux_type_set(const DataType& aux_type) const;
-		[[noreturn]] void throw_unsupported_aux_type_set(const DataPoint& aux) const;
+		[[noreturn]] void throw_bad_cast(const DataType& to) const;
+		[[noreturn]] void throw_bad_cast(const DataPoint& to) const;
 	};
 }

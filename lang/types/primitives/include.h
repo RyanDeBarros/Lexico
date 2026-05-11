@@ -4,6 +4,7 @@
 #include "float.h"
 #include "bool.h"
 #include "string.h"
+#include "string_view.h"
 #include "void.h"
 #include "pattern.h"
 #include "match.h"

@@ -98,7 +98,12 @@ namespace lx
 		return {};
 	}
 
-	ScriptSegment ASTNode::segment() const
+	EvalContext ASTNode::eval_context(Runtime& env) const
+	{
+		return EvalContext{ .runtime = env, .segment = &segment() };
+	}
+
+	const ScriptSegment& ASTNode::segment() const
 	{
 		if (!_segment)
 			_segment = impl_segment();
@@ -369,7 +374,7 @@ namespace lx
 	
 	Variable LiteralExpression::evaluate(Runtime& env) const
 	{
-		return env.unbound_variable(DataPoint::make_from_literal(literal_type(_literal.type), _literal.resolved()));
+		return env.unbound_variable(DataPoint::make_from_literal(eval_context(env), literal_type(_literal.type), _literal.resolved()));
 	}
 
 	DataType LiteralExpression::impl_evaltype(SemanticContext& ctx) const
@@ -467,9 +472,7 @@ namespace lx
 
 	Variable BinaryExpression::evaluate(Runtime& env) const
 	{
-		ScriptSegment seg = segment();
-		EvalContext ctx(env, &seg);
-		return operate(ctx, op(), _left.evaluate(env), _right.evaluate(env));
+		return operate(eval_context(env), op(), _left.evaluate(env), _right.evaluate(env));
 	}
 
 	bool BinaryExpression::imperative() const
@@ -519,11 +522,7 @@ namespace lx
 	{
 		const MemberSignature& m = member();
 		if (m.is_data())
-		{
-			ScriptSegment seg = segment();
-			EvalContext ctx(env, &seg);
-			return _object.evaluate(env).data_member(ctx, m.identifier());
-		}
+			return _object.evaluate(env).data_member(eval_context(env), m.identifier());
 		else
 		{
 			std::stringstream ss;
@@ -601,9 +600,7 @@ namespace lx
 
 	Variable PrefixExpression::evaluate(Runtime& env) const
 	{
-		ScriptSegment seg = segment();
-		EvalContext ctx(env, &seg);
-		return operate(ctx, op(), _expr.evaluate(env));
+		return operate(eval_context(env), op(), _expr.evaluate(env));
 	}
 
 	DataType PrefixExpression::impl_evaltype(SemanticContext& ctx) const
@@ -646,7 +643,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& env) const
 	{
-		return env.unbound_variable(_expr.evaluate(env).consume().cast_move(_type.type()));
+		return env.unbound_variable(_expr.evaluate(env).consume().cast_move(eval_context(env), _type.type()));
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -686,9 +683,7 @@ namespace lx
 
 	Variable SubscriptExpression::evaluate(Runtime& env) const
 	{
-		ScriptSegment seg = segment();
-		EvalContext ctx(env, &seg);
-		return _container.evaluate(env).invoke_method(ctx, constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
+		return _container.evaluate(env).invoke_method(eval_context(env), constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
 	}
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
@@ -978,9 +973,7 @@ namespace lx
 			for (const Expression* expr : _args)
 				args.push_back(expr->evaluate(env));
 
-			ScriptSegment seg = segment();
-			EvalContext ctx(env, &seg);
-			return _member.object().evaluate(env).invoke_method(ctx, m.identifier(), std::move(args));
+			return _member.object().evaluate(env).invoke_method(eval_context(env), m.identifier(), std::move(args));
 		}
 		else
 		{
@@ -1220,7 +1213,7 @@ namespace lx
 
 	ExecutionFlow IfConditionalBlock::execute(Runtime& env) const
 	{
-		if (_condition.evaluate(env).consume().move_as<Bool>().value())
+		if (_condition.evaluate(env).consume().move_as<Bool>(eval_context(env)).value())
 			return Block::execute(env);
 		else if (_fallback)
 			return _fallback->fallback_execute(env);
@@ -1415,7 +1408,7 @@ namespace lx
 
 	ExecutionFlow WhileLoop::execute(Runtime& env) const
 	{
-		while (_condition.evaluate(env).consume().move_as<Bool>().value())
+		while (_condition.evaluate(env).consume().move_as<Bool>(eval_context(env)).value())
 		{
 			auto flow = Block::execute(env);
 			if (flow.type == FlowType::Break)
@@ -1459,11 +1452,12 @@ namespace lx
 	{
 		try
 		{
+			auto ctx = eval_context(env);
 			Iterator iter(_iterable.evaluate(env));
-			while (!iter.done())
+			while (!iter.done(ctx))
 			{
 				Runtime::LocalScope local_scope(env, isolated());
-				env.register_variable(_iterator.lexeme, iter.get(), Namespace::Local);
+				env.register_variable(_iterator.lexeme, iter.get(ctx), Namespace::Local);
 				auto flow = execute_subnodes(env);
 				if (flow.type == FlowType::Break)
 					break;
@@ -1576,7 +1570,7 @@ namespace lx
 		for (size_t i = 0; i < _args.size(); ++i)
 		{
 			Variable var = _args[i]->evaluate(env);
-			var.ref().print(env.log());
+			var.ref().print(eval_context(env), env.log());
 			if (i + 1 < _args.size())
 				env.log() << " "; // TODO v0.2 optional separator symbol argument
 		}
@@ -1708,8 +1702,9 @@ namespace lx
 
 	Variable RepeatOperation::evaluate(Runtime& env) const
 	{
-		IRange range = _range.evaluate(env).consume().move_as<IRange>();
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>();
+		auto ctx = eval_context(env);
+		IRange range = _range.evaluate(env).consume().move_as<IRange>(ctx);
+		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(ctx);
 		return env.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
@@ -1745,9 +1740,7 @@ namespace lx
 
 	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
 	{
-		ScriptSegment seg = segment();
-		EvalContext ctx(env, &seg);
-		return operate(ctx, op(), _expression.evaluate(env));
+		return operate(eval_context(env), op(), _expression.evaluate(env));
 	}
 
 	DataType SimpleRepeatOperation::impl_evaltype(SemanticContext& ctx) const
@@ -1816,7 +1809,7 @@ namespace lx
 
 	Variable PatternLazy::evaluate(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>();
+		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
 		return env.unbound_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
@@ -1873,7 +1866,7 @@ namespace lx
 
 	Variable PatternCapture::evaluate(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>();
+		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
 		return env.unbound_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 
@@ -1903,7 +1896,7 @@ namespace lx
 
 	ExecutionFlow AppendStatement::execute(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>();
+		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
 		env.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
 		return {};
 	}
@@ -1969,10 +1962,11 @@ namespace lx
 	{
 		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
 
+		auto ctx = eval_context(env);
 		Iterator iter(env.global_matches_handle());
-		while (!iter.done())
+		while (!iter.done(ctx))
 		{
-			if (fn.invoke(env, { env.unbound_variable(iter.get()) }).data.consume_as<Bool>().value())
+			if (fn.invoke(env, { env.unbound_variable(iter.get(ctx)) }).data.consume_as<Bool>(ctx).value())
 				; // TODO add to new matches
 			iter.next();
 		}
@@ -2104,7 +2098,7 @@ namespace lx
 		{
 			if (_count)
 			{
-				int c = _count->evaluate(env).consume().move_as<Int>().value();
+				int c = _count->evaluate(env).consume().move_as<Int>(eval_context(env)).value();
 				if (c > 0)
 					return Scope(c);
 				else
@@ -2143,7 +2137,7 @@ namespace lx
 
 	ExecutionFlow PagePush::execute(Runtime& env) const
 	{
-		env.push_page(_page.evaluate(env));
+		env.push_page(_page.evaluate(env), segment());
 		return {};
 	}
 

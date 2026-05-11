@@ -14,6 +14,7 @@ namespace lx
 		Float,
 		Bool,
 		String,
+		StringView,
 		Void,
 		Pattern,
 		Match,
@@ -46,6 +47,7 @@ namespace lx
 		static DataType Float();
 		static DataType Bool();
 		static DataType String();
+		static DataType StringView();
 		static DataType Void();
 		static DataType Pattern();
 		static DataType Match();

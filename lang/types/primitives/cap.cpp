@@ -10,28 +10,28 @@ namespace lx
 		return DataType::Cap();
 	}
 
-	TypeVariant Cap::cast_copy(const DataType& type) const
+	TypeVariant Cap::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Cap)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Cap::cast_move(const DataType& type)
+	TypeVariant Cap::cast_move(const EvalContext& env, const DataType& type)
 	{
 		if (type.simple() == SimpleType::Cap)
 			return std::move(*this);
 		else
 		{
 			(void*)this; // ignore const warning
-			return cast_copy(type);
+			return cast_copy(env, type);
 		}
 	}
 
-	void Cap::print(std::stringstream& ss) const
+	void Cap::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of cap
 		ss << DataType::Cap();
@@ -83,7 +83,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Cap::equals(const Cap& o) const
+	void Cap::assign(const EvalContext& env, Cap&& o)
+	{
+		// TODO
+	}
+
+	bool Cap::equals(const EvalContext& env, const Cap& o) const
 	{
 		// TODO
 		return false;

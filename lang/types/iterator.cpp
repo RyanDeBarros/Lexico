@@ -1,6 +1,7 @@
 #include "iterator.h"
 
 #include "datapoint.h"
+#include "evalcontext.h"
 
 namespace lx
 {
@@ -9,9 +10,9 @@ namespace lx
 	{
 	}
 
-	bool Iterator::done() const
+	bool Iterator::done(const EvalContext& env) const
 	{
-		return _pos >= _iterable.ref().iterlen();
+		return _pos >= _iterable.ref().iterlen(env);
 	}
 	
 	void Iterator::next()
@@ -19,8 +20,8 @@ namespace lx
 		++_pos;
 	}
 
-	DataPoint Iterator::get() const
+	DataPoint Iterator::get(const EvalContext& env) const
 	{
-		return _iterable.ref().iterget(_pos);
+		return _iterable.ref().iterget(env, _pos);
 	}
 }

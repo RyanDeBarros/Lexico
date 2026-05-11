@@ -101,7 +101,7 @@ namespace lx
 		void add_highlight(const Color& color, const std::optional<Variable>& format);
 		void remove_highlight(const Color& color, const std::optional<Variable>& format);
 
-		void push_page(Variable page_desc);
+		void push_page(Variable page_desc, const ScriptSegment& segment);
 		void pop_page(const ScriptSegment& segment);
 		void clear_page_stack();
 		const Page& focused_page() const;

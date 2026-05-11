@@ -18,7 +18,7 @@ namespace lx
 		template<Type T>
 		DataPoint(T&& var) : _storage(std::forward<T>(var)) {}
 
-		static DataPoint make_from_literal(DataType type, std::string_view resolved);
+		static DataPoint make_from_literal(const EvalContext& env, DataType type, std::string_view resolved);
 
 		const TypeVariant& variant() const;
 		TypeVariant& variant();
@@ -36,9 +36,9 @@ namespace lx
 		}
 
 		template<Type T>
-		T move_as()
+		T move_as(const EvalContext& env)
 		{
-			return std::get<T>(std::visit([](auto&& v) { return v.cast_move(T::data_type()); }, std::move(_storage)));
+			return std::get<T>(std::visit([&env](auto&& v) { return v.cast_move(env, T::data_type()); }, std::move(_storage)));
 		}
 
 		template<Type T>
@@ -59,50 +59,33 @@ namespace lx
 				return nullptr;
 		}
 
-		DataPoint cast_copy(const DataType& type) const;
-		DataPoint cast_move(const DataType& type);
+		DataPoint cast_copy(const EvalContext& env, const DataType& type) const;
+		DataPoint cast_move(const EvalContext& env, const DataType& type);
 
-		template<typename From> requires Type<std::decay_t<From>>
-		static TypeVariant cast_type(From&& obj, const DataType& to)
-		{
-			if constexpr (std::is_rvalue_reference_v<From&&>)
-				return std::forward<From>(obj).cast_move(to);
-			else
-				return obj.cast_copy(to);
-		}
+		void assign(const EvalContext& env, const DataPoint& other);
+		void assign(const EvalContext& env, DataPoint&& other);
 
-		template<typename T> requires Type<std::decay_t<T>>
-		void setval(T&& obj)
-		{
-			std::visit([&](auto& v) {
-				using To = std::decay_t<decltype(v)>;
-				v = std::get<To>(cast_type(std::forward<T>(obj), v.data_type()));
-			}, _storage);
-		}
-
-		void set(const DataPoint& other);
-		void set(DataPoint&& other);
-		bool equals(const DataPoint& other) const;
-		bool equals(DataPoint&& other) const;
+		bool equals(const EvalContext& env, const DataPoint& other) const;
+		bool equals(const EvalContext& env, DataPoint&& other) const;
 
 		bool can_cast_implicit(const DataType& to) const;
 		bool can_cast_explicit(const DataType& to) const;
 
 		DataType data_type() const;
 
-		void print(std::stringstream& ss) const;
+		void print(const EvalContext& env, std::stringstream& ss) const;
 
-		size_t iterlen() const;
-		DataPoint iterget(size_t i) const;
-		std::string page_content() const;
+		size_t iterlen(const EvalContext& env) const;
+		DataPoint iterget(const EvalContext& env, size_t i) const;
+		std::string page_content(const EvalContext& env) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 
 	template<typename T>
-	T Variable::consume_as() &&
+	T Variable::consume_as(const EvalContext& env) &&
 	{
-		return std::move(*this).consume().move_as<T>();
+		return std::move(*this).consume().move_as<T>(env);
 	}
 }

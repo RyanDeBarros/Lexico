@@ -12,23 +12,23 @@ namespace lx
 	{
 	}
 
-	DataPoint DataPoint::make_from_literal(DataType type, std::string_view resolved)
+	DataPoint DataPoint::make_from_literal(const EvalContext& env, DataType type, std::string_view resolved)
 	{
 		switch (type.simple())
 		{
 		case SimpleType::Int:
-			return Int::make_from_literal(resolved);
+			return Int::make_from_literal(env, resolved);
 		case SimpleType::Float:
-			return Float::make_from_literal(resolved);
+			return Float::make_from_literal(env, resolved);
 		case SimpleType::Bool:
-			return Bool::make_from_literal(resolved);
+			return Bool::make_from_literal(env, resolved);
 		case SimpleType::String:
-			return String::make_from_literal(resolved);
+			return String::make_from_literal(env, resolved);
 		default:
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": " << type << " does not support literal construction";
-			throw LxError(ErrorType::Internal, ss.str());
+			throw env.internal_error(ss.str());
 		}
 		}
 	}
@@ -43,38 +43,44 @@ namespace lx
 		return _storage;
 	}
 
-	DataPoint DataPoint::cast_copy(const DataType& type) const
+	DataPoint DataPoint::cast_copy(const EvalContext& env, const DataType& type) const
 	{
-		return std::visit([&type](const auto& v) { return DataPoint(v.cast_copy(type)); }, _storage);
+		return std::visit([&env, &type](const auto& v) { return DataPoint(v.cast_copy(env, type)); }, _storage);
 	}
 
-	DataPoint DataPoint::cast_move(const DataType& type)
+	DataPoint DataPoint::cast_move(const EvalContext& env, const DataType& type)
 	{
-		return std::visit([&type](auto&& v) { return DataPoint(v.cast_move(type)); }, std::move(_storage));
+		return std::visit([&env, &type](auto&& v) { return DataPoint(v.cast_move(env, type)); }, std::move(_storage));
 	}
 
-	void DataPoint::set(const DataPoint& other)
+	void DataPoint::assign(const EvalContext& env, const DataPoint& other)
 	{
-		std::visit([this](const auto& o) { setval(o); }, other._storage);
+		DataPoint casted = std::visit([this, &env](const auto& o) {
+			return o.cast_copy(env, data_type());
+		}, other._storage);
+		std::visit([&env, &casted](auto& v) { v.assign(env, std::move(std::get<std::decay_t<decltype(v)>>(casted._storage))); }, _storage);
 	}
 
-	void DataPoint::set(DataPoint&& other)
+	void DataPoint::assign(const EvalContext& env, DataPoint&& other)
 	{
-		std::visit([this](auto&& o) { setval(std::forward<decltype(o)>(o)); }, std::move(other._storage));
+		DataPoint casted = std::visit([this, &env](auto& o) {
+			return o.cast_move(env, data_type());
+			}, other._storage);
+		std::visit([&env, &casted](auto& v) { v.assign(env, std::move(std::get<std::decay_t<decltype(v)>>(casted._storage))); }, _storage);
 	}
 
-	bool DataPoint::equals(const DataPoint& other) const
+	bool DataPoint::equals(const EvalContext& env, const DataPoint& other) const
 	{
 		if (other.can_cast_implicit(data_type()))
-			return std::visit([o = other.cast_copy(data_type())](const auto& v) { return v.equals(o.get<std::decay_t<decltype(v)>>()); }, _storage);
+			return std::visit([&env, o = other.cast_copy(env, data_type())](const auto& v) { return v.equals(env, o.get<std::decay_t<decltype(v)>>()); }, _storage);
 		else
 			return false;
 	}
 
-	bool DataPoint::equals(DataPoint&& other) const
+	bool DataPoint::equals(const EvalContext& env, DataPoint&& other) const
 	{
 		if (other.can_cast_implicit(data_type()))
-			return std::visit([o = other.cast_move(data_type())](const auto& v) { return v.equals(o.get<std::decay_t<decltype(v)>>()); }, _storage);
+			return std::visit([&env, o = other.cast_move(env, data_type())](const auto& v) { return v.equals(env, o.get<std::decay_t<decltype(v)>>()); }, _storage);
 		else
 			return false;
 	}
@@ -94,48 +100,48 @@ namespace lx
 		return std::visit([](const auto& v) -> DataType { return v.data_type(); }, _storage);
 	}
 
-	void DataPoint::print(std::stringstream& ss) const
+	void DataPoint::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		std::visit([&ss](const auto& v) { v.print(ss); }, _storage);
+		std::visit([&env, &ss](const auto& v) { v.print(env, ss); }, _storage);
 	}
 
-	size_t DataPoint::iterlen() const
-	{
-		if (data_type().is_iterable())
-			return std::visit([](const auto& v) -> size_t {
-				if constexpr (requires { v.iterlen(); })
-					return v.iterlen();
-				else
-					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterlen' but it doesn't");
-			}, _storage);
-		else
-			throw LxError(ErrorType::Internal, "iterlen(): " + data_type().repr() + " is not iterable");
-	}
-
-	DataPoint DataPoint::iterget(size_t i) const
+	size_t DataPoint::iterlen(const EvalContext& env) const
 	{
 		if (data_type().is_iterable())
-			return std::visit([i](const auto& v) -> DataPoint {
-				if constexpr (requires { v.iterget(i); })
-					return v.iterget(i);
+			return std::visit([&env](const auto& v) -> size_t {
+				if constexpr (requires { v.iterlen(env); })
+					return v.iterlen(env);
 				else
-					throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'iterget' but it doesn't");
+					throw env.internal_error(v.data_type().repr() + " should implement 'iterlen' but it doesn't");
 			}, _storage);
 		else
-			throw LxError(ErrorType::Internal, "iterget(): " + data_type().repr() + " is not iterable");
+			throw env.internal_error("iterlen(): " + data_type().repr() + " is not iterable");
 	}
 
-	std::string DataPoint::page_content() const
+	DataPoint DataPoint::iterget(const EvalContext& env, size_t i) const
+	{
+		if (data_type().is_iterable())
+			return std::visit([&env, i](const auto& v) -> DataPoint {
+				if constexpr (requires { v.iterget(env, i); })
+					return v.iterget(env, i);
+				else
+					throw env.internal_error(v.data_type().repr() + " should implement 'iterget' but it doesn't");
+			}, _storage);
+		else
+			throw env.internal_error("iterget(): " + data_type().repr() + " is not iterable");
+	}
+
+	std::string DataPoint::page_content(const EvalContext& env) const
 	{
 		if (data_type().is_pageable())
-			return std::visit([](const auto& v) -> std::string {
-			if constexpr (requires { v.page_content(); })
-				return v.page_content();
+			return std::visit([&env](const auto& v) -> std::string {
+			if constexpr (requires { v.page_content(env); })
+				return v.page_content(env);
 			else
-				throw LxError(ErrorType::Internal, v.data_type().repr() + " should implement 'page_content' but it doesn't");
+				throw env.internal_error(v.data_type().repr() + " should implement 'page_content' but it doesn't");
 				}, _storage);
 		else
-			throw LxError(ErrorType::Internal, "page_content(): " + data_type().repr() + " is not pageable");
+			throw env.internal_error("page_content(): " + data_type().repr() + " is not pageable");
 	}
 
 	Variable DataPoint::data_member(VarContext& ctx, const std::string_view member) const

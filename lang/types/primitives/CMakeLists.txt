@@ -3,6 +3,7 @@ set(TYPES_PRIMITIVES_SOURCES
 	float.cpp
 	bool.cpp
 	string.cpp
+	string_view.cpp
 	void.cpp
 	pattern.cpp
 	match.cpp

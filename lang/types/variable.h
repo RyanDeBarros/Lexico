@@ -8,7 +8,7 @@ namespace lx
 {
 	class DataPoint;
 	class VirtualHeap;
-	class EvalContext;
+	struct EvalContext;
 	struct DataPath;
 
 	class Variable
@@ -41,7 +41,7 @@ namespace lx
 		DataPoint consume() &&;
 
 		template<typename T>
-		T consume_as() &&;
+		T consume_as(const EvalContext& env) &&;
 
 		const DataPath* path() const;
 		DataPath* path();
@@ -51,8 +51,8 @@ namespace lx
 		size_t hash() const;
 		bool operator==(const Variable&) const = default;
 
-		Variable data_member(EvalContext& env, const std::string_view member) const;
-		Variable invoke_method(EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable data_member(const EvalContext& env, const std::string_view member) const;
+		Variable invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const;
 	};
 }
 

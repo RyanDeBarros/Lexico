@@ -10,25 +10,25 @@ namespace lx
 		return DataType::Matches();
 	}
 
-	TypeVariant Matches::cast_copy(const DataType& type) const
+	TypeVariant Matches::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Matches)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Matches::cast_move(const DataType& type)
+	TypeVariant Matches::cast_move(const EvalContext& env, const DataType& type)
 	{
 		if (type.simple() == SimpleType::Matches)
 			return std::move(*this);
 		else
-			return cast_copy(type);
+			return cast_copy(env, type);
 	}
 
-	void Matches::print(std::stringstream& ss) const
+	void Matches::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		// TODO v0.2 string representation of matches
 		ss << DataType::Matches();
@@ -44,19 +44,24 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool Matches::equals(const Matches& o) const
+	void Matches::assign(const EvalContext& env, Matches&& o)
+	{
+		// TODO
+	}
+
+	bool Matches::equals(const EvalContext& env, const Matches& o) const
 	{
 		// TODO
 		return false;
 	}
 
-	size_t Matches::iterlen() const
+	size_t Matches::iterlen(const EvalContext& env) const
 	{
 		// TODO
 		return 0;
 	}
 
-	DataPoint Matches::iterget(size_t i) const
+	DataPoint Matches::iterget(const EvalContext& env, size_t i) const
 	{
 		// TODO
 		return Match();

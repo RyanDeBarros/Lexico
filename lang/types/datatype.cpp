@@ -64,7 +64,12 @@ namespace lx
 	{
 		return DataType(SimpleType::String);
 	}
-	
+
+	DataType DataType::StringView()
+	{
+		return DataType(SimpleType::StringView);
+	}
+
 	DataType DataType::Void()
 	{
 		return DataType(SimpleType::Void);
@@ -299,6 +304,7 @@ namespace lx
 		switch (_simple)
 		{
 		case SimpleType::String:
+		case SimpleType::StringView:
 			return true;
 
 		default:

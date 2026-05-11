@@ -197,6 +197,7 @@ namespace lx
 		case TokenType::FloatType:
 		case TokenType::BoolType:
 		case TokenType::StringType:
+		case TokenType::StringViewType:
 		case TokenType::VoidType:
 		case TokenType::PatternType:
 		case TokenType::MatchType:

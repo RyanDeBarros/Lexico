@@ -19,6 +19,8 @@ namespace lx
 			return TokenType::BoolType;
 		else if (token.lexeme == "string")
 			return TokenType::StringType;
+		else if (token.lexeme == "string_view")
+			return TokenType::StringViewType;
 		else if (token.lexeme == "void")
 			return TokenType::VoidType;
 		else if (token.lexeme == "pattern")

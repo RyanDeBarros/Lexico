@@ -15,23 +15,23 @@ namespace lx
 		return DataType::IRange();
 	}
 
-	TypeVariant IRange::cast_copy(const DataType& type) const
+	TypeVariant IRange::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::IRange)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant IRange::cast_move(const DataType& type)
+	TypeVariant IRange::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void IRange::print(std::stringstream& ss) const
+	void IRange::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << '<';
 		if (_min)
@@ -56,23 +56,28 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool IRange::equals(const IRange& o) const
+	void IRange::assign(const EvalContext& env, IRange&& o)
+	{
+		// TODO
+	}
+
+	bool IRange::equals(const EvalContext& env, const IRange& o) const
 	{
 		return _min == o._min && _max == o._max;
 	}
 
-	size_t IRange::iterlen() const
+	size_t IRange::iterlen(const EvalContext& env) const
 	{
 		if (!_min || !_max)
-			throw LxError(ErrorType::Runtime, "cannot iterate over unbounded range");
+			throw env.runtime_error("cannot iterate over unbounded range");
 
 		return static_cast<size_t>(std::abs(*_max - *_min) + 1);
 	}
 
-	DataPoint IRange::iterget(size_t i) const
+	DataPoint IRange::iterget(const EvalContext& env, size_t i) const
 	{
 		if (!_min || !_max)
-			throw LxError(ErrorType::Runtime, "cannot iterate over unbounded range");
+			throw env.runtime_error("cannot iterate over unbounded range");
 
 		int dir = *_max >= *_min ? 1 : -1;
 		return Int(*_min + dir * i);

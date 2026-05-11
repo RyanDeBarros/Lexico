@@ -15,23 +15,23 @@ namespace lx
 		return DataType::CapId();
 	}
 
-	TypeVariant CapId::cast_copy(const DataType& type) const
+	TypeVariant CapId::cast_copy(const EvalContext& env, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::CapId)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			throw_bad_cast(data_type(), type);
+			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant CapId::cast_move(const DataType& type)
+	TypeVariant CapId::cast_move(const EvalContext& env, const DataType& type)
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(type);
+		return cast_copy(env, type);
 	}
 
-	void CapId::print(std::stringstream& ss) const
+	void CapId::print(const EvalContext& env, std::stringstream& ss) const
 	{
 		ss << DataType::CapId();
 	}
@@ -46,7 +46,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	bool CapId::equals(const CapId& o) const
+	void CapId::assign(const EvalContext& env, CapId&& o)
+	{
+		// TODO
+	}
+
+	bool CapId::equals(const EvalContext& env, const CapId& o) const
 	{
 		return _uid == o._uid;
 	}

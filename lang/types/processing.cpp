@@ -4,13 +4,13 @@
 
 namespace lx
 {
-	Variable operate(EvalContext& env, BinaryOperator op, Variable&& lhs, Variable&& rhs)
+	Variable operate(const EvalContext& env, BinaryOperator op, Variable&& lhs, Variable&& rhs)
 	{
 		switch (op)
 		{
 		case BinaryOperator::And:
 			if (lhs.ref().can_cast_implicit(DataType::Bool()) && rhs.ref().can_cast_implicit(DataType::Bool()))
-				return env.runtime.unbound_variable(Bool(std::move(lhs).consume_as<Bool>().value() && std::move(rhs).consume_as<Bool>().value()));
+				return env.runtime.unbound_variable(Bool(std::move(lhs).consume_as<Bool>(env).value() && std::move(rhs).consume_as<Bool>(env).value()));
 			else
 				break;
 
@@ -19,7 +19,7 @@ namespace lx
 				throw env.runtime_error("cannot assign temporary variable");
 			else if (rhs.ref().can_cast_implicit(lhs.ref().data_type()))
 			{
-				lhs.ref().set(std::move(rhs).consume());
+				lhs.ref().assign(env, std::move(rhs).consume());
 				return std::move(lhs);
 			}
 			else
@@ -35,8 +35,8 @@ namespace lx
 			bool rint = rhs.ref().can_cast_implicit(DataType::Int());
 			if (lint && rint)
 			{
-				int l = std::move(lhs).consume_as<Int>().value();
-				int r = std::move(rhs).consume_as<Int>().value();
+				int l = std::move(lhs).consume_as<Int>(env).value();
+				int r = std::move(rhs).consume_as<Int>(env).value();
 				
 				int res = 0;
 				switch (op)
@@ -63,8 +63,8 @@ namespace lx
 			{
 				if ((lint || lhs.ref().can_cast_implicit(DataType::Float())) && (rint || rhs.ref().can_cast_implicit(DataType::Float())))
 				{
-					float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>().value()) : std::move(lhs).consume_as<Float>().value();
-					float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>().value()) : std::move(rhs).consume_as<Float>().value();
+					float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>(env).value()) : std::move(lhs).consume_as<Float>(env).value();
+					float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>(env).value()) : std::move(rhs).consume_as<Float>(env).value();
 
 					float res = 0.f;
 					switch (op)
@@ -97,8 +97,8 @@ namespace lx
 			{
 				Pattern res;
 				auto& cat = res.make_root<SubpatternCatenation>();
-				cat.append(res.take(std::move(lhs).consume_as<Pattern>()));
-				cat.append(res.take(std::move(rhs).consume_as<Pattern>()));
+				cat.append(res.take(std::move(lhs).consume_as<Pattern>(env)));
+				cat.append(res.take(std::move(rhs).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -108,12 +108,12 @@ namespace lx
 		case BinaryOperator::NotEqualTo:
 			if (lhs.ref().can_cast_implicit(rhs.ref().data_type()))
 			{
-				bool eq = lhs.ref().equals(std::move(rhs).consume());
+				bool eq = lhs.ref().equals(env, std::move(rhs).consume());
 				return env.runtime.unbound_variable(Bool(op == BinaryOperator::EqualTo ? eq : !eq));
 			}
 			else if (lhs.ref().can_cast_implicit(rhs.ref().data_type()))
 			{
-				bool eq = rhs.ref().equals(std::move(lhs).consume());
+				bool eq = rhs.ref().equals(env, std::move(lhs).consume());
 				return env.runtime.unbound_variable(Bool(op == BinaryOperator::EqualTo ? eq : !eq));
 			}
 			else
@@ -124,8 +124,8 @@ namespace lx
 			{
 				Pattern res;
 				res.make_root<SubpatternException>(
-					res.take(std::move(lhs).consume_as<Pattern>()),
-					res.take(std::move(rhs).consume_as<Pattern>())
+					res.take(std::move(lhs).consume_as<Pattern>(env)),
+					res.take(std::move(rhs).consume_as<Pattern>(env))
 				);
 				return env.runtime.unbound_variable(std::move(res));
 			}
@@ -142,8 +142,8 @@ namespace lx
 
 			if ((lint || lhs.ref().can_cast_implicit(DataType::Float())) && (rint || rhs.ref().can_cast_implicit(DataType::Float())))
 			{
-				float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>().value()) : std::move(lhs).consume_as<Float>().value();
-				float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>().value()) : std::move(rhs).consume_as<Float>().value();
+				float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>(env).value()) : std::move(lhs).consume_as<Float>(env).value();
+				float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>(env).value()) : std::move(rhs).consume_as<Float>(env).value();
 
 				bool res = false;
 				switch (op)
@@ -169,13 +169,13 @@ namespace lx
 
 		case BinaryOperator::Or:
 			if (lhs.ref().can_cast_implicit(DataType::Bool()) && rhs.ref().can_cast_implicit(DataType::Bool()))
-				return env.runtime.unbound_variable(Bool(std::move(lhs).consume_as<Bool>().value() && std::move(rhs).consume_as<Bool>().value()));
+				return env.runtime.unbound_variable(Bool(std::move(lhs).consume_as<Bool>(env).value() && std::move(rhs).consume_as<Bool>(env).value()));
 			else if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
 				auto& disj = res.make_root<SubpatternDisjunction>();
-				disj.append(res.take(std::move(lhs).consume_as<Pattern>()));
-				disj.append(res.take(std::move(rhs).consume_as<Pattern>()));
+				disj.append(res.take(std::move(lhs).consume_as<Pattern>(env)));
+				disj.append(res.take(std::move(rhs).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -183,15 +183,15 @@ namespace lx
 
 		case BinaryOperator::Repeat:
 			if (lhs.ref().can_cast_implicit(DataType::Pattern()) && rhs.ref().can_cast_implicit(DataType::IRange()))
-				return env.runtime.unbound_variable(Pattern::make_repeat(std::move(lhs).consume_as<Pattern>(), std::move(rhs).consume_as<IRange>()));
+				return env.runtime.unbound_variable(Pattern::make_repeat(std::move(lhs).consume_as<Pattern>(env), std::move(rhs).consume_as<IRange>(env)));
 			else
 				break;
 
 		case BinaryOperator::To:
 			if (lhs.ref().can_cast_implicit(DataType::Int()) && rhs.ref().can_cast_implicit(DataType::Int()))
-				return env.runtime.unbound_variable(IRange(std::move(lhs).consume_as<Int>().value(), std::move(rhs).consume_as<Int>().value()));
+				return env.runtime.unbound_variable(IRange(std::move(lhs).consume_as<Int>(env).value(), std::move(rhs).consume_as<Int>(env).value()));
 			else if (lhs.ref().can_cast_implicit(DataType::String()) && rhs.ref().can_cast_implicit(DataType::String()))
-				return env.runtime.unbound_variable(SRange(std::move(lhs).consume_as<String>().value(), std::move(rhs).consume_as<String>().value()));
+				return env.runtime.unbound_variable(SRange(std::move(lhs).consume_as<String>(env).value(), std::move(rhs).consume_as<String>(env).value()));
 			else
 				break;
 		}
@@ -201,7 +201,7 @@ namespace lx
 		throw env.runtime_error(ss.str());
 	}
 
-	Variable operate(EvalContext& env, PrefixOperator op, Variable&& var)
+	Variable operate(const EvalContext& env, PrefixOperator op, Variable&& var)
 	{
 		switch (op)
 		{
@@ -209,7 +209,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				res.make_root<SubpatternLookaround>(LookaroundMode::Ahead, res.take(std::move(var).consume_as<Pattern>()));
+				res.make_root<SubpatternLookaround>(LookaroundMode::Ahead, res.take(std::move(var).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -219,7 +219,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				res.make_root<SubpatternLookaround>(LookaroundMode::Behind, res.take(std::move(var).consume_as<Pattern>()));
+				res.make_root<SubpatternLookaround>(LookaroundMode::Behind, res.take(std::move(var).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -227,31 +227,31 @@ namespace lx
 
 		case PrefixOperator::Max:
 			if (var.ref().can_cast_implicit(DataType::Int()))
-				return env.runtime.unbound_variable(IRange(std::nullopt, std::move(var).consume_as<Int>().value()));
+				return env.runtime.unbound_variable(IRange(std::nullopt, std::move(var).consume_as<Int>(env).value()));
 			else if (var.ref().can_cast_implicit(DataType::String()))
-				return env.runtime.unbound_variable(SRange(std::nullopt, nullptr, std::move(var).consume_as<String>().value(), env.segment));
+				return env.runtime.unbound_variable(SRange(std::nullopt, nullptr, std::move(var).consume_as<String>(env).value(), env.segment));
 			else
 				break;
 
 		case PrefixOperator::Min:
 			if (var.ref().can_cast_implicit(DataType::Int()))
-				return env.runtime.unbound_variable(IRange(std::move(var).consume_as<Int>().value(), std::nullopt));
+				return env.runtime.unbound_variable(IRange(std::move(var).consume_as<Int>(env).value(), std::nullopt));
 			else if (var.ref().can_cast_implicit(DataType::String()))
-				return env.runtime.unbound_variable(SRange(std::move(var).consume_as<String>().value(), env.segment, std::nullopt, nullptr));
+				return env.runtime.unbound_variable(SRange(std::move(var).consume_as<String>(env).value(), env.segment, std::nullopt, nullptr));
 			else
 				break;
 
 		case PrefixOperator::Minus:
 			if (var.ref().can_cast_implicit(DataType::Int()))
-				return env.runtime.unbound_variable(Int(-std::move(var).consume_as<Int>().value()));
+				return env.runtime.unbound_variable(Int(-std::move(var).consume_as<Int>(env).value()));
 			else if (var.ref().can_cast_implicit(DataType::Float()))
-				return env.runtime.unbound_variable(Float(-std::move(var).consume_as<Float>().value()));
+				return env.runtime.unbound_variable(Float(-std::move(var).consume_as<Float>(env).value()));
 			else
 				break;
 
 		case PrefixOperator::Not:
 			if (var.ref().can_cast_implicit(DataType::Bool()))
-				return env.runtime.unbound_variable(Bool(!std::move(var).consume_as<Bool>().value()));
+				return env.runtime.unbound_variable(Bool(!std::move(var).consume_as<Bool>(env).value()));
 			else
 				break;
 
@@ -259,7 +259,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				res.make_root<SubpatternLookaround>(LookaroundMode::NotAhead, res.take(std::move(var).consume_as<Pattern>()));
+				res.make_root<SubpatternLookaround>(LookaroundMode::NotAhead, res.take(std::move(var).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -269,7 +269,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				res.make_root<SubpatternLookaround>(LookaroundMode::NotBehind, res.take(std::move(var).consume_as<Pattern>()));
+				res.make_root<SubpatternLookaround>(LookaroundMode::NotBehind, res.take(std::move(var).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -279,7 +279,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
 				Pattern res;
-				res.make_root<SubpatternOptional>(res.take(std::move(var).consume_as<Pattern>()));
+				res.make_root<SubpatternOptional>(res.take(std::move(var).consume_as<Pattern>(env)));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -289,7 +289,7 @@ namespace lx
 			if (var.ref().can_cast_implicit(DataType::CapId()))
 			{
 				Pattern res;
-				res.make_root<SubpatternBackRef>(std::move(var).consume_as<CapId>());
+				res.make_root<SubpatternBackRef>(std::move(var).consume_as<CapId>(env));
 				return env.runtime.unbound_variable(std::move(res));
 			}
 			else
@@ -299,7 +299,7 @@ namespace lx
 		throw env.runtime_error("operator not supported for type " + var.ref().data_type().repr());
 	}
 
-	Variable operate(EvalContext& env, PatternSimpleRepeatOperator op, Variable&& var)
+	Variable operate(const EvalContext& env, PatternSimpleRepeatOperator op, Variable&& var)
 	{
 		if (!var.ref().can_cast_implicit(DataType::Pattern()))
 		{
@@ -311,9 +311,9 @@ namespace lx
 		switch (op)
 		{
 		case PatternSimpleRepeatOperator::Asterisk:
-			return env.runtime.unbound_variable(Pattern::make_repeat(std::move(var).consume_as<Pattern>(), IRange(0, std::nullopt)));
+			return env.runtime.unbound_variable(Pattern::make_repeat(std::move(var).consume_as<Pattern>(env), IRange(0, std::nullopt)));
 		case PatternSimpleRepeatOperator::Plus:
-			return env.runtime.unbound_variable(Pattern::make_repeat(std::move(var).consume_as<Pattern>(), IRange(1, std::nullopt)));
+			return env.runtime.unbound_variable(Pattern::make_repeat(std::move(var).consume_as<Pattern>(env), IRange(1, std::nullopt)));
 		default:
 		{
 			std::stringstream ss;
