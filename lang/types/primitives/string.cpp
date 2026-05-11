@@ -49,7 +49,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant String::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant String::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::String)
 			return std::move(*this);
@@ -100,7 +100,7 @@ namespace lx
 
 	void String::assign(const EvalContext& env, String&& o)
 	{
-		// TODO
+		_value = std::move(o._value);
 	}
 
 	bool String::equals(const EvalContext& env, const String& o) const

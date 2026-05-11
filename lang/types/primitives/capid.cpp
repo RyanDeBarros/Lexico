@@ -25,7 +25,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant CapId::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant CapId::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -48,7 +48,7 @@ namespace lx
 
 	void CapId::assign(const EvalContext& env, CapId&& o)
 	{
-		// TODO
+		_uid = o._uid;
 	}
 
 	bool CapId::equals(const EvalContext& env, const CapId& o) const

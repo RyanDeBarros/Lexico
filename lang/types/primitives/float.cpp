@@ -52,7 +52,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant Float::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Float::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -75,7 +75,7 @@ namespace lx
 
 	void Float::assign(const EvalContext& env, Float&& o)
 	{
-		// TODO
+		_value = o._value;
 	}
 
 	bool Float::equals(const EvalContext& env, const Float& o) const

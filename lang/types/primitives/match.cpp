@@ -21,7 +21,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Match::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Match::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Match)
 			return std::move(*this);

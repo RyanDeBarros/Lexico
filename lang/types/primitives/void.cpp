@@ -18,7 +18,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Void::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Void::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);

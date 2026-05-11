@@ -105,7 +105,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant List::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant List::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		if (type == DataType::List(_underlying))
 			return std::move(*this);
@@ -149,7 +149,7 @@ namespace lx
 
 	void List::assign(const EvalContext& env, List&& o)
 	{
-		// TODO
+		_elements = std::move(o._elements);
 	}
 
 	bool List::equals(const EvalContext& env, const List& o) const

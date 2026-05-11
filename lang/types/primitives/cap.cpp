@@ -20,7 +20,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Cap::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Cap::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Cap)
 			return std::move(*this);

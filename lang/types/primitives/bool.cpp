@@ -48,7 +48,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant Bool::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Bool::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -71,7 +71,7 @@ namespace lx
 
 	void Bool::assign(const EvalContext& env, Bool&& o)
 	{
-		// TODO
+		_value = o._value;
 	}
 
 	bool Bool::equals(const EvalContext& env, const Bool& o) const

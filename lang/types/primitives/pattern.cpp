@@ -249,7 +249,7 @@ namespace lx
 			env.throw_bad_cast(DataType::Pattern(), type);
 	}
 
-	TypeVariant Pattern::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Pattern::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		if (type.simple() == SimpleType::Pattern)

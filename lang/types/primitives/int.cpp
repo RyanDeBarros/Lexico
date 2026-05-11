@@ -54,9 +54,7 @@ namespace lx
 		}
 	}
 	
-	// TODO make cast_move() &&
-
-	TypeVariant Int::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant Int::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -79,7 +77,7 @@ namespace lx
 
 	void Int::assign(const EvalContext& env, Int&& o)
 	{
-		// TODO
+		_value = o._value;
 	}
 
 	bool Int::equals(const EvalContext& env, const Int& o) const

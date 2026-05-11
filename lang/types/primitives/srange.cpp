@@ -121,7 +121,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant SRange::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant SRange::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -154,7 +154,8 @@ namespace lx
 
 	void SRange::assign(const EvalContext& env, SRange&& o)
 	{
-		// TODO
+		_min = std::move(o._min);
+		_max = std::move(o._max);
 	}
 
 	bool SRange::equals(const EvalContext& env, const SRange& o) const

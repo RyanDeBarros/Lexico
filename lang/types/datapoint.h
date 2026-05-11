@@ -38,7 +38,7 @@ namespace lx
 		template<Type T>
 		T move_as(const EvalContext& env)
 		{
-			return std::get<T>(std::visit([&env](auto&& v) { return v.cast_move(env, T::data_type()); }, std::move(_storage)));
+			return std::get<T>(std::visit([&env](auto&& v) { return std::move(v).cast_move(env, T::data_type()); }, std::move(_storage)));
 		}
 
 		template<Type T>
@@ -60,7 +60,7 @@ namespace lx
 		}
 
 		DataPoint cast_copy(const EvalContext& env, const DataType& type) const;
-		DataPoint cast_move(const EvalContext& env, const DataType& type);
+		DataPoint cast_move(const EvalContext& env, const DataType& type) &&;
 
 		void assign(const EvalContext& env, const DataPoint& other);
 		void assign(const EvalContext& env, DataPoint&& other);

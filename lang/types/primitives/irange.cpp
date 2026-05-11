@@ -25,7 +25,7 @@ namespace lx
 			env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant IRange::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant IRange::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
@@ -58,7 +58,8 @@ namespace lx
 
 	void IRange::assign(const EvalContext& env, IRange&& o)
 	{
-		// TODO
+		_min = std::move(o._min);
+		_max = std::move(o._max);
 	}
 
 	bool IRange::equals(const EvalContext& env, const IRange& o) const

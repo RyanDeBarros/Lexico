@@ -80,10 +80,10 @@ namespace lx
 		}
 	}
 
-	TypeVariant StringView::cast_move(const EvalContext& env, const DataType& type)
+	TypeVariant StringView::cast_move(const EvalContext& env, const DataType& type) &&
 	{
 		if (type == DataType::String())
-			return String(std::move(*this).consume_value(env)); // TODO after cast_move is &&, can remove std::move()
+			return String(std::move(*this).consume_value(env));
 
 		(void*)this; // ignore const warning
 		return cast_copy(env, type);
