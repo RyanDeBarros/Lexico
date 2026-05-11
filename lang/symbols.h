@@ -69,6 +69,8 @@ namespace lx
 
 	public:
 		explicit Scope(std::optional<unsigned int> lines);
+
+		std::optional<unsigned int> lines() const;
 	};
 
 	extern bool is_scope_symbol(BuiltinSymbol symbol);

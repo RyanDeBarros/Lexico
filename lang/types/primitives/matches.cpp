@@ -66,4 +66,9 @@ namespace lx
 		// TODO
 		return Match();
 	}
+
+	void Matches::append(Matches&& matches)
+	{
+		// TODO
+	}
 }

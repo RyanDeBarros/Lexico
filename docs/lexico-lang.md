@@ -11,7 +11,7 @@ TODO v0.2 match word, match case, built-in functions for changing case, etc. Bui
 
 TODO v0.3 aggregation / SQL constructs
 
-TODO v0.4 recursion built into patterns (see parentheses balancing example)
+TODO v0.3 recursion built into patterns (see parentheses balancing example)
 
 ## Data types
 

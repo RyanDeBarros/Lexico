@@ -94,7 +94,7 @@ namespace lx
 		void delete_pattern(std::string_view identifier);
 		Variable focused_pattern(const ScriptSegment& segment) const;
 
-		void find();
+		void find(const ScriptSegment& segment);
 		void add_highlight(const Color& color, const std::optional<Variable>& format);
 		void remove_highlight(const Color& color, const std::optional<Variable>& format);
 
@@ -105,7 +105,7 @@ namespace lx
 
 		const Matches& global_matches() const;
 		Matches& global_matches();
-		Variable global_matches_handle() const;
+		Variable global_matches_var() const;
 
 		const Scope& search_scope() const;
 		Scope& search_scope();

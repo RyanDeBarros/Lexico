@@ -164,7 +164,7 @@ namespace lx
 			_focused_pattern = it->second;
 		else
 		{
-			// TODO v0.3 allow for passing initial pattern expression in pattern declaration
+			// TODO v0.2 allow for passing initial pattern expression in pattern declaration
 			Variable var = _heap.add(Pattern());
 			_declared_patterns.try_emplace(std::string(identifier), var);
 			_focused_pattern = var;
@@ -190,9 +190,57 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	void Runtime::find()
+	static std::vector<std::string_view> scope_by_line_count(const std::string_view content, unsigned int lines)
 	{
-		// TODO iterate over scoped page and accumulate matches
+		std::vector<size_t> starts;
+		starts.push_back(0);
+
+		for (size_t i = 0; i < content.size(); ++i)
+			if (content[i] == '\n' && i + 1 < content.size())
+				starts.push_back(i + 1);
+
+		std::vector<std::string_view> scoped_lines;
+
+		if (starts.size() < lines)
+			return scoped_lines;
+
+		for (size_t i = 0; i + lines - 1 < starts.size(); ++i)
+		{
+			size_t begin = starts[i];
+			size_t end;
+
+			if (i + lines < starts.size())
+			{
+				end = starts[i + lines] - 1;
+				if (end > begin && content[end - 1] == '\r')
+					--end;
+			}
+			else
+				end = content.size();
+
+			scoped_lines.emplace_back(content.data() + begin, end - begin);
+		}
+
+		return scoped_lines;
+	}
+
+	void Runtime::find(const ScriptSegment& segment)
+	{
+		if (Pattern* pattern = focused_pattern(segment).ref().as<Pattern>())
+		{
+			const Page& page = focused_page();
+			const Scope& scope = search_scope();
+			if (auto lines = scope.lines())
+			{
+				global_matches() = Matches();
+				for (const auto& subcontent : scope_by_line_count(page.content, *lines))
+					global_matches().append(pattern->find_all(subcontent));
+			}
+			else
+				global_matches() = pattern->find_all(page.content);
+		}
+		else
+			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
 	void Runtime::add_highlight(const Color& color, const std::optional<Variable>& format)
@@ -239,7 +287,7 @@ namespace lx
 		return _global_matches.ref().get<Matches>();
 	}
 
-	Variable Runtime::global_matches_handle() const
+	Variable Runtime::global_matches_var() const
 	{
 		return _global_matches;
 	}

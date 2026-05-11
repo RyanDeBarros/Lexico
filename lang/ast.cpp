@@ -797,7 +797,7 @@ namespace lx
 
 	Variable GlobalMatchesExpression::evaluate(Runtime& env) const
 	{
-		return env.global_matches_handle();
+		return env.global_matches_var();
 	}
 
 	DataType GlobalMatchesExpression::impl_evaltype(SemanticContext& ctx) const
@@ -1922,7 +1922,7 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& env) const
 	{
-		env.find();
+		env.find(segment());
 		return {};
 	}
 
@@ -1963,7 +1963,7 @@ namespace lx
 		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
 
 		auto ctx = eval_context(env);
-		Iterator iter(env.global_matches_handle());
+		Iterator iter(env.global_matches_var());
 		while (!iter.done(ctx))
 		{
 			if (fn.invoke(env, { env.unbound_variable(iter.get(ctx)) }).data.consume_as<Bool>(ctx).value())

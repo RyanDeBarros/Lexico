@@ -98,6 +98,11 @@ namespace lx
 	{
 	}
 
+	std::optional<unsigned int> Scope::lines() const
+	{
+		return _lines;
+	}
+
 	bool is_scope_symbol(BuiltinSymbol symbol)
 	{
 		switch (symbol)

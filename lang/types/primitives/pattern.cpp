@@ -579,4 +579,10 @@ namespace lx
 			_root = &cat;
 		}
 	}
+
+	Matches Pattern::find_all(const std::string_view text) const
+	{
+		// TODO
+		return Matches();
+	}
 }

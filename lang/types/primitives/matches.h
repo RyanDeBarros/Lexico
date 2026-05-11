@@ -19,5 +19,7 @@ namespace lx
 
 		size_t iterlen(const EvalContext& env) const;
 		DataPoint iterget(const EvalContext& env, size_t i) const;
+
+		void append(Matches&& matches);
 	};
 }

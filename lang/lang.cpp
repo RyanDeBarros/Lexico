@@ -34,7 +34,7 @@ namespace lx
 
 	static bool exec(const std::string_view script, const std::string_view input, std::stringstream& output, std::stringstream& log)
 	{
-		// TODO delete lexer, parser, analyser, etc. resources once done with them to save resources for executor
+		// TODO v2 delete lexer, parser, analyser, etc. resources once done with them to save resources for executor. Need to be careful, since Token references persist in AST.
 
 		try
 		{

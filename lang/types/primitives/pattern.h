@@ -252,5 +252,7 @@ namespace lx
 		}
 
 		void append(Pattern&& pattern);
+
+		Matches find_all(const std::string_view text) const;
 	};
 }
