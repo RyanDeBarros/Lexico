@@ -19,7 +19,7 @@ namespace lx
 				throw env.runtime_error("cannot assign temporary variable");
 			else if (rhs.ref().can_cast_implicit(lhs.ref().data_type()))
 			{
-				lhs.ref().assign(env, std::move(rhs).consume());
+				lhs.ref().assign(env, std::move(rhs));
 				return std::move(lhs);
 			}
 			else
@@ -108,12 +108,12 @@ namespace lx
 		case BinaryOperator::NotEqualTo:
 			if (lhs.ref().can_cast_implicit(rhs.ref().data_type()))
 			{
-				bool eq = lhs.ref().equals(env, std::move(rhs).consume());
+				bool eq = lhs.ref().equals(env, std::move(rhs));
 				return env.runtime.unbound_variable(Bool(op == BinaryOperator::EqualTo ? eq : !eq));
 			}
 			else if (lhs.ref().can_cast_implicit(rhs.ref().data_type()))
 			{
-				bool eq = rhs.ref().equals(env, std::move(lhs).consume());
+				bool eq = rhs.ref().equals(env, std::move(lhs));
 				return env.runtime.unbound_variable(Bool(op == BinaryOperator::EqualTo ? eq : !eq));
 			}
 			else

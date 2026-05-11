@@ -95,22 +95,22 @@ namespace lx
 		return DataType::List(_underlying);
 	}
 
-	TypeVariant List::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant List::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type == DataType::List(_underlying))
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant List::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant List::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type == DataType::List(_underlying))
 			return std::move(*this);
 		else
-			return cast_copy(env, type);
+			return cast_copy(ctx, type);
 	}
 
 	void List::print(const EvalContext& env, std::stringstream& ss) const
@@ -140,7 +140,7 @@ namespace lx
 			if (args.size() == 1)
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
-					return _elements[std::move(args[0]).consume().move_as<Int>(ctx.env).value()];
+					return _elements[std::move(args[0]).consume_as<Int>(ctx.env).value()];
 			}
 		}
 
@@ -158,7 +158,7 @@ namespace lx
 			return false;
 		
 		for (size_t i = 0; i < _elements.size(); ++i)
-			if (!_elements[i].ref().equals(env, o._elements[i].ref()))
+			if (!_elements[i].ref().equals(env, o._elements[i]))
 				return false;
 
 		return true;

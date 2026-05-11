@@ -239,23 +239,23 @@ namespace lx
 		return DataType::Pattern();
 	}
 
-	TypeVariant Pattern::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant Pattern::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Pattern)
 			return Pattern(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			env.throw_bad_cast(DataType::Pattern(), type);
+			ctx.env.throw_bad_cast(DataType::Pattern(), type);
 	}
 
-	TypeVariant Pattern::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant Pattern::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		if (type.simple() == SimpleType::Pattern)
 			return Pattern(std::move(*this));
 		else
-			return cast_copy(env, type);
+			return cast_copy(ctx, type);
 	}
 
 	void Pattern::print(const EvalContext& env, std::stringstream& ss) const

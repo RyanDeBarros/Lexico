@@ -23,8 +23,8 @@ namespace lx
 		static List make_nonvoid_list(std::vector<Variable>&& elements);
 
 		DataType data_type() const;
-		TypeVariant cast_copy(const EvalContext& env, const DataType& type) const;
-		TypeVariant cast_move(const EvalContext& env, const DataType& type) &&;
+		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
+		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;

@@ -118,6 +118,17 @@ namespace lx
 			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
+	DataPoint Variable::cast(const EvalContext& env, const DataType& to) &&
+	{
+		VarContext ctx(env, std::move(*this));
+		DataPoint& me = ctx.self.ref();
+
+		if (ctx.self.unbound())
+			return std::move(me).cast_move(std::move(ctx), to);
+		else
+			return me.cast_copy(ctx, to);
+	}
+
 	size_t Variable::hash() const
 	{
 		return std::hash<unsigned int>{}(_id);

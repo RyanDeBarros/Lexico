@@ -56,7 +56,7 @@ namespace lx
 		return DataType::StringView();
 	}
 
-	TypeVariant StringView::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant StringView::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		// TODO
 		switch (type.simple())
@@ -68,7 +68,7 @@ namespace lx
 		//case SimpleType::Bool:
 			//return Bool::make_from_literal(_value);
 		case SimpleType::String:
-			return String(copy_value(env));
+			return String(copy_value(ctx.env));
 		case SimpleType::StringView:
 			return *this;
 		//case SimpleType::Pattern:
@@ -76,17 +76,17 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant StringView::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant StringView::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type == DataType::String())
-			return String(std::move(*this).consume_value(env));
+			return String(std::move(*this).consume_value(ctx.env));
 
 		(void*)this; // ignore const warning
-		return cast_copy(env, type);
+		return cast_copy(ctx, type);
 	}
 	
 	void StringView::print(const EvalContext& env, std::stringstream& ss) const

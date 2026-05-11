@@ -10,22 +10,22 @@ namespace lx
 		return DataType::Matches();
 	}
 
-	TypeVariant Matches::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant Matches::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Matches)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Matches::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant Matches::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Matches)
 			return std::move(*this);
 		else
-			return cast_copy(env, type);
+			return cast_copy(ctx, type);
 	}
 
 	void Matches::print(const EvalContext& env, std::stringstream& ss) const

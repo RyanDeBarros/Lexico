@@ -643,7 +643,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& env) const
 	{
-		return env.unbound_variable(_expr.evaluate(env).consume().cast_move(eval_context(env), _type.type()));
+		return env.unbound_variable(_expr.evaluate(env).cast(eval_context(env), _type.type()));
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -1213,7 +1213,7 @@ namespace lx
 
 	ExecutionFlow IfConditionalBlock::execute(Runtime& env) const
 	{
-		if (_condition.evaluate(env).consume().move_as<Bool>(eval_context(env)).value())
+		if (_condition.evaluate(env).consume_as<Bool>(eval_context(env)).value())
 			return Block::execute(env);
 		else if (_fallback)
 			return _fallback->fallback_execute(env);
@@ -1408,7 +1408,7 @@ namespace lx
 
 	ExecutionFlow WhileLoop::execute(Runtime& env) const
 	{
-		while (_condition.evaluate(env).consume().move_as<Bool>(eval_context(env)).value())
+		while (_condition.evaluate(env).consume_as<Bool>(eval_context(env)).value())
 		{
 			auto flow = Block::execute(env);
 			if (flow.type == FlowType::Break)
@@ -1703,8 +1703,8 @@ namespace lx
 	Variable RepeatOperation::evaluate(Runtime& env) const
 	{
 		auto ctx = eval_context(env);
-		IRange range = _range.evaluate(env).consume().move_as<IRange>(ctx);
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(ctx);
+		IRange range = _range.evaluate(env).consume_as<IRange>(ctx);
+		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(ctx);
 		return env.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
@@ -1809,7 +1809,7 @@ namespace lx
 
 	Variable PatternLazy::evaluate(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
+		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
 		return env.unbound_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
@@ -1866,7 +1866,7 @@ namespace lx
 
 	Variable PatternCapture::evaluate(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
+		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
 		return env.unbound_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
 	}
 
@@ -1896,7 +1896,7 @@ namespace lx
 
 	ExecutionFlow AppendStatement::execute(Runtime& env) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume().move_as<Pattern>(eval_context(env));
+		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
 		env.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
 		return {};
 	}
@@ -2098,7 +2098,7 @@ namespace lx
 		{
 			if (_count)
 			{
-				int c = _count->evaluate(env).consume().move_as<Int>(eval_context(env)).value();
+				int c = _count->evaluate(env).consume_as<Int>(eval_context(env)).value();
 				if (c > 0)
 					return Scope(c);
 				else

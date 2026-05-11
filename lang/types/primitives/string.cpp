@@ -26,37 +26,39 @@ namespace lx
 		return DataType::String();
 	}
 	
-	// TODO add StringView to cast_copy, but not cast_move?
-
-	TypeVariant String::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant String::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
 		{
 		case SimpleType::Int:
-			return Int::make_from_literal(env, _value);
+			return Int::make_from_literal(ctx.env, _value);
 		case SimpleType::Float:
-			return Float::make_from_literal(env, _value);
+			return Float::make_from_literal(ctx.env, _value);
 		case SimpleType::Bool:
-			return Bool::make_from_literal(env, _value);
+			return Bool::make_from_literal(ctx.env, _value);
 		case SimpleType::String:
 			return *this;
+		case SimpleType::StringView:
+			return StringView(ctx.env, ctx.self, IRange(std::nullopt, std::nullopt));
 		case SimpleType::Pattern:
 			return Pattern::make_from_subpattern<SubpatternString>(_value);
 		case SimpleType::Void:
 			return Void();
 		default:
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 		}
 	}
 
-	TypeVariant String::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant String::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::String)
 			return std::move(*this);
+		else if (type.simple() == SimpleType::StringView)
+			return StringView(ctx.env, std::move(ctx.self), IRange(std::nullopt, std::nullopt));
 		else if (type.simple() == SimpleType::Pattern)
 			return Pattern::make_from_subpattern<SubpatternString>(std::move(_value));
 		else
-			return cast_copy(env, type);
+			return cast_copy(ctx, type);
 	}
 
 	void String::print(const EvalContext& env, std::stringstream& ss) const

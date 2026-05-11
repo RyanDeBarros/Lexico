@@ -36,9 +36,9 @@ namespace lx
 		}
 
 		template<Type T>
-		T move_as(const EvalContext& env)
+		T move_as(VarContext&& ctx)
 		{
-			return std::get<T>(std::visit([&env](auto&& v) { return std::move(v).cast_move(env, T::data_type()); }, std::move(_storage)));
+			return std::get<T>(std::visit([&ctx](auto&& v) { return std::move(v).cast_move(std::move(ctx), T::data_type()); }, std::move(_storage)));
 		}
 
 		template<Type T>
@@ -59,14 +59,11 @@ namespace lx
 				return nullptr;
 		}
 
-		DataPoint cast_copy(const EvalContext& env, const DataType& type) const;
-		DataPoint cast_move(const EvalContext& env, const DataType& type) &&;
+		DataPoint cast_copy(const VarContext& ctx, const DataType& type) const;
+		DataPoint cast_move(VarContext&& ctx, const DataType& type) &&;
 
-		void assign(const EvalContext& env, const DataPoint& other);
-		void assign(const EvalContext& env, DataPoint&& other);
-
-		bool equals(const EvalContext& env, const DataPoint& other) const;
-		bool equals(const EvalContext& env, DataPoint&& other) const;
+		void assign(const EvalContext& env, Variable other);
+		bool equals(const EvalContext& env, Variable other) const;
 
 		bool can_cast_implicit(const DataType& to) const;
 		bool can_cast_explicit(const DataType& to) const;
@@ -86,6 +83,6 @@ namespace lx
 	template<typename T>
 	T Variable::consume_as(const EvalContext& env) &&
 	{
-		return std::move(*this).consume().move_as<T>(env);
+		return std::move(*this).consume_as<T>(env);
 	}
 }

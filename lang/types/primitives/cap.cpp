@@ -10,24 +10,24 @@ namespace lx
 		return DataType::Cap();
 	}
 
-	TypeVariant Cap::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant Cap::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Cap)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Cap::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant Cap::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Cap)
 			return std::move(*this);
 		else
 		{
 			(void*)this; // ignore const warning
-			return cast_copy(env, type);
+			return cast_copy(ctx, type);
 		}
 	}
 

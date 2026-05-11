@@ -31,7 +31,7 @@ namespace lx
 		return DataType::Int();
 	}
 
-	TypeVariant Int::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant Int::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -50,14 +50,14 @@ namespace lx
 		case SimpleType::Void:
 			return Void();
 		default:
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 		}
 	}
 	
-	TypeVariant Int::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant Int::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(env, type);
+		return cast_copy(ctx, type);
 	}
 
 	void Int::print(const EvalContext& env, std::stringstream& ss) const

@@ -15,20 +15,20 @@ namespace lx
 		return DataType::IRange();
 	}
 
-	TypeVariant IRange::cast_copy(const EvalContext& env, const DataType& type) const
+	TypeVariant IRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::IRange)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
-			env.throw_bad_cast(data_type(), type);
+			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant IRange::cast_move(const EvalContext& env, const DataType& type) &&
+	TypeVariant IRange::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
-		return cast_copy(env, type);
+		return cast_copy(ctx, type);
 	}
 
 	void IRange::print(const EvalContext& env, std::stringstream& ss) const
