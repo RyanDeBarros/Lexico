@@ -5,15 +5,6 @@
 
 namespace lx
 {
-	SubpatternNode& SubpatternNode::refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		auto it = conv.find(this);
-		if (it != conv.end())
-			return *it->second;
-		else
-			return clone(conv, arena);
-	}
-
 	template<std::derived_from<SubpatternNode> T, typename... Args>
 	static T& clone_base(const T* from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena, Args&&... args)
 	{
@@ -22,6 +13,15 @@ namespace lx
 		arena.push_back(std::move(cloned));
 		conv[from] = &base;
 		return base;
+	}
+
+	SubpatternNode& SubpatternNode::refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		auto it = conv.find(this);
+		if (it != conv.end())
+			return *it->second;
+		else
+			return clone(conv, arena);
 	}
 
 	SubpatternArray::SubpatternArray(std::vector<SubpatternNode*>&& array)
@@ -35,6 +35,25 @@ namespace lx
 		for (const SubpatternNode* el : _array)
 			array.append(el->refer_node(conv, arena));
 		return array;
+	}
+
+	bool SubpatternArray::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternArray*>(o))
+		{
+			if (_array.size() != ptr->_array.size())
+				return false;
+
+			for (size_t i = 0; i < _array.size(); ++i)
+				if (!_array[i]->equals(ptr->_array[i]))
+					return false;
+
+			return true;
+		}
+		else if (_array.size() == 1)
+			return _array[0]->equals(o);
+		else
+			return false;
 	}
 
 	void SubpatternArray::append(SubpatternNode& node)
@@ -52,6 +71,21 @@ namespace lx
 		return clone_base<SubpatternChar>(this, conv, arena, _ch);
 	}
 
+	bool SubpatternChar::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternChar*>(o))
+			return _ch == ptr->_ch;
+		else if (auto ptr = dynamic_cast<const SubpatternString*>(o))
+			return ptr->string().size() == 1 && ptr->string()[0] == _ch;
+		else
+			return false;
+	}
+
+	char SubpatternChar::chr() const
+	{
+		return _ch;
+	}
+
 	SubpatternString::SubpatternString(const std::string& string)
 		: _string(string)
 	{
@@ -67,6 +101,21 @@ namespace lx
 		return clone_base<SubpatternString>(this, conv, arena, _string);
 	}
 
+	bool SubpatternString::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternString*>(o))
+			return _string == ptr->_string;
+		else if (auto ptr = dynamic_cast<const SubpatternChar*>(o))
+			return _string.size() == 1 && _string[0] == ptr->chr();
+		else
+			return false;
+	}
+
+	std::string_view SubpatternString::string() const
+	{
+		return _string;
+	}
+
 	SubpatternMarker::SubpatternMarker(PatternMark marker)
 		: _marker(marker)
 	{
@@ -77,6 +126,14 @@ namespace lx
 		return clone_base<SubpatternMarker>(this, conv, arena, _marker);
 	}
 
+	bool SubpatternMarker::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternMarker*>(o))
+			return _marker == ptr->_marker;
+		else
+			return false;
+	}
+
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
 		: _subject(&subject), _exception(&exception)
 	{
@@ -85,6 +142,14 @@ namespace lx
 	SubpatternNode& SubpatternException::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
 		return clone_base<SubpatternException>(this, conv, arena, _subject->refer_node(conv, arena), _exception->refer_node(conv, arena));
+	}
+
+	bool SubpatternException::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternException*>(o))
+			return _subject->equals(ptr->_subject) && _exception->equals(ptr->_exception);
+		else
+			return false;
 	}
 
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
@@ -119,6 +184,14 @@ namespace lx
 		return clone_base<SubpatternRepetition>(this, conv, arena, _subject->refer_node(conv, arena), _range);
 	}
 
+	bool SubpatternRepetition::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternRepetition*>(o))
+			return _range == ptr->_range && _subject->equals(ptr->_subject);
+		else
+			return false;
+	}
+
 	LookaroundMode lookaround_mode(PrefixOperator op)
 	{
 		switch (op)
@@ -150,6 +223,14 @@ namespace lx
 		return clone_base<SubpatternLookaround>(this, conv, arena, _mode, _subject->refer_node(conv, arena));
 	}
 
+	bool SubpatternLookaround::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternLookaround*>(o))
+			return _mode == ptr->_mode && _subject->equals(ptr->_subject);
+		else
+			return false;
+	}
+
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
 		: _optional(&optional)
 	{
@@ -158,6 +239,14 @@ namespace lx
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
 		return clone_base<SubpatternOptional>(this, conv, arena, _optional->refer_node(conv, arena));
+	}
+
+	bool SubpatternOptional::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternOptional*>(o))
+			return _optional->equals(ptr->_optional);
+		else
+			return false;
 	}
 
 	SubpatternBackRef::SubpatternBackRef(CapId capid)
@@ -170,6 +259,14 @@ namespace lx
 		return clone_base<SubpatternBackRef>(this, conv, arena, _capid);
 	}
 
+	bool SubpatternBackRef::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternBackRef*>(o))
+			return _capid == ptr->_capid;
+		else
+			return false;
+	}
+
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
 		: _capid(capid), _captured(&captured)
 	{
@@ -180,6 +277,14 @@ namespace lx
 		return clone_base<SubpatternCapture>(this, conv, arena, _capid, _captured->refer_node(conv, arena));
 	}
 
+	bool SubpatternCapture::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternCapture*>(o))
+			return _capid == ptr->_capid && _captured->equals(ptr->_captured);
+		else
+			return false;
+	}
+
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
 		: _lazy(&lazy)
 	{
@@ -188,6 +293,14 @@ namespace lx
 	SubpatternNode& SubpatternLazy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
 		return clone_base<SubpatternLazy>(this, conv, arena, _lazy->refer_node(conv, arena));
+	}
+
+	bool SubpatternLazy::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternLazy*>(o))
+			return _lazy->equals(ptr->_lazy);
+		else
+			return false;
 	}
 
 	Pattern::Pattern()
@@ -276,13 +389,15 @@ namespace lx
 
 	void Pattern::assign(const EvalContext& env, Pattern&& o)
 	{
-		// TODO
+		*this = std::move(o);
 	}
 
 	bool Pattern::equals(const EvalContext& env, const Pattern& o) const
 	{
-		// TODO
-		return false;
+		if (_root)
+			return o._root && _root->equals(o._root);
+		else
+			return !o._root;
 	}
 
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)

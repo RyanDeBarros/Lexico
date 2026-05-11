@@ -27,5 +27,7 @@ namespace lx
 
 		std::optional<int> min() const;
 		std::optional<int> max() const;
+
+		bool operator==(const IRange&) const = default;
 	};
 }

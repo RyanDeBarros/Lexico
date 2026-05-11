@@ -21,6 +21,7 @@ namespace lx
 
 		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const = 0;
 		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
+		virtual bool equals(const SubpatternNode* o) const = 0;
 	};
 
 	class SubpatternArray : public SubpatternNode
@@ -33,6 +34,7 @@ namespace lx
 		SubpatternArray(std::vector<SubpatternNode*>&& array);
 
 		virtual SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		virtual bool equals(const SubpatternNode* o) const override;
 		void append(SubpatternNode& node);
 	};
 
@@ -44,6 +46,8 @@ namespace lx
 		SubpatternChar(char ch);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
+		char chr() const;
 	};
 
 	class SubpatternString : public SubpatternNode
@@ -55,6 +59,8 @@ namespace lx
 		SubpatternString(std::string&& string);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
+		std::string_view string() const;
 	};
 
 	enum class PatternMark
@@ -73,6 +79,7 @@ namespace lx
 		SubpatternMarker(PatternMark marker);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternCatenation : public SubpatternArray
@@ -92,6 +99,7 @@ namespace lx
 		SubpatternException(SubpatternNode& subject, SubpatternNode& exception);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternRepetition : public SubpatternNode
@@ -104,6 +112,7 @@ namespace lx
 		SubpatternRepetition(SubpatternNode& subject, PatternSimpleRepeatOperator op);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	enum class LookaroundMode
@@ -125,6 +134,7 @@ namespace lx
 		SubpatternLookaround(LookaroundMode mode, SubpatternNode& subject);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternOptional : public SubpatternNode
@@ -135,6 +145,7 @@ namespace lx
 		SubpatternOptional(SubpatternNode& optional);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternBackRef : public SubpatternNode
@@ -145,6 +156,7 @@ namespace lx
 		SubpatternBackRef(CapId capid);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternCapture : public SubpatternNode
@@ -156,6 +168,7 @@ namespace lx
 		SubpatternCapture(CapId capid, SubpatternNode& captured);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class SubpatternLazy : public SubpatternNode
@@ -166,6 +179,7 @@ namespace lx
 		SubpatternLazy(SubpatternNode& lazy);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
 	};
 
 	class Pattern
