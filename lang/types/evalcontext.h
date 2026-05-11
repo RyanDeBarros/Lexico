@@ -1,7 +1,6 @@
 #pragma once
 
 #include "errors.h"
-#include "symbolizer.h"
 #include "variable.h"
 
 namespace lx
@@ -31,7 +30,6 @@ namespace lx
 		VarContext(const EvalContext& env, Variable self);
 
 		Variable variable(DataPoint&& dp) const;
-		Symbol symbolize(const std::string_view name) const;
 
 		[[noreturn]] void throw_bad_set_expression(const DataType& to) const;
 		[[noreturn]] void throw_bad_set_expression(const DataPoint& to) const;

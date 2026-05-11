@@ -7,7 +7,6 @@ set(TYPES_SOURCES
 	heap.cpp
 	processing.cpp
 	evalcontext.cpp
-	symbolizer.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_SOURCES})

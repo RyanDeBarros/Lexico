@@ -9,7 +9,6 @@ namespace lx
 	class DataPoint;
 	class VirtualHeap;
 	struct EvalContext;
-	struct DataPath;
 
 	class Variable
 	{
@@ -29,7 +28,6 @@ namespace lx
 		Variable& operator=(Variable&&) noexcept;
 
 		Variable root() const;
-		Variable subpath(DataPath&& path) const;
 
 	private:
 		void increment() const;
@@ -42,9 +40,6 @@ namespace lx
 
 		template<typename T>
 		T consume_as(const EvalContext& env) &&;
-
-		const DataPath* path() const;
-		DataPath* path();
 
 		bool unbound() const;
 

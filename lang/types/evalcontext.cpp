@@ -2,7 +2,6 @@
 
 #include "runtime.h"
 #include "token.h"
-#include "variable.h"
 #include "util.h"
 
 namespace lx
@@ -45,11 +44,6 @@ namespace lx
 	Variable VarContext::variable(DataPoint&& dp) const
 	{
 		return env.runtime.unbound_variable(std::move(dp));
-	}
-
-	Symbol VarContext::symbolize(const std::string_view name) const
-	{
-		return env.runtime.symbolize(name);
 	}
 
 	void VarContext::throw_bad_set_expression(const DataType& to) const
