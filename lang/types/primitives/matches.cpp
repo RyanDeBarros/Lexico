@@ -10,6 +10,8 @@ namespace lx
 		return DataType::Matches();
 	}
 
+	// TODO allow for casting to list?
+
 	TypeVariant Matches::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Matches)
@@ -46,29 +48,41 @@ namespace lx
 
 	void Matches::assign(const EvalContext& env, Matches&& o)
 	{
-		// TODO
+		_matches = std::move(o._matches);
 	}
 
 	bool Matches::equals(const EvalContext& env, const Matches& o) const
 	{
-		// TODO
-		return false;
+		return _matches == o._matches;
 	}
 
 	size_t Matches::iterlen(const EvalContext& env) const
 	{
-		// TODO
-		return 0;
+		return _matches.size();
 	}
 
 	DataPoint Matches::iterget(const EvalContext& env, size_t i) const
 	{
-		// TODO
-		return Match();
+		return _matches[i].ref();
 	}
 
 	void Matches::append(Matches&& matches)
 	{
-		// TODO
+		if (_matches.empty())
+			_matches = std::move(matches._matches);
+		else
+			_matches.insert(_matches.end(), std::make_move_iterator(matches._matches.begin()), std::make_move_iterator(matches._matches.end()));
+	}
+
+	void Matches::push_back(const EvalContext& env, Variable match)
+	{
+		if (match.ref().data_type() == DataType::Match())
+			_matches.push_back(std::move(match));
+		else
+		{
+			std::stringstream ss;
+			ss << "cannot add item of type " << match.ref().data_type() << " to " << DataType::Matches() << " object";
+			throw env.runtime_error(ss.str());
+		}
 	}
 }

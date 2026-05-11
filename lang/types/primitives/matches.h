@@ -6,6 +6,8 @@ namespace lx
 {
 	class Matches
 	{
+		std::vector<Variable> _matches;
+
 	public:
 		static DataType data_type();
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
@@ -21,5 +23,6 @@ namespace lx
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
 		void append(Matches&& matches);
+		void push_back(const EvalContext& env, Variable match);
 	};
 }
