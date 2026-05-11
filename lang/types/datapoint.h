@@ -83,6 +83,7 @@ namespace lx
 	template<typename T>
 	T Variable::consume_as(const EvalContext& env) &&
 	{
-		return std::move(*this).consume_as<T>(env);
+		VarContext ctx(env, std::move(*this));
+		return std::move(ctx.self).consume().move_as<T>(std::move(ctx));
 	}
 }

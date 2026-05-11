@@ -48,6 +48,8 @@ namespace lx
 		void assert_valid(const EvalContext& env) const;
 
 	private:
+		static void assert_in_range(const EvalContext& env, const Indexer& indexer, const int min, const int max);
+		static void throw_out_of_range(const EvalContext& env, const Indexer& indexer, const int len);
 		int min_index() const;
 		int max_index() const;
 		std::string_view string() const;

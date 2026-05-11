@@ -127,7 +127,7 @@ namespace lx
 			const int max = max_index();
 
 			_string->_value.erase(std::min(min, max), static_cast<size_t>(std::abs(max - min) + 1));
-			std::string s = o.copy_value(env); // TODO implement assign(env, String&&)
+			std::string s = std::move(o).consume_value(env);
 			if (min > max)
 				std::reverse(s.begin(), s.end());
 			_string->_value.insert(std::min(min, max), s);
@@ -237,13 +237,25 @@ namespace lx
 	{
 		const int min = min_index();
 		const int max = max_index();
+		assert_in_range(env, index, min, max);
+
 		return StringView(env, _ref, Int(idx(index.value(), min, max)));
 	}
 
 	StringView StringView::substring(const EvalContext& env, const IRange& range) const
 	{
-		// TODO
-		return *this;
+		const int min = min_index();
+		const int max = max_index();
+		assert_in_range(env, range, min, max);
+
+		if (const IRange* my_range = std::get_if<IRange>(&_indexer))
+		{
+			std::optional<int> submin = range.min() ? std::make_optional(idx(*range.min(), min, max)) : std::nullopt;
+			std::optional<int> submax = range.max() ? std::make_optional(idx(*range.max(), min, max)) : std::nullopt;
+			return StringView(env, _ref, IRange(std::move(submin), std::move(submax)));
+		}
+		else
+			return *this;
 	}
 	
 	StringView StringView::substring(const EvalContext& env, const Indexer& indexer) const
@@ -260,22 +272,43 @@ namespace lx
 		const int max = max_index();
 
 		if (string().empty() || min < 0 || min >= string().size() || max < 0 || max >= string().size())
-		{
-			std::stringstream ss;
-			if (const Int* index = std::get_if<Int>(&_indexer))
-			{
-				ss << "index ";
-				index->print(env, ss);
-			}
-			else
-			{
-				ss << "range ";
-				std::get<IRange>(_indexer).print(env, ss);
-			}
+			throw_out_of_range(env, _indexer, string().size());
+	}
 
-			ss << " is out of range for " << DataType::String() << " of length " << string().size();
-			throw env.runtime_error(ss.str());
+	void StringView::assert_in_range(const EvalContext& env, const Indexer& indexer, const int min, const int max)
+	{
+		const int len = std::abs(max - min) + 1;
+		if (const Int* index = std::get_if<Int>(&indexer))
+		{
+			if (index->value() < 0 || index->value() >= len)
+				throw_out_of_range(env, indexer, len);
 		}
+		else
+		{
+			const IRange& range = std::get<IRange>(indexer);
+			if (range.min() && (*range.min() < 0 || *range.min() >= len))
+				throw_out_of_range(env, indexer, len);
+			else if (range.max() && (*range.max() < 0 || *range.max() >= len))
+				throw_out_of_range(env, indexer, len);
+		}
+	}
+
+	void StringView::throw_out_of_range(const EvalContext& env, const Indexer& indexer, const int len)
+	{
+		std::stringstream ss;
+		if (const Int* index = std::get_if<Int>(&indexer))
+		{
+			ss << "index ";
+			index->print(env, ss);
+		}
+		else
+		{
+			ss << "range ";
+			std::get<IRange>(indexer).print(env, ss);
+		}
+
+		ss << " is out of range for " << DataType::String() << " of length " << len;
+		throw env.runtime_error(ss.str());
 	}
 
 	int StringView::min_index() const

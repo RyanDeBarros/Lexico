@@ -74,26 +74,34 @@ namespace lx
 		ctx.throw_no_data_member(member);
 	}
 
+	static Variable substring_by_index(VarContext& ctx, Variable&& arg)
+	{
+		StringView sv(ctx.env, ctx.self, std::move(arg).consume_as<Int>(ctx.env));
+		sv.assert_valid(ctx.env);
+		return ctx.variable(std::move(sv));
+	}
+
+	static Variable substring_by_range(VarContext& ctx, Variable&& arg)
+	{
+		StringView sv(ctx.env, ctx.self, std::move(arg).consume_as<IRange>(ctx.env));
+		sv.assert_valid(ctx.env);
+		return ctx.variable(std::move(sv));
+	}
+
 	Variable String::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{
 			if (args.size() == 1)
 			{
-				// TODO if exactly Int -> use Int path. else if exactly IRange -> use IRange path. else if implicitly castable to either, use respective path.
-
 				if (args[0].ref().data_type() == DataType::Int())
-				{
-					StringView sv(ctx.env, ctx.self, std::move(args[0]).consume_as<Int>(ctx.env));
-					sv.assert_valid(ctx.env);
-					return ctx.variable(std::move(sv));
-				}
+					return substring_by_index(ctx, std::move(args[0]));
 				else if (args[0].ref().data_type() == DataType::IRange())
-				{
-					StringView sv(ctx.env, ctx.self, std::move(args[0]).consume_as<IRange>(ctx.env));
-					sv.assert_valid(ctx.env);
-					return ctx.variable(std::move(sv));
-				}
+					return substring_by_range(ctx, std::move(args[0]));
+				else if (args[0].ref().can_cast_implicit(DataType::Int()))
+					return substring_by_index(ctx, std::move(args[0]));
+				else if (args[0].ref().can_cast_implicit(DataType::IRange()))
+					return substring_by_range(ctx, std::move(args[0]));
 			}
 		}
 
