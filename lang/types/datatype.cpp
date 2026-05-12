@@ -205,7 +205,10 @@ namespace lx
 			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float;
 
 		case SimpleType::String:
-			return to.simple() == SimpleType::Pattern;
+			return to.simple() == SimpleType::Pattern || to.simple() == SimpleType::StringView;
+
+		case SimpleType::StringView:
+			return to.simple() == SimpleType::Pattern || to.simple() == SimpleType::String;
 
 		case SimpleType::SRange:
 			return to.simple() == SimpleType::Pattern;
@@ -230,10 +233,14 @@ namespace lx
 			return to.simple() == SimpleType::String;
 
 		case SimpleType::String:
+		case SimpleType::StringView:
 			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool;
 
 		case SimpleType::SRange:
 			return to.simple() == SimpleType::String;
+
+		case SimpleType::Matches:
+			return to == DataType::List(DataType::Match());
 
 		default:
 			return false;

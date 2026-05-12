@@ -2,6 +2,7 @@
 
 #include "operations.h"
 #include "errors.h"
+#include "cow_ptr.h"
 
 #include <sstream>
 #include <variant>
@@ -14,44 +15,52 @@ namespace lx
 	struct VarContext;
 	class Variable;
 
-#define LX_EXPAND_BY_TYPE(M, Sep) \
-	M(Int) Sep \
-	M(Float) Sep \
-	M(Bool) Sep \
-	M(String) Sep \
-	M(StringView) Sep \
-	M(Void) Sep \
-	M(Pattern) Sep \
-	M(Match) Sep \
-	M(Matches) Sep \
-	M(CapId) Sep \
-	M(Cap) Sep \
-	M(IRange) Sep \
-	M(SRange) Sep \
-	M(List)
-
-#define LX_FORWARD_DECLARE(U) class U;
-	LX_EXPAND_BY_TYPE(LX_FORWARD_DECLARE,)
-#undef LX_FORWARD_DECLARE
-
-#define LX_IDENTITY(U) U
-#define LX_COMMA ,
+	class Int;
+	class Float;
+	class Bool;
+	class String;
+	class StringView;
+	class Void;
+	class Pattern;
+	class Match;
+	class Matches;
+	class CapId;
+	class Cap;
+	class IRange;
+	class SRange;
+	class List;
 
 	using TypeVariant = std::variant<
-		LX_EXPAND_BY_TYPE(LX_IDENTITY, LX_COMMA)
+		Int,
+		Float,
+		Bool,
+		String,
+		CowPtr<StringView>,
+		Void,
+		Pattern,
+		CowPtr<Match>,
+		Matches,
+		CapId,
+		CowPtr<Cap>,
+		IRange,
+		SRange,
+		CowPtr<List>
 	>;
 
-#undef LX_IDENTITY
-#undef LX_COMMA
-
-#define LX_IS_SAME_V(U) std::is_same_v<T, U>
-#define LX_OR ||
-
 	template<typename T>
-	concept Type = LX_EXPAND_BY_TYPE(LX_IS_SAME_V, LX_OR);
-
-#undef LX_IS_SAME_V
-#undef LX_OR
+	concept Type =
+		std::is_same_v<T, Int> ||
+		std::is_same_v<T, Float> ||
+		std::is_same_v<T, Bool> ||
+		std::is_same_v<T, String> ||
+		std::is_same_v<T, StringView> ||
+		std::is_same_v<T, Void> ||
+		std::is_same_v<T, Pattern> ||
+		std::is_same_v<T, Match> ||
+		std::is_same_v<T, Matches> ||
+		std::is_same_v<T, CapId> ||
+		std::is_same_v<T, Cap> ||
+		std::is_same_v<T, IRange> ||
+		std::is_same_v<T, SRange> ||
+		std::is_same_v<T, List>;
 }
-
-#undef LX_EXPAND_BY_TYPE

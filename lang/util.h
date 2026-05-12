@@ -4,6 +4,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 namespace lx
 {
@@ -52,4 +53,19 @@ namespace lx
 		}
 		os << rdel;
 	}
+
+	namespace detail
+	{
+		template<typename T, typename Variant>
+		struct is_in_variant;
+
+		template<typename T, typename... Ts>
+		struct is_in_variant<T, std::variant<Ts...>>
+		{
+			static constexpr bool value = (std::is_same_v<T, Ts> || ...);
+		};
+	}
+
+	template<typename T, typename Variant>
+	constexpr bool is_in_variant_v = detail::is_in_variant<T, Variant>::value;
 }

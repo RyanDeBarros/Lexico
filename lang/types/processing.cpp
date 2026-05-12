@@ -15,6 +15,7 @@ namespace lx
 				break;
 
 		case BinaryOperator::Assign:
+			// TODO use temporary() instead - for non-views, return unbound() - for views, return false
 			if (lhs.unbound())
 				throw env.runtime_error("cannot assign temporary variable");
 			else if (rhs.ref().can_cast_implicit(lhs.ref().data_type()))

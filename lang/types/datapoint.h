@@ -8,7 +8,6 @@ namespace lx
 {
 	class DataPoint
 	{
-		// TODO variant is 80 bytes and potentially climbing, which is inefficient for smaller types like Int and Bool, especially for being stored in the heap
 		TypeVariant _storage;
 
 	public:
@@ -26,25 +25,47 @@ namespace lx
 		template<Type T>
 		const T& get() const
 		{
-			return std::get<T>(_storage);
+			if constexpr (is_in_variant_v<T, TypeVariant>)
+			{
+				if (const T* ptr = std::get_if<T>(&_storage))
+					return *ptr;
+			}
+			else if constexpr (is_in_variant_v<CowPtr<T>, TypeVariant>)
+			{
+				if (const CowPtr<T>* cow = std::get_if<CowPtr<T>>(&_storage))
+					return **cow;
+			}
+			
+			throw std::bad_variant_access();
 		}
 
 		template<Type T>
 		T& get()
 		{
-			return std::get<T>(_storage);
+			if constexpr (is_in_variant_v<T, TypeVariant>)
+			{
+				if (T* ptr = std::get_if<T>(&_storage))
+					return *ptr;
+			}
+			else if constexpr (is_in_variant_v<CowPtr<T>, TypeVariant>)
+			{
+				if (CowPtr<T>* cow = std::get_if<CowPtr<T>>(&_storage))
+					return **cow;
+			}
+
+			throw std::bad_variant_access();
 		}
 
 		template<Type T>
-		T move_as(VarContext&& ctx)
+		T move_as(VarContext&& ctx) &&
 		{
-			return std::get<T>(std::visit([&ctx](auto&& v) { return std::move(v).cast_move(std::move(ctx), T::data_type()); }, std::move(_storage)));
+			return std::move(*this).cast_move(std::move(ctx), remove_cow_t<T>::data_type()).get<T>();
 		}
 
 		template<Type T>
 		const T* as() const
 		{
-			if (data_type() == T::data_type())
+			if (data_type() == remove_cow_t<T>::data_type())
 				return &get<T>();
 			else
 				return nullptr;
@@ -53,7 +74,7 @@ namespace lx
 		template<Type T>
 		T* as()
 		{
-			if (data_type() == T::data_type())
+			if (data_type() == remove_cow_t<T>::data_type())
 				return &get<T>();
 			else
 				return nullptr;
