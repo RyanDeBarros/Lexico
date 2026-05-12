@@ -109,7 +109,6 @@ namespace lx
 			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
-	// TODO return variable instead?
 	DataPoint Variable::cast(const EvalContext& env, const DataType& to) &&
 	{
 		VarContext ctx(env, std::move(*this));

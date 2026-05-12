@@ -1,6 +1,6 @@
 include(FetchContent)
 
-set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/vendor)
+set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor)
 
 # -------------------------
 # GLFW
@@ -13,7 +13,7 @@ FetchContent_Declare(
 	glfw
 	GIT_REPOSITORY https://github.com/glfw/glfw.git
 	GIT_TAG        3.4
-	SOURCE_DIR     ${CMAKE_SOURCE_DIR}/vendor/glfw
+	SOURCE_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw
 )
 
 FetchContent_MakeAvailable(glfw)
@@ -25,7 +25,7 @@ FetchContent_Declare(
 	imgui
 	GIT_REPOSITORY https://github.com/ocornut/imgui.git
 	GIT_TAG        v1.92.7-docking
-	SOURCE_DIR     ${CMAKE_SOURCE_DIR}/vendor/imgui
+	SOURCE_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui
 )
 
 FetchContent_Populate(imgui)
