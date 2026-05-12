@@ -12,6 +12,7 @@ namespace lx
 		explicit Int(int value);
 
 		static Int make_from_literal(const EvalContext& env, std::string_view resolved);
+		static Int make_from_reverse(const EvalContext& env, const char* ptr, size_t length);
 
 		static DataType data_type();
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;

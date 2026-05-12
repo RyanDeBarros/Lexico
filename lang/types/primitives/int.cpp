@@ -25,7 +25,7 @@ namespace lx
 			throw env.runtime_error(ss.str());
 		}
 	}
-
+	
 	DataType Int::data_type()
 	{
 		return DataType::Int();

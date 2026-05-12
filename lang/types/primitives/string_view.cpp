@@ -58,21 +58,21 @@ namespace lx
 
 	TypeVariant StringView::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
-		// TODO
+		// TODO v0.3 more efficient conversions over iterators without using temporaries
 		switch (type.simple())
 		{
-		//case SimpleType::Int:
-			//return Int::make_from_literal(_value);
-		//case SimpleType::Float:
-			//return Float::make_from_literal(_value);
-		//case SimpleType::Bool:
-			//return Bool::make_from_literal(_value);
+		case SimpleType::Int:
+			return Int::make_from_literal(ctx.env, copy_value(ctx.env));
+		case SimpleType::Float:
+			return Float::make_from_literal(ctx.env, copy_value(ctx.env));
+		case SimpleType::Bool:
+			return Bool::make_from_literal(ctx.env, copy_value(ctx.env));
 		case SimpleType::String:
 			return String(copy_value(ctx.env));
 		case SimpleType::StringView:
 			return *this;
-		//case SimpleType::Pattern:
-			//return Pattern::make_from_subpattern<SubpatternString>(_value);
+		case SimpleType::Pattern:
+			return Pattern::make_from_subpattern<SubpatternString>(copy_value(ctx.env));
 		case SimpleType::Void:
 			return Void();
 		default:
@@ -84,6 +84,8 @@ namespace lx
 	{
 		if (type == DataType::String())
 			return String(std::move(*this).consume_value(ctx.env));
+		else if (type == DataType::Pattern())
+			return Pattern::make_from_subpattern<SubpatternString>(std::move(*this).consume_value(ctx.env));
 
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);
@@ -106,13 +108,32 @@ namespace lx
 
 	Variable StringView::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		// TODO
+		if (member == "len")
+		{
+			assert_valid(ctx.env);
+			return ctx.variable(Int(max_index() - min_index() + 1));
+		}
+
 		ctx.throw_no_data_member(member);
 	}
 
 	Variable StringView::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
 	{
-		// TODO
+		if (method == constants::SUBSCRIPT_OP)
+		{
+			if (args.size() == 1)
+			{
+				if (args[0].ref().data_type() == DataType::Int())
+					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env)));
+				else if (args[0].ref().data_type() == DataType::IRange())
+					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<IRange>(ctx.env)));
+				else if (args[0].ref().can_cast_implicit(DataType::Int()))
+					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env)));
+				else if (args[0].ref().can_cast_implicit(DataType::IRange()))
+					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<IRange>(ctx.env)));
+			}
+		}
+
 		ctx.throw_no_method(method, args);
 	}
 
