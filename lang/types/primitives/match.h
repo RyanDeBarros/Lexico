@@ -1,12 +1,26 @@
 #pragma once
 
 #include "types/declarations.h"
+#include "page.h"
+#include "capid.h"
+
+#include <unordered_map>
 
 namespace lx
 {
 	class Match
 	{
+		Snippet _snippet;
+		unsigned int _start = 0;
+		unsigned int _length = 0;
+		bool _exists;
+
+		std::unordered_map<CapId, Variable> _captures_by_id;
+		std::vector<std::pair<CapId, size_t>> _ordering;
+
 	public:
+		Match(Snippet snippet, unsigned int start, unsigned int length, bool exists);
+
 		static DataType data_type();
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
 		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
@@ -19,5 +33,8 @@ namespace lx
 
 		size_t iterlen(const EvalContext& env) const;
 		DataPoint iterget(const EvalContext& env, size_t i) const;
+
+		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
+		void assert_exists(const EvalContext& env) const;
 	};
 }

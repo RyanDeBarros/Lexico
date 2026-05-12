@@ -1,12 +1,21 @@
 #pragma once
 
 #include "types/declarations.h"
+#include "match.h"
 
 namespace lx
 {
 	class Cap
 	{
+		Snippet _snippet;
+		unsigned int _start;
+		unsigned int _length;
+		bool _exists;
+		std::optional<Variable> _submatch;
+		
 	public:
+		Cap(const EvalContext& env, Snippet snippet, unsigned int start, unsigned int length, bool exists, std::optional<Variable> submatch);
+
 		static DataType data_type();
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
 		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
@@ -16,5 +25,7 @@ namespace lx
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		void assign(const EvalContext& env, Cap&& o);
 		bool equals(const EvalContext& env, const Cap& o) const;
+
+		bool exists() const;
 	};
 }

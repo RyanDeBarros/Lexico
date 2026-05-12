@@ -7,16 +7,12 @@
 namespace lx
 {
 	// TODO ListView
+	// TODO negative indexes - perhaps even in StringView
 
-	static DataType underlying_of(const std::vector<Variable>& elements, const ScriptSegment* segment)
+	static DataType underlying_of(const EvalContext& env, const std::vector<Variable>& elements)
 	{
 		if (elements.empty())
-		{
-			if (segment)
-				throw LxError::segment_error(*segment, ErrorType::Runtime, "unresolved list cannot initialize with no elements");
-			else
-				return DataType::Void();
-		}
+			throw env.runtime_error("unresolved list cannot initialize with no elements");
 
 		std::vector<LxError> errors;
 		DataType underlying = elements[0].ref().data_type();
@@ -25,11 +21,8 @@ namespace lx
 			if (elements[i].ref().data_type() != underlying)
 			{
 				std::stringstream ss;
-				ss << __FUNCTION__ << ": element [" << i << "] has type " << elements[i].ref().data_type() << ", which doesn't match type of first element: " << underlying;
-				if (segment)
-					errors.push_back(LxError::segment_error(*segment, ErrorType::Runtime, ss.str()));
-				else
-					return DataType::Void();
+				ss << "element [" << i << "] has type " << elements[i].ref().data_type() << ", which doesn't match type of first element: " << underlying;
+				errors.push_back(env.runtime_error(ss.str()));
 			}
 		}
 
@@ -39,55 +32,24 @@ namespace lx
 			throw LxErrorList(errors);
 	}
 
-	List::List(const DataType& underlying)
-		: _underlying(underlying)
-	{
-	}
-
-	List::List(DataType&& underlying)
-		: _underlying(std::move(underlying))
-	{
-	}
-
-	List::List(std::vector<Variable>&& elements)
-		: _underlying(underlying_of(elements, nullptr))
-	{
-		_elements = std::move(elements);
-	}
-
-	List::List(const DataType& underlying, const ScriptSegment& segment)
+	List::List(const EvalContext& env, const DataType& underlying)
 		: _underlying(underlying)
 	{
 		if (_underlying.simple() == SimpleType::Void)
-			throw LxError::segment_error(segment, ErrorType::Runtime, "list cannot have void underlying type");
+			throw env.runtime_error("list cannot have void underlying type");
 	}
 
-	List::List(DataType&& underlying, const ScriptSegment& segment)
+	List::List(const EvalContext& env, DataType&& underlying)
 		: _underlying(std::move(underlying))
 	{
 		if (_underlying.simple() == SimpleType::Void)
-			throw LxError::segment_error(segment, ErrorType::Runtime, "list cannot have void underlying type");
+			throw env.runtime_error("list cannot have void underlying type");
 	}
 
-	List::List(std::vector<Variable>&& elements, const ScriptSegment& segment)
-		: _underlying(underlying_of(elements, &segment))
+	List::List(const EvalContext& env, std::vector<Variable>&& elements)
+		: _underlying(underlying_of(env, elements))
 	{
 		_elements = std::move(elements);
-	}
-
-	List List::make_nonvoid_list(const DataType& underlying)
-	{
-		return List(underlying);
-	}
-
-	List List::make_nonvoid_list(DataType&& underlying)
-	{
-		return List(std::move(underlying));
-	}
-
-	List List::make_nonvoid_list(std::vector<Variable>&& elements)
-	{
-		return List(std::move(elements));
 	}
 
 	DataType List::data_type() const
@@ -183,5 +145,10 @@ namespace lx
 		}
 		else
 			return false;
+	}
+
+	size_t List::size() const
+	{
+		return _elements.size();
 	}
 }

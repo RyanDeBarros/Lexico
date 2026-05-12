@@ -3,11 +3,19 @@
 #include "types/declarations.h"
 #include "capid.h"
 #include "irange.h"
+#include "page.h"
 
 #include <unordered_map>
 
 namespace lx
 {
+	struct Window
+	{
+		const std::string_view text;
+		unsigned int start = 0;
+		unsigned int len = 0;
+	};
+
 	class SubpatternNode;
 
 	using NodeConvertMap = std::unordered_map<const SubpatternNode*, SubpatternNode*>;
@@ -253,6 +261,6 @@ namespace lx
 
 		void append(Pattern&& pattern);
 
-		Matches find_all(const std::string_view text) const;
+		Matches find_all(const Snippet& snippet) const;
 	};
 }

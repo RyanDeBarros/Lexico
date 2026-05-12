@@ -6,6 +6,11 @@
 
 namespace lx
 {
+	Match::Match(Snippet snippet, unsigned int start, unsigned int length, bool exists)
+		: _snippet(std::move(snippet)), _start(start), _length(length), _exists(exists)
+	{
+	}
+
 	DataType Match::data_type()
 	{
 		return DataType::Match();
@@ -38,35 +43,22 @@ namespace lx
 	Variable Match::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		// TODO use constants for these member names
-		if (member == "caps")
-		{
-			// TODO
-			return ctx.variable(List::make_nonvoid_list(DataType::Cap()));
-		}
+		if (member == "exists")
+			return ctx.variable(Bool(_exists));
 		else if (member == "start")
 		{
-			// TODO
-			return ctx.variable(Int(0));
-		}
-		else if (member == "end")
-		{
-			// TODO
-			return ctx.variable(Int(0));
+			assert_exists(ctx.env);
+			return ctx.variable(Int(_snippet.absolute(_start)));
 		}
 		else if (member == "len")
 		{
-			// TODO
-			return ctx.variable(Int(0));
-		}
-		else if (member == "range")
-		{
-			// TODO
-			return ctx.variable(IRange(0, 0));
+			assert_exists(ctx.env);
+			return ctx.variable(Int(_length));
 		}
 		else if (member == "str")
 		{
-			// TODO
-			return ctx.variable(String(""));
+			assert_exists(ctx.env);
+			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
 		}
 
 		ctx.throw_no_data_member(member);
@@ -78,15 +70,14 @@ namespace lx
 		{
 			if (args.size() == 1)
 			{
-				if (args[0].ref().data_type().simple() == SimpleType::CapId)
+				if (args[0].ref().data_type() == DataType::CapId())
 				{
-					// TODO
-					return ctx.variable(Cap());
-				}
-				else if (args[0].ref().data_type().simple() == SimpleType::Int)
-				{
-					// TODO
-					return ctx.variable(Cap());
+					assert_exists(ctx.env);
+					auto it = _captures_by_id.find(args[0].ref().get<CapId>());
+					if (it != _captures_by_id.end())
+						return it->second;
+					else
+						return ctx.variable(List(ctx.env, DataType::Cap()));
 				}
 			}
 		}
@@ -96,24 +87,55 @@ namespace lx
 
 	void Match::assign(const EvalContext& env, Match&& o)
 	{
-		// TODO
+		*this = std::move(o);
 	}
 
 	bool Match::equals(const EvalContext& env, const Match& o) const
 	{
-		// TODO
-		return false;
+		if (_exists && o._exists)
+			return _snippet == o._snippet && _start == o._start && _length == o._length && _captures_by_id == o._captures_by_id && _ordering == o._ordering;
+		else
+			return !_exists && !o._exists;
 	}
 
 	size_t Match::iterlen(const EvalContext& env) const
 	{
-		// TODO
-		return 0;
+		assert_exists(env);
+		return _ordering.size();
 	}
 
 	DataPoint Match::iterget(const EvalContext& env, size_t i) const
 	{
-		// TODO
-		return Cap();
+		assert_exists(env);
+		auto it = _captures_by_id.find(_ordering[i].first);
+		if (it != _captures_by_id.end())
+			return it->second.ref().iterget(env, _ordering[i].second);
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": can't find capture by id";
+			throw env.internal_error(ss.str());
+		}
+	}
+
+	void Match::add_capture(const EvalContext& env, CapId&& id, Cap&& cap)
+	{
+		assert_exists(env);
+
+		auto it = _captures_by_id.find(id);
+		if (it == _captures_by_id.end())
+			it = _captures_by_id.try_emplace(id, env.runtime.unbound_variable(List(env, DataType::Cap()))).first;
+
+		List& list = it->second.ref().get<List>();
+		size_t idx = list.size();
+		list.push(env.runtime.unbound_variable(std::move(cap)));
+		_ordering.push_back(std::make_pair(std::move(id), idx));
+	}
+
+	// TODO use assert_exists() in all methods
+	void Match::assert_exists(const EvalContext& env) const
+	{
+		if (!_exists)
+			throw env.runtime_error("match does not exist: check .exists before using");
 	}
 }

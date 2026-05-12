@@ -9,18 +9,10 @@ namespace lx
 		DataType _underlying;
 		std::vector<Variable> _elements;
 
-		explicit List(const DataType& underlying);
-		explicit List(DataType&& underlying);
-		explicit List(std::vector<Variable>&& elements);
-
 	public:
-		List(const DataType& underlying, const ScriptSegment& segment);
-		List(DataType&& underlying, const ScriptSegment& segment);
-		List(std::vector<Variable>&& elements, const ScriptSegment& segment);
-
-		static List make_nonvoid_list(const DataType& underlying);
-		static List make_nonvoid_list(DataType&& underlying);
-		static List make_nonvoid_list(std::vector<Variable>&& elements);
+		List(const EvalContext& env, const DataType& underlying);
+		List(const EvalContext& env, DataType&& underlying);
+		List(const EvalContext& env, std::vector<Variable>&& elements);
 
 		DataType data_type() const;
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
@@ -36,5 +28,6 @@ namespace lx
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
 		bool push(Variable element);
+		size_t size() const;
 	};
 }

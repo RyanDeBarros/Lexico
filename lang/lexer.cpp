@@ -293,6 +293,12 @@ namespace lx
 					continue;
 				}
 
+				if (_token.type == TokenType::EndOfFile && _c == '!')
+				{
+					_token.type = TokenType::CapId;
+					_ptr.move_right();
+				}
+
 				bool tokenized_char =
 					tokenize_char(',', TokenType::Comma) ||
 					tokenize_char('\\', TokenType::Runoff) ||
@@ -344,7 +350,7 @@ namespace lx
 				if (isdigit(_c))
 				{
 					if (_token.type != TokenType::Identifier && _token.type != TokenType::BuiltinSymbol
-						&& _token.type != TokenType::Integer && _token.type != TokenType::Float)
+						&& _token.type != TokenType::Integer && _token.type != TokenType::Float && _token.type != TokenType::CapId)
 					{
 						add_token();  // add ongoing token
 						start_token(TokenType::Integer);

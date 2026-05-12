@@ -15,11 +15,9 @@ namespace lx
 	{
 		VirtualHeap* _heap = nullptr;
 		unsigned int _id;
-		unsigned int _path = 0;
 
 		friend class VirtualHeap;
 		Variable(VirtualHeap& heap, unsigned int id);
-		Variable(VirtualHeap& heap, unsigned int id, unsigned int path);
 
 	public:
 		Variable(const Variable&);

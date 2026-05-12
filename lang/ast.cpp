@@ -98,9 +98,9 @@ namespace lx
 		return {};
 	}
 
-	EvalContext ASTNode::eval_context(Runtime& env) const
+	EvalContext ASTNode::eval_context(Runtime& runtime) const
 	{
-		return EvalContext{ .runtime = env, .segment = &segment() };
+		return EvalContext{ .runtime = runtime, .segment = &segment() };
 	}
 
 	const ScriptSegment& ASTNode::segment() const
@@ -138,18 +138,18 @@ namespace lx
 		analyse_subnodes(ctx, pass);
 	}
 
-	ExecutionFlow Block::execute(Runtime& env) const
+	ExecutionFlow Block::execute(Runtime& runtime) const
 	{
-		Runtime::LocalScope local_scope(env, isolated());
-		return execute_subnodes(env);
+		Runtime::LocalScope local_scope(runtime, isolated());
+		return execute_subnodes(runtime);
 	}
 
-	ExecutionFlow Block::execute_subnodes(Runtime& env) const
+	ExecutionFlow Block::execute_subnodes(Runtime& runtime) const
 	{
 		ExecutionFlow flow{};
 		for (const ASTNode* node : _children)
 		{
-			auto result = node->execute(env);
+			auto result = node->execute(runtime);
 			if (result.type != FlowType::Normal)
 			{
 				flow = std::move(result);
@@ -274,10 +274,10 @@ namespace lx
 		return _start_token.segment;
 	}
 
-	ExecutionFlow Expression::execute(Runtime& env) const
+	ExecutionFlow Expression::execute(Runtime& runtime) const
 	{
 		if (imperative())
-			evaluate(env);
+			evaluate(runtime);
 		return {};
 	}
 
@@ -342,9 +342,9 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow VariableDeclaration::execute(Runtime& env) const
+	ExecutionFlow VariableDeclaration::execute(Runtime& runtime) const
 	{
-		env.register_variable(_identifier.lexeme, _expression.evaluate(env).consume(), _global ? Namespace::Global : Namespace::Local);
+		runtime.register_variable(_identifier.lexeme, _expression.evaluate(runtime).consume(), _global ? Namespace::Global : Namespace::Local);
 		return {};
 	}
 
@@ -372,9 +372,9 @@ namespace lx
 		}
 	}
 	
-	Variable LiteralExpression::evaluate(Runtime& env) const
+	Variable LiteralExpression::evaluate(Runtime& runtime) const
 	{
-		return env.unbound_variable(DataPoint::make_from_literal(eval_context(env), literal_type(_literal.type), _literal.resolved()));
+		return runtime.unbound_variable(DataPoint::make_from_literal(eval_context(runtime), literal_type(_literal.type), _literal.resolved()));
 	}
 
 	DataType LiteralExpression::impl_evaltype(SemanticContext& ctx) const
@@ -403,15 +403,15 @@ namespace lx
 		}
 	}
 
-	Variable ListExpression::evaluate(Runtime& env) const
+	Variable ListExpression::evaluate(Runtime& runtime) const
 	{
 		std::vector<LxError> errors;
-		List list(*_underlying, segment());
+		List list(EvalContext{ .runtime = runtime, .segment = &segment() }, *_underlying);
 
 		for (const Expression* expr : _elements)
 		{
-			TypeVariant v = std::move(expr->evaluate(env).consume().variant());
-			if (!list.push(env.unbound_variable(std::move(v))))
+			TypeVariant v = std::move(expr->evaluate(runtime).consume().variant());
+			if (!list.push(runtime.unbound_variable(std::move(v))))
 			{
 				std::stringstream ss;
 				ss << "list underlying type is " << *_underlying << ", but element resolved to " << expr->evaltype();
@@ -420,7 +420,7 @@ namespace lx
 		}
 
 		if (errors.empty())
-			return env.unbound_variable(std::move(list));
+			return runtime.unbound_variable(std::move(list));
 		else
 			throw errors;
 	}
@@ -470,9 +470,9 @@ namespace lx
 		}
 	}
 
-	Variable BinaryExpression::evaluate(Runtime& env) const
+	Variable BinaryExpression::evaluate(Runtime& runtime) const
 	{
-		return operate(eval_context(env), op(), _left.evaluate(env), _right.evaluate(env));
+		return operate(eval_context(runtime), op(), _left.evaluate(runtime), _right.evaluate(runtime));
 	}
 
 	bool BinaryExpression::imperative() const
@@ -518,11 +518,11 @@ namespace lx
 		}
 	}
 
-	Variable MemberAccessExpression::evaluate(Runtime& env) const
+	Variable MemberAccessExpression::evaluate(Runtime& runtime) const
 	{
 		const MemberSignature& m = member();
 		if (m.is_data())
-			return _object.evaluate(env).data_member(eval_context(env), m.identifier());
+			return _object.evaluate(runtime).data_member(eval_context(runtime), m.identifier());
 		else
 		{
 			std::stringstream ss;
@@ -598,9 +598,9 @@ namespace lx
 		}
 	}
 
-	Variable PrefixExpression::evaluate(Runtime& env) const
+	Variable PrefixExpression::evaluate(Runtime& runtime) const
 	{
-		return operate(eval_context(env), op(), _expr.evaluate(env));
+		return operate(eval_context(runtime), op(), _expr.evaluate(runtime));
 	}
 
 	DataType PrefixExpression::impl_evaltype(SemanticContext& ctx) const
@@ -641,9 +641,9 @@ namespace lx
 		}
 	}
 
-	Variable AsExpression::evaluate(Runtime& env) const
+	Variable AsExpression::evaluate(Runtime& runtime) const
 	{
-		return env.unbound_variable(_expr.evaluate(env).cast(eval_context(env), _type.type()));
+		return runtime.unbound_variable(_expr.evaluate(runtime).cast(eval_context(runtime), _type.type()));
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -681,9 +681,9 @@ namespace lx
 		}
 	}
 
-	Variable SubscriptExpression::evaluate(Runtime& env) const
+	Variable SubscriptExpression::evaluate(Runtime& runtime) const
 	{
-		return _container.evaluate(env).invoke_method(eval_context(env), constants::SUBSCRIPT_OP, { _subscript.evaluate(env) });
+		return _container.evaluate(runtime).invoke_method(eval_context(runtime), constants::SUBSCRIPT_OP, { _subscript.evaluate(runtime) });
 	}
 
 	DataType SubscriptExpression::impl_evaltype(SemanticContext& ctx) const
@@ -759,9 +759,9 @@ namespace lx
 			ctx.var_consistency_test().test(ctx, _identifier);
 	}
 
-	Variable VariableExpression::evaluate(Runtime& env) const
+	Variable VariableExpression::evaluate(Runtime& runtime) const
 	{
-		return env.registered_variable(_identifier.lexeme, Namespace::Unknown, segment());
+		return runtime.registered_variable(_identifier.lexeme, Namespace::Unknown, segment());
 	}
 
 	DataType VariableExpression::impl_evaltype(SemanticContext& ctx) const
@@ -795,9 +795,9 @@ namespace lx
 		}
 	}
 
-	Variable GlobalMatchesExpression::evaluate(Runtime& env) const
+	Variable GlobalMatchesExpression::evaluate(Runtime& runtime) const
 	{
-		return env.global_matches_var();
+		return runtime.global_matches_var();
 	}
 
 	DataType GlobalMatchesExpression::impl_evaltype(SemanticContext& ctx) const
@@ -824,9 +824,9 @@ namespace lx
 		}
 	}
 
-	Variable PatternSymbolExpression::evaluate(Runtime& env) const
+	Variable PatternSymbolExpression::evaluate(Runtime& runtime) const
 	{
-		return env.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
+		return runtime.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
 	}
 
 	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
@@ -890,13 +890,13 @@ namespace lx
 		}
 	}
 
-	Variable FunctionCallExpression::evaluate(Runtime& env) const
+	Variable FunctionCallExpression::evaluate(Runtime& runtime) const
 	{
-		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, arg_types(), segment());
+		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, arg_types(), segment());
 		std::vector<Variable> arguments;
 		for (const Expression* arg : _args)
-			arguments.push_back(arg->evaluate(env));
-		return fn.invoke(env, std::move(arguments)).data;
+			arguments.push_back(arg->evaluate(runtime));
+		return fn.invoke(runtime, std::move(arguments)).data;
 	}
 
 	bool FunctionCallExpression::imperative() const
@@ -964,16 +964,16 @@ namespace lx
 		}
 	}
 
-	Variable MethodCallExpression::evaluate(Runtime& env) const
+	Variable MethodCallExpression::evaluate(Runtime& runtime) const
 	{
 		const MemberSignature& m = _member.member();
 		if (m.is_method())
 		{
 			std::vector<Variable> args;
 			for (const Expression* expr : _args)
-				args.push_back(expr->evaluate(env));
+				args.push_back(expr->evaluate(runtime));
 
-			return _member.object().evaluate(env).invoke_method(eval_context(env), m.identifier(), std::move(args));
+			return _member.object().evaluate(runtime).invoke_method(eval_context(runtime), m.identifier(), std::move(args));
 		}
 		else
 		{
@@ -1100,21 +1100,21 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow FunctionDefinition::execute(Runtime& env) const
+	ExecutionFlow FunctionDefinition::execute(Runtime& runtime) const
 	{
 		// NOP
 		return {};
 	}
 
-	InvokeResult FunctionDefinition::invoke(Runtime& env, std::vector<Variable>&& arguments) const
+	InvokeResult FunctionDefinition::invoke(Runtime& runtime, std::vector<Variable>&& arguments) const
 	{
-		Runtime::LocalScope local_scope(env, isolated());
+		Runtime::LocalScope local_scope(runtime, isolated());
 
 		for (size_t i = 0; i < _arglist.size(); ++i)
-			env.register_variable(_arglist[i].second.lexeme, std::move(arguments[i]).consume(), Namespace::Local);
+			runtime.register_variable(_arglist[i].second.lexeme, std::move(arguments[i]).consume(), Namespace::Local);
 
-		auto flow = execute_subnodes(env);
-		return { .data = flow.data ? *flow.data : env.unbound_variable(Void()) };
+		auto flow = execute_subnodes(runtime);
+		return { .data = flow.data ? *flow.data : runtime.unbound_variable(Void()) };
 	}
 
 	UpflowInfo FunctionDefinition::impl_upflow(SemanticContext& ctx)
@@ -1159,12 +1159,12 @@ namespace lx
 			_expression->analyse(ctx, pass);
 	}
 
-	ExecutionFlow ReturnStatement::execute(Runtime& env) const
+	ExecutionFlow ReturnStatement::execute(Runtime& runtime) const
 	{
 		if (_expression)
-			return { .type = FlowType::Return, .data = _expression->evaluate(env) };
+			return { .type = FlowType::Return, .data = _expression->evaluate(runtime) };
 		else
-			return { .type = FlowType::Return, .data = env.unbound_variable(Void()) };
+			return { .type = FlowType::Return, .data = runtime.unbound_variable(Void()) };
 	}
 
 	UpflowInfo ReturnStatement::impl_upflow(SemanticContext& ctx)
@@ -1211,12 +1211,12 @@ namespace lx
 			_fallback = fallback;
 	}
 
-	ExecutionFlow IfConditionalBlock::execute(Runtime& env) const
+	ExecutionFlow IfConditionalBlock::execute(Runtime& runtime) const
 	{
-		if (_condition.evaluate(env).consume_as<Bool>(eval_context(env)).value())
-			return Block::execute(env);
+		if (_condition.evaluate(runtime).consume_as<Bool>(eval_context(runtime)).value())
+			return Block::execute(runtime);
 		else if (_fallback)
-			return _fallback->fallback_execute(env);
+			return _fallback->fallback_execute(runtime);
 		else
 			return {};
 	}
@@ -1306,9 +1306,9 @@ namespace lx
 		analyse(ctx, pass);
 	}
 	
-	ExecutionFlow ElifStatement::fallback_execute(Runtime& env) const
+	ExecutionFlow ElifStatement::fallback_execute(Runtime& runtime) const
 	{
-		return execute(env);
+		return execute(runtime);
 	}
 
 	UpflowInfo ElifStatement::fallback_upflow(SemanticContext& ctx)
@@ -1336,9 +1336,9 @@ namespace lx
 		analyse(ctx, pass);
 	}
 
-	ExecutionFlow ElseStatement::fallback_execute(Runtime& env) const
+	ExecutionFlow ElseStatement::fallback_execute(Runtime& runtime) const
 	{
-		return execute(env);
+		return execute(runtime);
 	}
 
 	UpflowInfo ElseStatement::fallback_upflow(SemanticContext& ctx)
@@ -1406,11 +1406,11 @@ namespace lx
 		Loop::analyse_subnodes(ctx, pass);
 	}
 
-	ExecutionFlow WhileLoop::execute(Runtime& env) const
+	ExecutionFlow WhileLoop::execute(Runtime& runtime) const
 	{
-		while (_condition.evaluate(env).consume_as<Bool>(eval_context(env)).value())
+		while (_condition.evaluate(runtime).consume_as<Bool>(eval_context(runtime)).value())
 		{
-			auto flow = Block::execute(env);
+			auto flow = Block::execute(runtime);
 			if (flow.type == FlowType::Break)
 				break;
 			else if (flow.type == FlowType::Return)
@@ -1448,17 +1448,17 @@ namespace lx
 		Loop::analyse_subnodes(ctx, pass);
 	}
 
-	ExecutionFlow ForLoop::execute(Runtime& env) const
+	ExecutionFlow ForLoop::execute(Runtime& runtime) const
 	{
 		try
 		{
-			auto ctx = eval_context(env);
-			Iterator iter(_iterable.evaluate(env));
+			auto ctx = eval_context(runtime);
+			Iterator iter(_iterable.evaluate(runtime));
 			while (!iter.done(ctx))
 			{
-				Runtime::LocalScope local_scope(env, isolated());
-				env.register_variable(_iterator.lexeme, iter.get(ctx), Namespace::Local);
-				auto flow = execute_subnodes(env);
+				Runtime::LocalScope local_scope(runtime, isolated());
+				runtime.register_variable(_iterator.lexeme, iter.get(ctx), Namespace::Local);
+				auto flow = execute_subnodes(runtime);
 				if (flow.type == FlowType::Break)
 					break;
 				else if (flow.type == FlowType::Return)
@@ -1491,7 +1491,7 @@ namespace lx
 	{
 	}
 
-	ExecutionFlow BreakStatement::execute(Runtime& env) const
+	ExecutionFlow BreakStatement::execute(Runtime& runtime) const
 	{
 		return { .type = FlowType::Break };
 	}
@@ -1527,7 +1527,7 @@ namespace lx
 	{
 	}
 
-	ExecutionFlow ContinueStatement::execute(Runtime& env) const
+	ExecutionFlow ContinueStatement::execute(Runtime& runtime) const
 	{
 		return { .type = FlowType::Continue };
 	}
@@ -1565,16 +1565,16 @@ namespace lx
 			arg->analyse(ctx, pass);
 	}
 
-	ExecutionFlow LogStatement::execute(Runtime& env) const
+	ExecutionFlow LogStatement::execute(Runtime& runtime) const
 	{
 		for (size_t i = 0; i < _args.size(); ++i)
 		{
-			Variable var = _args[i]->evaluate(env);
-			var.ref().print(eval_context(env), env.log());
+			Variable var = _args[i]->evaluate(runtime);
+			var.ref().print(eval_context(runtime), runtime.log());
 			if (i + 1 < _args.size())
-				env.log() << " "; // TODO v0.2 optional separator symbol argument
+				runtime.log() << " "; // TODO v0.2 optional separator symbol argument
 		}
-		env.log() << '\n';
+		runtime.log() << '\n';
 		return {};
 	}
 
@@ -1609,12 +1609,12 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow HighlightStatement::execute(Runtime& env) const
+	ExecutionFlow HighlightStatement::execute(Runtime& runtime) const
 	{
 		if (_clear)
-			env.remove_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(env)) : std::nullopt);
+			runtime.remove_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt);
 		else
-			env.add_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(env)) : std::nullopt);
+			runtime.add_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt);
 
 		return {};
 	}
@@ -1633,9 +1633,9 @@ namespace lx
 	{
 	}
 
-	ExecutionFlow DeletePattern::execute(Runtime& env) const
+	ExecutionFlow DeletePattern::execute(Runtime& runtime) const
 	{
-		env.delete_pattern(_identifier.lexeme);
+		runtime.delete_pattern(_identifier.lexeme);
 		return {};
 	}
 
@@ -1663,9 +1663,9 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow PatternDeclaration::execute(Runtime& env) const
+	ExecutionFlow PatternDeclaration::execute(Runtime& runtime) const
 	{
-		env.declare_pattern(_identifier.lexeme);
+		runtime.declare_pattern(_identifier.lexeme);
 		return {};
 	}
 
@@ -1700,12 +1700,12 @@ namespace lx
 		}
 	}
 
-	Variable RepeatOperation::evaluate(Runtime& env) const
+	Variable RepeatOperation::evaluate(Runtime& runtime) const
 	{
-		auto ctx = eval_context(env);
-		IRange range = _range.evaluate(env).consume_as<IRange>(ctx);
-		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(ctx);
-		return env.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
+		auto ctx = eval_context(runtime);
+		IRange range = _range.evaluate(runtime).consume_as<IRange>(ctx);
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(ctx);
+		return runtime.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
 	DataType RepeatOperation::impl_evaltype(SemanticContext& ctx) const
@@ -1738,9 +1738,9 @@ namespace lx
 		}
 	}
 
-	Variable SimpleRepeatOperation::evaluate(Runtime& env) const
+	Variable SimpleRepeatOperation::evaluate(Runtime& runtime) const
 	{
-		return operate(eval_context(env), op(), _expression.evaluate(env));
+		return operate(eval_context(runtime), op(), _expression.evaluate(runtime));
 	}
 
 	DataType SimpleRepeatOperation::impl_evaltype(SemanticContext& ctx) const
@@ -1769,9 +1769,9 @@ namespace lx
 			_validated = true;
 	}
 
-	Variable PatternBackRef::evaluate(Runtime& env) const
+	Variable PatternBackRef::evaluate(Runtime& runtime) const
 	{
-		return env.unbound_variable(Pattern::make_backref(env.capture_id(_identifier.lexeme)));
+		return runtime.unbound_variable(Pattern::make_backref(runtime.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternBackRef::impl_evaltype(SemanticContext& ctx) const
@@ -1807,10 +1807,10 @@ namespace lx
 		}
 	}
 
-	Variable PatternLazy::evaluate(Runtime& env) const
+	Variable PatternLazy::evaluate(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
-		return env.unbound_variable(Pattern::make_lazy(std::move(ptn)));
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
+		return runtime.unbound_variable(Pattern::make_lazy(std::move(ptn)));
 	}
 
 	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
@@ -1832,42 +1832,24 @@ namespace lx
 	{
 		if (pass == AnalysisPass::Validation)
 		{
-			if (_identifier.lexeme != constants::UNNAMED_CAP_ID)
+			_validated = true;
+			_expression.analyse(ctx, pass);
+
+			try
 			{
-				if (auto var = ctx.registered_variable(_identifier.lexeme, Namespace::Unknown))
-				{
-					std::stringstream ss;
-					ss << "variable already declared on line " << var->decl_line_number;
-					ctx.add_semantic_error(_identifier.segment, ss.str());
-				}
-				else
-					_validated = true;
+				evaltype(ctx);
 			}
-			else
-				_validated = true;
-
-			if (_validated)
+			catch (const LxError& e)
 			{
-				_expression.analyse(ctx, pass);
-
-				ctx.register_variable(_identifier.lexeme, DataType::CapId(), _identifier.segment.start_line, Namespace::Global);
-
-				try
-				{
-					evaltype(ctx);
-				}
-				catch (const LxError& e)
-				{
-					ctx.add_semantic_error(_expression.segment(), e.message());
-				}
+				ctx.add_semantic_error(_expression.segment(), e.message());
 			}
 		}
 	}
 
-	Variable PatternCapture::evaluate(Runtime& env) const
+	Variable PatternCapture::evaluate(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
-		return env.unbound_variable(Pattern::make_capture(std::move(ptn), env.capture_id(_identifier.lexeme)));
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
+		return runtime.unbound_variable(Pattern::make_capture(std::move(ptn), runtime.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternCapture::impl_evaltype(SemanticContext& ctx) const
@@ -1894,10 +1876,10 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow AppendStatement::execute(Runtime& env) const
+	ExecutionFlow AppendStatement::execute(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(env).consume_as<Pattern>(eval_context(env));
-		env.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
+		runtime.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
 		return {};
 	}
 
@@ -1920,9 +1902,9 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow FindStatement::execute(Runtime& env) const
+	ExecutionFlow FindStatement::execute(Runtime& runtime) const
 	{
-		env.find(segment());
+		runtime.find(segment());
 		return {};
 	}
 
@@ -1958,15 +1940,15 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow FilterStatement::execute(Runtime& env) const
+	ExecutionFlow FilterStatement::execute(Runtime& runtime) const
 	{
-		const FunctionDefinition& fn = env.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
+		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
 
-		auto ctx = eval_context(env);
-		Iterator iter(env.global_matches_var());
+		auto ctx = eval_context(runtime);
+		Iterator iter(runtime.global_matches_var());
 		while (!iter.done(ctx))
 		{
-			if (fn.invoke(env, { env.unbound_variable(iter.get(ctx)) }).data.consume_as<Bool>(ctx).value())
+			if (fn.invoke(runtime, { runtime.unbound_variable(iter.get(ctx)) }).data.consume_as<Bool>(ctx).value())
 				; // TODO add to new matches
 			iter.next();
 		}
@@ -1996,7 +1978,7 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow ReplaceStatement::execute(Runtime& env) const
+	ExecutionFlow ReplaceStatement::execute(Runtime& runtime) const
 	{
 		// TODO
 		return {};
@@ -2034,7 +2016,7 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow ApplyStatement::execute(Runtime& env) const
+	ExecutionFlow ApplyStatement::execute(Runtime& runtime) const
 	{
 		// TODO
 		return {};
@@ -2067,9 +2049,9 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow ScopeStatement::execute(Runtime& env) const
+	ExecutionFlow ScopeStatement::execute(Runtime& runtime) const
 	{
-		env.search_scope() = scope(env);
+		runtime.search_scope() = scope(runtime);
 		return {};
 	}
 
@@ -2078,7 +2060,7 @@ namespace lx
 		return _scope_token.segment;
 	}
 
-	Scope ScopeStatement::scope(Runtime& env) const
+	Scope ScopeStatement::scope(Runtime& runtime) const
 	{
 		if (_specifier == BuiltinSymbol::Page)
 		{
@@ -2098,7 +2080,7 @@ namespace lx
 		{
 			if (_count)
 			{
-				int c = _count->evaluate(env).consume_as<Int>(eval_context(env)).value();
+				int c = _count->evaluate(runtime).consume_as<Int>(eval_context(runtime)).value();
 				if (c > 0)
 					return Scope(c);
 				else
@@ -2135,9 +2117,9 @@ namespace lx
 		}
 	}
 
-	ExecutionFlow PagePush::execute(Runtime& env) const
+	ExecutionFlow PagePush::execute(Runtime& runtime) const
 	{
-		env.push_page(_page.evaluate(env), segment());
+		runtime.push_page(_page.evaluate(runtime), segment());
 		return {};
 	}
 
@@ -2155,9 +2137,9 @@ namespace lx
 	{
 	}
 
-	ExecutionFlow PagePop::execute(Runtime& env) const
+	ExecutionFlow PagePop::execute(Runtime& runtime) const
 	{
-		env.pop_page(segment());
+		runtime.pop_page(segment());
 		return {};
 	}
 
@@ -2175,9 +2157,9 @@ namespace lx
 	{
 	}
 
-	ExecutionFlow PageClearStack::execute(Runtime& env) const
+	ExecutionFlow PageClearStack::execute(Runtime& runtime) const
 	{
-		env.clear_page_stack();
+		runtime.clear_page_stack();
 		return {};
 	}
 

@@ -25,6 +25,7 @@ namespace lx
 		Float,
 		String,
 		Bool,
+		CapId,
 
 		// Types
 		IntType,

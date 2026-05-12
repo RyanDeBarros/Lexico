@@ -5,6 +5,13 @@
 
 namespace lx
 {
+	Cap::Cap(const EvalContext& env, Snippet snippet, unsigned int start, unsigned int length, bool exists, std::optional<Variable> submatch)
+		: _snippet(std::move(snippet)), _start(start), _length(length), _exists(exists), _submatch(std::move(submatch))
+	{
+		if (_submatch && _submatch->ref().data_type() != DataType::Match())
+			throw env.internal_error("Cap() submatch does not have type " + DataType::Match().repr());
+	}
+
 	DataType Cap::data_type()
 	{
 		return DataType::Cap();
@@ -40,39 +47,19 @@ namespace lx
 	Variable Cap::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == "exists")
-		{
-			// TODO
-			return ctx.variable(Bool(true));
-		}
+			return ctx.variable(Bool(_exists));
 		else if (member == "start")
-		{
-			// TODO
-			return ctx.variable(Int(0));
-		}
-		else if (member == "end")
-		{
-			// TODO
-			return ctx.variable(Int(0));
-		}
+			return ctx.variable(Int(_snippet.absolute(_start)));
 		else if (member == "len")
-		{
-			// TODO
-			return ctx.variable(Int(0));
-		}
-		else if (member == "range")
-		{
-			// TODO
-			return ctx.variable(IRange(0, 0));
-		}
+			return ctx.variable(Int(_length));
 		else if (member == "str")
-		{
-			// TODO
-			return ctx.variable(String(""));
-		}
+			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
 		else if (member == "sub")
 		{
-			// TODO
-			return ctx.variable(Match());
+			if (_submatch)
+				return *_submatch;
+			else
+				return ctx.variable(Match(_snippet, _start, _length, false));
 		}
 
 		ctx.throw_no_data_member(member);
@@ -92,5 +79,10 @@ namespace lx
 	{
 		// TODO
 		return false;
+	}
+
+	bool Cap::exists() const
+	{
+		return _exists;
 	}
 }

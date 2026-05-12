@@ -8,23 +8,17 @@ namespace lx
 		: _heap(&heap), _id(id)
 	{
 	}
-
-	Variable::Variable(VirtualHeap& heap, unsigned int id, unsigned int path)
-		: _heap(&heap), _id(id), _path(path)
-	{
-	}
-
+	\
 	Variable::Variable(const Variable& other)
-		: _heap(other._heap), _id(other._id), _path(other._path)
+		: _heap(other._heap), _id(other._id)
 	{
 		increment();
 	}
 
 	Variable::Variable(Variable&& other) noexcept
-		: _heap(other._heap), _id(other._id), _path(other._path)
+		: _heap(other._heap), _id(other._id)
 	{
 		other._heap = nullptr;
-		other._path = 0;
 	}
 
 	Variable::~Variable()
@@ -39,7 +33,6 @@ namespace lx
 			decrement();
 			_heap = other._heap;
 			_id = other._id;
-			_path = other._path;
 			increment();
 		}
 		return *this;
@@ -52,9 +45,7 @@ namespace lx
 			decrement();
 			_heap = other._heap;
 			_id = other._id;
-			_path = other._path;
 			other._heap = nullptr;
-			other._path = 0;
 		}
 		return *this;
 	}

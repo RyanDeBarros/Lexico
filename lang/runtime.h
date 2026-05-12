@@ -4,6 +4,7 @@
 #include "namespace.h"
 #include "types/heap.h"
 #include "ftable.h"
+#include "page.h"
 
 namespace lx
 {
@@ -30,11 +31,6 @@ namespace lx
 		RuntimeScopeContext(RuntimeScopeContext&&) noexcept = default;
 	};
 
-	struct Page
-	{
-		std::string content;
-	};
-
 	class Runtime
 	{
 		const std::string_view _input;
@@ -52,7 +48,7 @@ namespace lx
 		Variable _global_matches;
 		Scope _search_scope;
 
-		Page _root_page;
+		std::unique_ptr<Page> _root_page;
 		std::stack<Page> _page_stack;
 
 		StringMap<unsigned int> _capture_ids;

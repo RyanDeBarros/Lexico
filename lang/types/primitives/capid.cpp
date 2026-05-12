@@ -10,6 +10,11 @@ namespace lx
 	{
 	}
 
+	CapId CapId::make_from_literal(const EvalContext& env, std::string_view resolved)
+	{
+		return env.runtime.capture_id(resolved);
+	}
+
 	DataType CapId::data_type()
 	{
 		return DataType::CapId();
@@ -55,4 +60,14 @@ namespace lx
 	{
 		return _uid == o._uid;
 	}
+	
+	size_t CapId::hash() const
+	{
+		return std::hash<unsigned int>{}(_uid);
+	}
+}
+
+size_t std::hash<lx::CapId>::operator()(const lx::CapId& c) const
+{
+	return c.hash();
 }

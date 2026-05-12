@@ -580,8 +580,13 @@ namespace lx
 		}
 	}
 
-	Matches Pattern::find_all(const std::string_view text) const
+	Matches Pattern::find_all(const Snippet& snippet) const
 	{
+		if (!_root)
+			return Matches();
+
+
+
 		// TODO
 		return Matches();
 	}

@@ -72,6 +72,8 @@ namespace lx
 			return DataType::String();
 		case TokenType::Bool:
 			return DataType::Bool();
+		case TokenType::CapId:
+			return DataType::CapId();
 		default:
 		{
 			std::stringstream ss;

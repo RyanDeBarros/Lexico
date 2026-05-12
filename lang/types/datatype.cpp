@@ -325,34 +325,32 @@ namespace lx
 		};
 	}
 
-	static StringMap<MemberSignature> match_members()
-	{
-		return {
-			{ "caps", MemberSignature::make_data("caps", DataType::List(DataType::Cap())) },
-			{ "start", MemberSignature::make_data("start", DataType::Int()) },
-			{ "end", MemberSignature::make_data("end", DataType::Int()) },
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "range", MemberSignature::make_data("range", DataType::IRange()) },
-			{ "str", MemberSignature::make_data("str", DataType::String()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
-				{.return_type = DataType::Cap(), .arg_types = { DataType::Int() } },
-			}) },
-		};
-	}
+	// TODO use new capture system
 
-	static StringMap<MemberSignature> cap_members()
-	{
-		return {
-			{ "exists", MemberSignature::make_data("exists", DataType::Bool()) },
-			{ "start", MemberSignature::make_data("start", DataType::Int()) },
-			{ "end", MemberSignature::make_data("end", DataType::Int()) },
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "range", MemberSignature::make_data("range", DataType::IRange()) },
-			{ "str", MemberSignature::make_data("str", DataType::String()) },
-			{ "sub", MemberSignature::make_data("sub", DataType::Match()) },
-		};
-	}
+	//static StringMap<MemberSignature> match_members()
+	//{
+	//	return {
+	//		{ "exists", MemberSignature::make_data("exists", DataType::Bool()) },
+	//		{ "caps", MemberSignature::make_data("caps", DataType::List(DataType::Cap())) },
+	//		{ "start", MemberSignature::make_data("start", DataType::Int()) },
+	//		{ "len", MemberSignature::make_data("len", DataType::Int()) },
+	//		{ "str", MemberSignature::make_data("str", DataType::String()) },
+	//		{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+	//			{ .return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
+	//		}) },
+	//	};
+	//}
+
+	//static StringMap<MemberSignature> cap_members()
+	//{
+	//	return {
+	//		{ "exists", MemberSignature::make_data("exists", DataType::Bool()) },
+	//		{ "start", MemberSignature::make_data("start", DataType::Int()) },
+	//		{ "len", MemberSignature::make_data("len", DataType::Int()) },
+	//		{ "str", MemberSignature::make_data("str", DataType::String()) },
+	//		{ "sub", MemberSignature::make_data("sub", DataType::Match()) },
+	//	};
+	//}
 
 	static StringMap<MemberSignature> list_common_members()
 	{
@@ -374,8 +372,8 @@ namespace lx
 	{
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>> common_members = {
 			{ SimpleType::String, string_members() },
-			{ SimpleType::Match, match_members() },
-			{ SimpleType::Cap, cap_members() },
+			//{ SimpleType::Match, match_members() },
+			//{ SimpleType::Cap, cap_members() },
 			{ SimpleType::List, list_common_members() },
 		};
 

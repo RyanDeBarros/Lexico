@@ -21,11 +21,9 @@ TODO v0.3 recursion built into patterns (see parentheses balancing example)
 
 | Attribute | Type | Description |
 | - | - | - |
-| `exists` | `bool` | is `true` if the group was captured, `false` otherwise |
+| `exists` | `bool` | `true` if the group was captured, `false` otherwise |
 | `start` | `int` | starting position |
-| `end` | `int` | ending position (one after last character) |
 | `len` | `int` | length of group |
-| `range` | `irange` | position range of group |
 | `str` | `string` | string of characters captured |
 | `sub` | `match` | characters captured as a submatch |
 
@@ -33,13 +31,11 @@ TODO v0.3 recursion built into patterns (see parentheses balancing example)
 
 | Attribute | Type | Description |
 | - | - | - |
-| `caps` | `list` | list of captures |
-| `[]` | `cap` | returns a named capture |
+| `exists` | `bool` | `true` if the match exists, `false` otherwise |
 | `start` | `int` | starting position |
-| `end` | `int` | ending position (one after last character) |
 | `len` | `int` | length of group |
-| `range` | `irange` | position range of group |
 | `str` | `string` | character subtext as a string |
+| `[capid]` | `list[cap]` | returns a capture list |
 
 ### `irange`
 
@@ -253,7 +249,7 @@ Also, note that `repeat 0 to 1` is equivalent to prefixing with `optional`.
 
 Capture groups are named subpatterns that can be referenced in matches.
 If no name is provided, they'll need to be referenced in matches by index.
-Define a capture group within a pattern as so:
+Define a capture group within a pattern using `!`:
 
 ```
 pattern ageField
@@ -263,11 +259,11 @@ pattern value
 append $digit repeat 1 to 3
 
 pattern ageField
-append capture age value  # named
+append capture !age value  # named
 
 pattern weightField
 append "weight", "="
-append capture _ value  # unnamed
+append capture ! value  # unnamed
 ```
 
 Note that the data type of the capture group name is `capid`.
@@ -278,7 +274,7 @@ You can force groups within a pattern to be the same using back-referencing:
 
 ```
 pattern repeatedWord
-append capture word $alphanumeric+
+append capture !word $alphanumeric+
 append $space+
 append ref word
 ```
@@ -467,10 +463,10 @@ You can query a capture object via:
 ```
 pattern ageField
 append "age", "="
-append capture age $digit repeat 1 to 3
+append capture !age $digit repeat 1 to 3
 
 fn isAdult(match m) -> bool
-  return m[age] >= 18
+  return m[!age] >= 18
 end fn
 
 find ageField
@@ -481,11 +477,11 @@ You can also query by index:
 
 ```
 pattern addition
-append capture _ $digit+
+append capture ! $digit+
 
 pattern adder
 append $space*, "+", $space*
-append capture _ $digit+
+append capture ! $digit+
 
 pattern addition
 append adder*
@@ -494,8 +490,8 @@ find addition
 
 for m in %
   let sum = 0
-  for i in 0 to m.caps.len - 1
-    sum += m.caps[i].str as int
+  for c in m
+    sum += c.str as int
   end for
   log m.str, " = ", sum
 end for
@@ -514,12 +510,12 @@ For example:
 
 ```
 pattern name
-append capture firstName $any+
-append capture middle ", "
-append capture lastName $any+
+append capture !firstName $any+
+append capture !middle ", "
+append capture !lastName $any+
 
 fn switch(match m) -> string
-  return m[lastName].str + m[middle].str + m[firstName].str
+  return m[!lastName].str + m[!middle].str + m[!firstName].str
 end fn
 
 find name
@@ -578,14 +574,14 @@ For example:
 
 ```
 pattern phoneNumber
-append capture par1 "("
+append capture !par1 "("
 append $digit repeat 3
-append capture par2 ")"
+append capture !par2 ")"
 append "-", $digit repeat 3, "-", $digit repeat 4
 
 fn validate(match m) -> bool
-  let p1 = m[par1].exists
-  let p2 = m[par2].exists
+  let p1 = m[!par1].exists
+  let p2 = m[!par2].exists
   return p1 and p2 or not p1 and not p2
 end fn
 
@@ -756,9 +752,9 @@ find pet
 #### lexico
 ```
 pattern repeatedWord
-append capture word $alphanumeric+
+append capture !word $alphanumeric+
 append $space+
-append ref word
+append ref !word
 
 find repeatedWord
 ```
@@ -773,11 +769,11 @@ find repeatedWord
 #### lexico
 ```
 pattern date
-append capture year $digit repeat 4
+append capture !year $digit repeat 4
 append "-"
-append capture month $digit repeat 2
+append capture !month $digit repeat 2
 append "-"
-append capture day $digit repeat 2
+append capture !day $digit repeat 2
 
 find date
 ```
@@ -866,12 +862,12 @@ $2 $1
 
 ```
 pattern name
-append capture _ $alphanumeric+
+append capture ! $alphanumeric+
 append ", "
-append capture _ $alphanumeric+
+append capture ! $alphanumeric+
 
 fn switch(match m) -> string
-  return m.caps[1].str + " " + m.caps[0].str
+  return m[!][1].str + " " + m[!][0].str
 end fn
 
 find name
@@ -892,14 +888,14 @@ $3/$2/$1
 #### lexico
 ```
 pattern date
-append capture _ $digit repeat 4
+append capture ! $digit repeat 4
 append "-"
-append capture _ $digit repeat 2
+append capture ! $digit repeat 2
 append "-"
-append capture _ $digit repeat 2
+append capture ! $digit repeat 2
 
 fn rewrite(match m) -> string
-  return m.caps[2].str + "/" + m.caps[1].str + "/" + m.caps[0].str
+  return m[!][2].str + "/" + m[!][1].str + "/" + m[!][0].str
 end fn
 
 find date
@@ -914,13 +910,13 @@ DNE
 #### lexico
 ```
 pattern group
-append capture par1 optional "("
-append capture sub $any*
-append capture par2 optional ")"
+append capture !par1 optional "("
+append capture !sub $any*
+append capture !par2 optional ")"
 
 fn balanced(match m) -> bool
-  let p1 = m[par1].exists
-  let p2 = m[par2].exists
+  let p1 = m[!par1].exists
+  let p2 = m[!par2].exists
   
   if not p1
     if p2
@@ -932,7 +928,7 @@ fn balanced(match m) -> bool
     return false
   end if
   
-  page push m[sub].str
+  page push m[!sub].str
   let pass = true
 
   let old = %
@@ -1095,7 +1091,7 @@ type_name     ::= "int"
                 | "srange"
                 | "list" ;
 
-literal       ::= int_leteral | float_literal | bool_literal | string_literal ;
+literal       ::= int_leteral | float_literal | bool_literal | string_literal | capid_literal ;
 bool_literal  ::= "true" | "false" ;
 float_literal ::= "integer" "." "integer" ;
 ```

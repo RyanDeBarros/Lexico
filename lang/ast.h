@@ -84,7 +84,7 @@ namespace lx
 		
 		void analyse(SemanticContext& ctx, AnalysisPass pass);
 
-		virtual ExecutionFlow execute(Runtime& env) const = 0;
+		virtual ExecutionFlow execute(Runtime& runtime) const = 0;
 		UpflowInfo upflow(SemanticContext& ctx);
 		UpflowInfo upflow() const;
 		const ScriptSegment& segment() const;
@@ -93,7 +93,7 @@ namespace lx
 		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
 		virtual UpflowInfo impl_upflow(SemanticContext& ctx);
 		virtual ScriptSegment impl_segment() const = 0;
-		EvalContext eval_context(Runtime& env) const;
+		EvalContext eval_context(Runtime& runtime) const;
 	};
 
 	class Block : public ASTNode
@@ -101,10 +101,10 @@ namespace lx
 		std::vector<ASTNode*> _children;
 
 	public:
-		virtual ExecutionFlow execute(Runtime& env) const override;
+		virtual ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
-		ExecutionFlow execute_subnodes(Runtime& env) const;
+		ExecutionFlow execute_subnodes(Runtime& runtime) const;
 
 		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		SemanticContext::LocalScope enter_scope(SemanticContext& ctx);
@@ -175,12 +175,12 @@ namespace lx
 		mutable bool _validated = false;
 
 	public:
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 		DataType evaltype(SemanticContext& ctx) const;
 		DataType evaltype() const;
 
-		virtual Variable evaluate(Runtime& env) const = 0;
+		virtual Variable evaluate(Runtime& runtime) const = 0;
 		virtual bool imperative() const;
 
 	protected:
@@ -196,7 +196,7 @@ namespace lx
 	public:
 		VariableDeclaration(bool global, Token&& identifier, Expression& expression);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 		
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -213,7 +213,7 @@ namespace lx
 	public:
 		LiteralExpression(Token&& literal);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -231,7 +231,7 @@ namespace lx
 	public:
 		ListExpression(Token&& lbracket_token, Token&& rbracket_token, std::vector<Expression*>&& elements, std::optional<DataType>&& underlying);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -248,7 +248,7 @@ namespace lx
 	public:
 		BinaryExpression(Token&& op, Expression& left, Expression& right);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -270,7 +270,7 @@ namespace lx
 	public:
 		MemberAccessExpression(Expression& object, Token&& member);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -293,7 +293,7 @@ namespace lx
 	public:
 		PrefixExpression(Token&& op, Expression& expr);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -312,7 +312,7 @@ namespace lx
 	public:
 		AsExpression(Expression& expr, FullTypeKeyword&& type);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -330,7 +330,7 @@ namespace lx
 	public:
 		SubscriptExpression(Expression& container, Expression& subscript, Token&& closing_bracket);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -349,7 +349,7 @@ namespace lx
 	public:
 		VariableExpression(Token&& identifier);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -364,7 +364,7 @@ namespace lx
 	public:
 		GlobalMatchesExpression(Token&& symbol_token);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -380,7 +380,7 @@ namespace lx
 	public:
 		PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -397,7 +397,7 @@ namespace lx
 	public:
 		FunctionCallExpression(Token&& identifier, std::vector<Expression*>&& args, Token&& closing_paren);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 		bool imperative() const override;
 
 	protected:
@@ -419,7 +419,7 @@ namespace lx
 	public:
 		MethodCallExpression(MemberAccessExpression& member, std::vector<Expression*>&& args, Token&& closing_paren);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 		bool imperative() const override;
 
 	protected:
@@ -438,8 +438,8 @@ namespace lx
 	public:
 		FunctionDefinition(Token&& fn_token, Token&& identifier, std::vector<std::pair<FullTypeKeyword, Token>>&& arglist, std::optional<FullTypeKeyword>&& return_type);
 
-		ExecutionFlow execute(Runtime& env) const override;
-		InvokeResult invoke(Runtime& env, std::vector<Variable>&& arguments) const;
+		ExecutionFlow execute(Runtime& runtime) const override;
+		InvokeResult invoke(Runtime& runtime, std::vector<Variable>&& arguments) const;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -460,7 +460,7 @@ namespace lx
 	public:
 		ReturnStatement(Token&& return_token, Expression* expression);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -479,7 +479,7 @@ namespace lx
 
 	protected:
 		virtual void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
-		virtual ExecutionFlow fallback_execute(Runtime& env) const = 0;
+		virtual ExecutionFlow fallback_execute(Runtime& runtime) const = 0;
 		virtual UpflowInfo fallback_upflow(SemanticContext& ctx) = 0;
 	};
 	
@@ -498,7 +498,7 @@ namespace lx
 	public:
 		void set_fallback(IfFallback* fallback);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		UpflowInfo impl_upflow(SemanticContext& ctx) override;
@@ -535,7 +535,7 @@ namespace lx
 		bool isolated() const override;
 
 		void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) override;
-		ExecutionFlow fallback_execute(Runtime& env) const override;
+		ExecutionFlow fallback_execute(Runtime& runtime) const override;
 		UpflowInfo fallback_upflow(SemanticContext& ctx) override;
 	};
 
@@ -551,7 +551,7 @@ namespace lx
 		bool isolated() const override;
 
 		void fallback_analyse(SemanticContext& ctx, AnalysisPass pass) override;
-		ExecutionFlow fallback_execute(Runtime& env) const override;
+		ExecutionFlow fallback_execute(Runtime& runtime) const override;
 		UpflowInfo fallback_upflow(SemanticContext& ctx) override;
 	};
 
@@ -580,7 +580,7 @@ namespace lx
 	public:
 		WhileLoop(Token&& loop_token, Expression& condition);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -595,7 +595,7 @@ namespace lx
 	public:
 		ForLoop(Token&& loop_token, Token&& iterator, Expression& iterable);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -610,7 +610,7 @@ namespace lx
 	public:
 		BreakStatement(Token&& break_token);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -629,7 +629,7 @@ namespace lx
 	public:
 		ContinueStatement(Token&& continue_token);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -648,7 +648,7 @@ namespace lx
 	public:
 		LogStatement(Token&& log_token, std::vector<Expression*>&& args);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -666,7 +666,7 @@ namespace lx
 	public:
 		HighlightStatement(Token&& highlight_token, bool clear, Expression* highlightable, std::optional<Token>&& color_token, BuiltinSymbol color);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -681,7 +681,7 @@ namespace lx
 	public:
 		DeletePattern(Token&& delete_token, Token&& identifier);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -696,7 +696,7 @@ namespace lx
 	public:
 		PatternDeclaration(Token&& pattern_token, Token&& identifier);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -711,7 +711,7 @@ namespace lx
 	public:
 		RepeatOperation(Expression& expression, Expression& range);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -727,7 +727,7 @@ namespace lx
 	public:
 		SimpleRepeatOperation(Expression& expression, Token&& op);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -746,7 +746,7 @@ namespace lx
 	public:
 		PatternBackRef(Token&& ref_token, Token&& identifier);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -762,7 +762,7 @@ namespace lx
 	public:
 		PatternLazy(Token&& lazy_token, Expression& expression);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -779,7 +779,7 @@ namespace lx
 	public:
 		PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression);
 
-		Variable evaluate(Runtime& env) const override;
+		Variable evaluate(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -795,7 +795,7 @@ namespace lx
 	public:
 		AppendStatement(Token&& append_token, Expression& expression);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -810,7 +810,7 @@ namespace lx
 	public:
 		FindStatement(Token&& find_token, Expression& pattern);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -825,7 +825,7 @@ namespace lx
 	public:
 		FilterStatement(Token&& filter_token, Token&& identifier);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -841,7 +841,7 @@ namespace lx
 	public:
 		ReplaceStatement(Token&& replace_token, Expression& match, Expression& string);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -856,7 +856,7 @@ namespace lx
 	public:
 		ApplyStatement(Token&& apply_token, Token&& identifier);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -873,14 +873,14 @@ namespace lx
 	public:
 		ScopeStatement(Token&& scope_token, Token&& symbol_token, BuiltinSymbol specifier, Expression* count);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
 		ScriptSegment impl_segment() const override;
 
 	private:
-		Scope scope(Runtime& env) const;
+		Scope scope(Runtime& runtime) const;
 	};
 
 	class PagePush : public ASTNode
@@ -891,7 +891,7 @@ namespace lx
 	public:
 		PagePush(Token&& page_token, Expression& page);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -905,7 +905,7 @@ namespace lx
 	public:
 		PagePop(Token&& page_token);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
@@ -919,7 +919,7 @@ namespace lx
 	public:
 		PageClearStack(Token&& page_token);
 
-		ExecutionFlow execute(Runtime& env) const override;
+		ExecutionFlow execute(Runtime& runtime) const override;
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;

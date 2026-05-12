@@ -12,6 +12,7 @@ set(LANG_SOURCES
 	ast.cpp
 	operations.cpp
 	symbols.cpp
+	page.cpp
 	util.cpp
 )
 

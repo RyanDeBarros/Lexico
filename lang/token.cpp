@@ -221,6 +221,7 @@ namespace lx
 		case TokenType::Float:
 		case TokenType::String:
 		case TokenType::Bool:
+		case TokenType::CapId:
 			return true;
 		default:
 			return false;

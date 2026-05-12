@@ -1,5 +1,7 @@
 #include "runtime.h"
 
+#include "constants.h"
+
 namespace lx
 {
 	void RuntimeSymbolTable::register_variable(const std::string_view identifier, Variable&& dp)
@@ -29,9 +31,10 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input, SemanticFunctionTable&& ftable)
-		: _input(input), _global_matches(_heap.add(Matches())), _search_scope(std::nullopt), _root_page{ .content = std::string(input) }, _function_table(std::move(ftable))
+		: _input(input), _global_matches(_heap.add(Matches())), _search_scope(std::nullopt), _function_table(std::move(ftable))
 	{
 		push_local_scope(true);
+		_root_page = std::make_unique<Page>(*this, std::string(input));
 	}
 
 	const std::stringstream& Runtime::output() const
@@ -190,54 +193,16 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	static std::vector<std::string_view> scope_by_line_count(const std::string_view content, unsigned int lines)
-	{
-		std::vector<size_t> starts;
-		starts.push_back(0);
-
-		for (size_t i = 0; i < content.size(); ++i)
-			if (content[i] == '\n' && i + 1 < content.size())
-				starts.push_back(i + 1);
-
-		std::vector<std::string_view> scoped_lines;
-
-		if (starts.size() < lines)
-			return scoped_lines;
-
-		for (size_t i = 0; i + lines - 1 < starts.size(); ++i)
-		{
-			size_t begin = starts[i];
-			size_t end;
-
-			if (i + lines < starts.size())
-			{
-				end = starts[i + lines] - 1;
-				if (end > begin && content[end - 1] == '\r')
-					--end;
-			}
-			else
-				end = content.size();
-
-			scoped_lines.emplace_back(content.data() + begin, end - begin);
-		}
-
-		return scoped_lines;
-	}
-
 	void Runtime::find(const ScriptSegment& segment)
 	{
 		if (Pattern* pattern = focused_pattern(segment).ref().as<Pattern>())
 		{
 			const Page& page = focused_page();
 			const Scope& scope = search_scope();
-			if (auto lines = scope.lines())
-			{
-				global_matches() = Matches();
-				for (const auto& subcontent : scope_by_line_count(page.content, *lines))
-					global_matches().append(pattern->find_all(subcontent));
-			}
-			else
-				global_matches() = pattern->find_all(page.content);
+			const auto snippets = page.snippets(scope.lines());
+			global_matches() = Matches();
+			for (const auto& snippet : snippets)
+				global_matches().append(pattern->find_all(snippet));
 		}
 		else
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
@@ -255,7 +220,7 @@ namespace lx
 
 	void Runtime::push_page(Variable page_desc, const ScriptSegment& segment)
 	{
-		_page_stack.push({ .content = page_desc.ref().page_content(EvalContext{ .runtime = *this, .segment = &segment }) });
+		_page_stack.push(Page(*this, page_desc.ref().page_content(EvalContext{ .runtime = *this, .segment = &segment })));
 	}
 
 	void Runtime::pop_page(const ScriptSegment& segment)
@@ -274,7 +239,7 @@ namespace lx
 
 	const Page& Runtime::focused_page() const
 	{
-		return _page_stack.empty() ? _root_page : _page_stack.top();
+		return _page_stack.empty() ? *_root_page : _page_stack.top();
 	}
 
 	const Matches& Runtime::global_matches() const

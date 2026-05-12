@@ -24,6 +24,8 @@ namespace lx
 			return Bool::make_from_literal(env, resolved);
 		case SimpleType::String:
 			return String::make_from_literal(env, resolved);
+		case SimpleType::CapId:
+			return CapId::make_from_literal(env, resolved);
 		default:
 		{
 			std::stringstream ss;
