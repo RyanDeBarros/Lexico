@@ -1,7 +1,9 @@
 #pragma once
 
 #include "types/declarations.h"
+#include "types/member.h"
 #include "match.h"
+#include "util.h"
 
 namespace lx
 {
@@ -21,6 +23,7 @@ namespace lx
 		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
+		static StringMap<MemberSignature> members();
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		void assign(const EvalContext& env, Cap&& o);

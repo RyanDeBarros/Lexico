@@ -45,6 +45,17 @@ namespace lx
 		ss << DataType::Cap();
 	}
 
+	StringMap<MemberSignature> Cap::members()
+	{
+		return {
+			{ constants::MEMBER_EXISTS, MemberSignature::make_data(constants::MEMBER_EXISTS, DataType::Bool()) },
+			{ constants::MEMBER_START, MemberSignature::make_data(constants::MEMBER_START, DataType::Int()) },
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
+			{ constants::MEMBER_SUB, MemberSignature::make_data(constants::MEMBER_SUB, DataType::Match()) },
+		};
+	}
+
 	Variable Cap::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == constants::MEMBER_EXISTS)

@@ -312,68 +312,15 @@ namespace lx
 		}
 	}
 
-	// TODO should get these maps directly from Type Structs, since they handle the actual evaluation
-	// TODO add rest of data members + methods from all types
-
-	static StringMap<MemberSignature> string_members()
-	{
-		return {
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
-				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
-			}) },
-		};
-	}
-
-	static StringMap<MemberSignature> match_members()
-	{
-		return {
-			{ "exists", MemberSignature::make_data("exists", DataType::Bool()) },
-			{ "caps", MemberSignature::make_data("caps", DataType::List(DataType::Cap())) },
-			{ "start", MemberSignature::make_data("start", DataType::Int()) },
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "str", MemberSignature::make_data("str", DataType::String()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{ .return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
-			}) },
-		};
-	}
-
-	static StringMap<MemberSignature> cap_members()
-	{
-		return {
-			{ "exists", MemberSignature::make_data("exists", DataType::Bool()) },
-			{ "start", MemberSignature::make_data("start", DataType::Int()) },
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-			{ "str", MemberSignature::make_data("str", DataType::String()) },
-			{ "sub", MemberSignature::make_data("sub", DataType::Match()) },
-		};
-	}
-
-	static StringMap<MemberSignature> list_common_members()
-	{
-		return {
-			{ "len", MemberSignature::make_data("len", DataType::Int()) },
-		};
-	}
-
-	static StringMap<MemberSignature> list_generic_members(const DataType& underlying)
-	{
-		return {
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{ .return_type = underlying, .arg_types = { DataType::Int() }},
-			}) },
-		};
-	}
-
 	bool DataType::member(const std::string_view name, MemberSignature& signature) const
 	{
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>> common_members = {
-			{ SimpleType::String, string_members() },
-			{ SimpleType::Match, match_members() },
-			{ SimpleType::Cap, cap_members() },
-			{ SimpleType::List, list_common_members() },
+			{ SimpleType::String, String::members() },
+			{ SimpleType::StringView, StringView::members() },
+			{ SimpleType::Match, Match::members() },
+			{ SimpleType::Matches, Matches::members() },
+			{ SimpleType::Cap, Cap::members() },
+			{ SimpleType::List, List::members() },
 		};
 
 		auto it = common_members.find(_simple);
@@ -392,7 +339,7 @@ namespace lx
 		};
 
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>(*)(const DataType&)> generic_generators = {
-			{ SimpleType::List, &list_generic_members }
+			{ SimpleType::List, &List::members }
 		};
 		
 		if (_underlying)

@@ -106,6 +106,17 @@ namespace lx
 				ss << chr(i, min, max);
 	}
 
+	StringMap<MemberSignature> StringView::members()
+	{
+		return {
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{.return_type = DataType::String(), .arg_types = { DataType::Int() } },
+				{.return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+			}) },
+		};
+	}
+
 	Variable StringView::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == constants::MEMBER_LEN)

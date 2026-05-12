@@ -40,6 +40,19 @@ namespace lx
 		ss << DataType::Match();
 	}
 
+	StringMap<MemberSignature> Match::members()
+	{
+		return {
+			{ constants::MEMBER_EXISTS, MemberSignature::make_data(constants::MEMBER_EXISTS, DataType::Bool()) },
+			{ constants::MEMBER_START, MemberSignature::make_data(constants::MEMBER_START, DataType::Int()) },
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{.return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
+			}) },
+		};
+	}
+
 	Variable Match::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == constants::MEMBER_EXISTS)

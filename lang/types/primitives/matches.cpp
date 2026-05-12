@@ -2,6 +2,7 @@
 
 #include "include.h"
 #include "runtime.h"
+#include "constants.h"
 
 namespace lx
 {
@@ -40,13 +41,35 @@ namespace lx
 		ss << DataType::Matches();
 	}
 
+	StringMap<MemberSignature> Matches::members()
+	{
+		return {
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{ .return_type = DataType::Match(), .arg_types = { DataType::Int() }},
+			}) },
+		};
+	}
+
 	Variable Matches::data_member(VarContext& ctx, const std::string_view member) const
 	{
+		if (member == constants::MEMBER_LEN)
+			return ctx.variable(Int(_matches.size()));
+
 		ctx.throw_no_data_member(member);
 	}
 
 	Variable Matches::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
 	{
+		if (method == constants::SUBSCRIPT_OP)
+		{
+			if (args.size() == 1)
+			{
+				if (args[0].ref().data_type().simple() == SimpleType::Int)
+					return _matches[std::move(args[0]).consume_as<Int>(ctx.env).value()];
+			}
+		}
+
 		ctx.throw_no_method(method, args);
 	}
 

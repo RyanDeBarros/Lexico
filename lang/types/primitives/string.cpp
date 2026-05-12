@@ -66,14 +66,6 @@ namespace lx
 		ss << _value;
 	}
 
-	Variable String::data_member(VarContext& ctx, const std::string_view member) const
-	{
-		if (member == constants::MEMBER_LEN)
-			return ctx.variable(Int(_value.size()));
-
-		ctx.throw_no_data_member(member);
-	}
-
 	static Variable substring_by_index(VarContext& ctx, Variable&& arg)
 	{
 		StringView sv(ctx.env, ctx.self, std::move(arg).consume_as<Int>(ctx.env));
@@ -86,6 +78,25 @@ namespace lx
 		StringView sv(ctx.env, ctx.self, std::move(arg).consume_as<IRange>(ctx.env));
 		sv.assert_valid(ctx.env);
 		return ctx.variable(std::move(sv));
+	}
+
+	StringMap<MemberSignature> String::members()
+	{
+		return {
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{.return_type = DataType::String(), .arg_types = { DataType::Int() } },
+				{.return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+			}) },
+		};
+	}
+
+	Variable String::data_member(VarContext& ctx, const std::string_view member) const
+	{
+		if (member == constants::MEMBER_LEN)
+			return ctx.variable(Int(_value.size()));
+
+		ctx.throw_no_data_member(member);
 	}
 
 	Variable String::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const

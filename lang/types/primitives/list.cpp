@@ -87,6 +87,22 @@ namespace lx
 		ss << "]";
 	}
 
+	StringMap<MemberSignature> List::members()
+	{
+		return {
+			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+		};
+	}
+
+	StringMap<MemberSignature> List::members(const DataType& underlying)
+	{
+		return {
+			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{.return_type = underlying, .arg_types = { DataType::Int() }},
+			}) },
+		};
+	}
+
 	Variable List::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == constants::MEMBER_LEN)
