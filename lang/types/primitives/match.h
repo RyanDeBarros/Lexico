@@ -39,5 +39,6 @@ namespace lx
 
 		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
 		void assert_exists(const EvalContext& env) const;
+		Highlight highlight_range() const;
 	};
 }

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "public.h"
+#include "highlights.h"
 
 #include <optional>
+#include <string_view>
 
 namespace lx
 {
@@ -81,6 +82,8 @@ namespace lx
 
 	public:
 		explicit Color(BuiltinSymbol symbol);
+
+		HighlightColor color() const;
 	};
 
 	extern bool is_color_symbol(BuiltinSymbol symbol);

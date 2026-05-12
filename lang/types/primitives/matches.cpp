@@ -112,4 +112,14 @@ namespace lx
 			throw env.runtime_error(ss.str());
 		}
 	}
+
+	const Match& Matches::match(size_t i) const
+	{
+		return _matches[i].ref().get<Match>();
+	}
+
+	size_t Matches::size() const
+	{
+		return _matches.size();
+	}
 }

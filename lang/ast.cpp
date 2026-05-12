@@ -1452,12 +1452,12 @@ namespace lx
 	{
 		try
 		{
-			auto ctx = eval_context(runtime);
+			auto env = eval_context(runtime);
 			Iterator iter(_iterable.evaluate(runtime));
-			while (!iter.done(ctx))
+			while (!iter.done(env))
 			{
 				Runtime::LocalScope local_scope(runtime, isolated());
-				runtime.register_variable(_iterator.lexeme, iter.get(ctx), Namespace::Local);
+				runtime.register_variable(_iterator.lexeme, iter.get(env), Namespace::Local);
 				auto flow = execute_subnodes(runtime);
 				if (flow.type == FlowType::Break)
 					break;
@@ -1612,9 +1612,9 @@ namespace lx
 	ExecutionFlow HighlightStatement::execute(Runtime& runtime) const
 	{
 		if (_clear)
-			runtime.remove_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt);
+			runtime.remove_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt, segment());
 		else
-			runtime.add_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt);
+			runtime.add_highlight(Color(_color), _highlightable ? std::make_optional(_highlightable->evaluate(runtime)) : std::nullopt, segment());
 
 		return {};
 	}
@@ -1702,9 +1702,9 @@ namespace lx
 
 	Variable RepeatOperation::evaluate(Runtime& runtime) const
 	{
-		auto ctx = eval_context(runtime);
-		IRange range = _range.evaluate(runtime).consume_as<IRange>(ctx);
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(ctx);
+		auto env = eval_context(runtime);
+		IRange range = _range.evaluate(runtime).consume_as<IRange>(env);
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(env);
 		return runtime.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
 	}
 
@@ -1944,12 +1944,14 @@ namespace lx
 	{
 		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
 
-		auto ctx = eval_context(runtime);
+		auto env = eval_context(runtime);
+		Matches new_matches;
 		Iterator iter(runtime.global_matches_var());
-		while (!iter.done(ctx))
+		while (!iter.done(env))
 		{
-			if (fn.invoke(runtime, { runtime.unbound_variable(iter.get(ctx)) }).data.consume_as<Bool>(ctx).value())
-				; // TODO add to new matches
+			Variable match = runtime.unbound_variable(iter.get(env));
+			if (fn.invoke(runtime, { match }).data.consume_as<Bool>(env).value())
+				new_matches.push_back(env, std::move(match));
 			iter.next();
 		}
 

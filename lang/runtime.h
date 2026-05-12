@@ -36,6 +36,7 @@ namespace lx
 		const std::string_view _input;
 		std::stringstream _output;
 		std::stringstream _log;
+		HighlightMap _highlights;
 
 		VirtualHeap _heap;
 		RuntimeSymbolTable _global_variable_table;
@@ -91,8 +92,15 @@ namespace lx
 		Variable focused_pattern(const ScriptSegment& segment) const;
 
 		void find(const ScriptSegment& segment);
-		void add_highlight(const Color& color, const std::optional<Variable>& format);
-		void remove_highlight(const Color& color, const std::optional<Variable>& format);
+		void add_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment);
+		void remove_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment);
+
+	private:
+		void do_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment, void(*func)(HighlightSet&, Highlight));
+
+	public:
+		const HighlightMap& highlights() const;
+		HighlightMap& highlights();
 
 		void push_page(Variable page_desc, const ScriptSegment& segment);
 		void pop_page(const ScriptSegment& segment);

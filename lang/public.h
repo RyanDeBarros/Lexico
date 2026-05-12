@@ -3,6 +3,8 @@
 #include <string>
 #include <string_view>
 
+#include "highlights.h"
+
 namespace lx
 {
 	struct ExecInput
@@ -17,18 +19,6 @@ namespace lx
 		bool success = false;
 		std::string output;
 		std::string log;
-		// TODO highlights
-	};
-
-	enum class HighlightColor
-	{
-		Yellow,
-		Red,
-		Green,
-		Blue,
-		Grey,
-		Purple,
-		Orange,
-		Mono,
+		HighlightMap highlights;
 	};
 }

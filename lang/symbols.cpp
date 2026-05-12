@@ -149,7 +149,12 @@ namespace lx
 		: _color(convert_color(symbol))
 	{
 	}
-	
+
+	HighlightColor Color::color() const
+	{
+		return _color;
+	}
+
 	bool is_color_symbol(BuiltinSymbol symbol)
 	{
 		switch (symbol)

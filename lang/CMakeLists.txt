@@ -13,6 +13,7 @@ set(LANG_SOURCES
 	operations.cpp
 	symbols.cpp
 	page.cpp
+	highlights.cpp
 	util.cpp
 )
 

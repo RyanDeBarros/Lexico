@@ -386,7 +386,7 @@ To highlight all matches in the GUI, simply use:
 highlight
 ```
 
-You can specify a specific matches or match object to highlight:
+You can specify a specific `matches` or `match` object to highlight, or implicitly use an `irange`:
 
 ```
 find oldPattern

@@ -27,5 +27,7 @@ namespace lx
 
 		void append(Matches&& matches);
 		void push_back(const EvalContext& env, Variable match);
+		const Match& match(size_t i) const;
+		size_t size() const;
 	};
 }

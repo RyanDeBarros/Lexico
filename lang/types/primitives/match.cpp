@@ -154,4 +154,9 @@ namespace lx
 		if (!_exists)
 			throw env.runtime_error("match does not exist: check .exists before using");
 	}
+
+	Highlight Match::highlight_range() const
+	{
+		return { .start = _snippet.absolute(_start), .length = _length };
+	}
 }

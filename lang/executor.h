@@ -11,6 +11,7 @@ namespace lx
 		ASTRoot& _ast;
 		std::stringstream _output_stream;
 		std::stringstream _log_stream;
+		HighlightMap _highlights;
 
 	public:
 		Executor(ASTRoot& ast);
@@ -18,5 +19,6 @@ namespace lx
 
 		const std::stringstream& output() const;
 		const std::stringstream& log() const;
+		HighlightMap& highlights();
 	};
 }

@@ -208,14 +208,67 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	void Runtime::add_highlight(const Color& color, const std::optional<Variable>& format)
+	void Runtime::add_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment)
 	{
-		// TODO
+		do_highlight(color, std::move(format), segment, [](HighlightSet& set, Highlight h) { set.insert(h); });
 	}
 
-	void Runtime::remove_highlight(const Color& color, const std::optional<Variable>& format)
+	void Runtime::remove_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment)
 	{
-		// TODO
+		do_highlight(color, std::move(format), segment, [](HighlightSet& set, Highlight h) { set.remove(h); });
+	}
+
+	void Runtime::do_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment, void(*func)(HighlightSet&, Highlight))
+	{
+		HighlightSet& set = _highlights[color.color()];
+
+		if (format)
+		{
+			if (const IRange* range = format->ref().as<IRange>())
+			{
+				const Matches& matches = global_matches();
+
+				const int min = range->min() ? *range->min() : 0;
+				const int max = range->max() ? *range->max() : matches.size() - 1;
+
+				// TODO v0.2 allow negative indexing
+				if (min < 0 || min >= matches.size() || max < 0 || max >= matches.size())
+				{
+					std::stringstream ss;
+					range->print(EvalContext{ .runtime = *this, .segment = &segment }, ss);
+					ss << " out of range: '%' has size " << matches.size();
+					throw LxError::segment_error(segment, ErrorType::Runtime, ss.str());
+				}
+
+				for (size_t i = std::min(min, max); i <= std::max(min, max); ++i)
+					func(set, matches.match(i).highlight_range());
+			}
+			else if (const Match* match = format->ref().as<Match>())
+				func(set, match->highlight_range());
+			else if (const Matches* matches = format->ref().as<Matches>())
+			{
+				for (size_t i = 0; i < matches->size(); ++i)
+					func(set, matches->match(i).highlight_range());
+			}
+			else
+				throw LxError::segment_error(segment, ErrorType::Runtime, "expression is not highlightable");
+		}
+		else
+		{
+			const Matches& matches = global_matches();
+			for (size_t i = 0; i < matches.size(); ++i)
+				func(set, matches.match(i).highlight_range());
+		}
+	}
+
+	const HighlightMap& Runtime::highlights() const
+	{
+		return _highlights;
+	}
+
+	HighlightMap& Runtime::highlights()
+	{
+		return _highlights;
 	}
 
 	void Runtime::push_page(Variable page_desc, const ScriptSegment& segment)
