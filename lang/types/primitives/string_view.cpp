@@ -108,7 +108,7 @@ namespace lx
 
 	Variable StringView::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		if (member == "len")
+		if (member == constants::MEMBER_LEN)
 		{
 			assert_valid(ctx.env);
 			return ctx.variable(Int(max_index() - min_index() + 1));

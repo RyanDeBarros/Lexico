@@ -42,20 +42,19 @@ namespace lx
 
 	Variable Match::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		// TODO use constants for these member names
-		if (member == "exists")
+		if (member == constants::MEMBER_EXISTS)
 			return ctx.variable(Bool(_exists));
-		else if (member == "start")
+		else if (member == constants::MEMBER_START)
 		{
 			assert_exists(ctx.env);
 			return ctx.variable(Int(_snippet.absolute(_start)));
 		}
-		else if (member == "len")
+		else if (member == constants::MEMBER_LEN)
 		{
 			assert_exists(ctx.env);
 			return ctx.variable(Int(_length));
 		}
-		else if (member == "str")
+		else if (member == constants::MEMBER_STR)
 		{
 			assert_exists(ctx.env);
 			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));

@@ -2,6 +2,7 @@
 
 #include "include.h"
 #include "runtime.h"
+#include "constants.h"
 
 namespace lx
 {
@@ -46,15 +47,15 @@ namespace lx
 
 	Variable Cap::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		if (member == "exists")
+		if (member == constants::MEMBER_EXISTS)
 			return ctx.variable(Bool(_exists));
-		else if (member == "start")
+		else if (member == constants::MEMBER_START)
 			return ctx.variable(Int(_snippet.absolute(_start)));
-		else if (member == "len")
+		else if (member == constants::MEMBER_LEN)
 			return ctx.variable(Int(_length));
-		else if (member == "str")
+		else if (member == constants::MEMBER_STR)
 			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
-		else if (member == "sub")
+		else if (member == constants::MEMBER_SUB)
 		{
 			if (_submatch)
 				return *_submatch;

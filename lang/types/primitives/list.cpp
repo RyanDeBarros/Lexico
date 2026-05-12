@@ -89,7 +89,7 @@ namespace lx
 
 	Variable List::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		if (member == "len")
+		if (member == constants::MEMBER_LEN)
 			return ctx.variable(Int(_elements.size()));
 
 		ctx.throw_no_data_member(member);
