@@ -247,6 +247,18 @@ namespace lx
 		}
 	}
 
+	bool DataType::is_view() const
+	{
+		switch (_simple)
+		{
+		case SimpleType::StringView:
+			return true;
+
+		default:
+			return false;
+		}
+	}
+
 	bool DataType::is_iterable() const
 	{
 		switch (_simple)

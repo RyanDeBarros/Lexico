@@ -15,10 +15,10 @@ namespace lx
 				break;
 
 		case BinaryOperator::Assign:
-			// TODO use temporary() instead - for non-views, return unbound() - for views, return false
-			if (lhs.unbound())
-				throw env.runtime_error("cannot assign temporary variable");
-			else if (rhs.ref().can_cast_implicit(lhs.ref().data_type()))
+			if (lhs.temporary())
+				env.log_runtime_warning("cannot assign temporary variable");
+			
+			if (rhs.ref().can_cast_implicit(lhs.ref().data_type()))
 			{
 				lhs.ref().assign(env, std::move(rhs));
 				return std::move(lhs);

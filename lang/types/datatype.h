@@ -67,6 +67,7 @@ namespace lx
 
 		bool can_cast_implicit(const DataType& to) const;
 		bool can_cast_explicit(const DataType& to) const;
+		bool is_view() const;
 		bool is_iterable() const;
 		std::optional<DataType> itertype() const;
 		bool is_highlightable() const;

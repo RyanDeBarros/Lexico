@@ -17,6 +17,7 @@ namespace lx
 
 		LxError runtime_error(const std::string_view message) const;
 		LxError internal_error(const std::string_view message) const;
+		void log_runtime_warning(const std::string_view message) const;
 
 		[[noreturn]] void throw_bad_set_expression(const DataType& from, const DataType& to) const;
 		[[noreturn]] void throw_bad_cast(const DataType& from, const DataType& to) const;

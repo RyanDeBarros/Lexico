@@ -109,6 +109,16 @@ namespace lx
 			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
+	bool Variable::temporary() const
+	{
+		if (_heap)
+		{
+			return _heap->unbound(_id) && !_heap->get(_id).data_type().is_view();
+		}
+		else
+			throw LxError(ErrorType::Internal, "heap reference is null");
+	}
+
 	DataPoint Variable::cast(const EvalContext& env, const DataType& to) &&
 	{
 		VarContext ctx(env, std::move(*this));

@@ -4,6 +4,8 @@
 
 namespace lx
 {
+	// TODO make IRange right-open while keeping SRange inclusive. This allows for pure insertion into strings at indexes.
+
 	class IRange
 	{
 		std::optional<int> _min;

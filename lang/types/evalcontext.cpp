@@ -22,6 +22,14 @@ namespace lx
 			return LxError(ErrorType::Internal, std::string(message));
 	}
 
+	void EvalContext::log_runtime_warning(const std::string_view message) const
+	{
+		if (segment)
+			runtime.log() << LxWarning::segment_warning(*segment, ErrorType::Runtime, message).what() << '\n';
+		else
+			runtime.log() << LxWarning(ErrorType::Runtime, std::string(message)).what() << '\n';
+	}
+
 	void EvalContext::throw_bad_set_expression(const DataType& from, const DataType& to) const
 	{
 		std::stringstream ss;

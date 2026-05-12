@@ -43,6 +43,7 @@ namespace lx
 		DataPoint cast(const EvalContext& env, const DataType& to) &&;
 
 		bool unbound() const;
+		bool temporary() const;
 
 		size_t hash() const;
 		bool operator==(const Variable&) const = default;
