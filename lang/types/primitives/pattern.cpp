@@ -91,8 +91,15 @@ namespace lx
 
 	std::vector<SearchState> SubpatternChar::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return {};
+		if (in.pos >= context.text.size())
+			return {};
+
+		if (context.text[in.pos] != _ch)
+			return {};
+
+		SearchState out = in;
+		++out.pos;
+		return { std::move(out) };
 	}
 
 	SubpatternString::SubpatternString(const std::string& string)
@@ -127,8 +134,18 @@ namespace lx
 
 	std::vector<SearchState> SubpatternString::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return {};
+		if (in.pos >= context.text.size())
+			return {};
+
+		if (in.pos + _string.size() > context.text.size())
+			return {};
+
+		if (context.text.substr(in.pos, _string.size()) != _string)
+			return {};
+
+		SearchState out = in;
+		out.pos += _string.size();
+		return { std::move(out) };
 	}
 
 	SubpatternMarker::SubpatternMarker(PatternMark marker)
@@ -151,8 +168,34 @@ namespace lx
 
 	std::vector<SearchState> SubpatternMarker::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return {};
+		switch (_marker)
+		{
+		case PatternMark::Any:
+		{
+			if (in.pos >= context.text.size())
+				return {};
+
+			SearchState out = in;
+			++out.pos;
+			return { std::move(out) };
+		}
+		case PatternMark::Start:
+		{
+			if (in.pos != 0)
+				return {};
+			else
+				return { in }; // TODO lots of copies of SearchStates being made throughout. Use CowPtr<std::vector<CaptureFrame>> for caps?
+		}
+		case PatternMark::End:
+		{
+			if (in.pos != context.text.size())
+				return {};
+			else
+				return { in };
+		}
+		default:
+			return {};
+		}
 	}
 
 	SubpatternNode& SubpatternCatenation::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -164,8 +207,20 @@ namespace lx
 
 	std::vector<SearchState> SubpatternCatenation::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return {};
+		// TODO use greedy bit?
+		std::vector<SearchState> frontier;
+		frontier.push_back(in);
+		for (const SubpatternNode* element : _array)
+		{
+			std::vector<SearchState> new_frontier;
+			for (const SearchState& state : frontier)
+			{
+				std::vector<SearchState> intermediate = element->branches(context, state);
+				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
+			}
+			frontier = std::move(new_frontier);
+		}
+		return frontier;
 	}
 
 	SubpatternNode& SubpatternDisjunction::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -177,8 +232,14 @@ namespace lx
 
 	std::vector<SearchState> SubpatternDisjunction::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return {};
+		// TODO use greedy bit?
+		std::vector<SearchState> outcomes;
+		for (const SubpatternNode* choice : _array)
+		{
+			std::vector<SearchState> result = choice->branches(context, in);
+			outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+		}
+		return outcomes;
 	}
 
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
@@ -202,7 +263,7 @@ namespace lx
 	std::vector<SearchState> SubpatternException::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
@@ -213,7 +274,7 @@ namespace lx
 	std::vector<SearchState> SubpatternRepetition::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	static IRange simple_repeat_range(PatternSimpleRepeatOperator op)
@@ -293,7 +354,7 @@ namespace lx
 	std::vector<SearchState> SubpatternLookaround::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
@@ -304,7 +365,7 @@ namespace lx
 	std::vector<SearchState> SubpatternOptional::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -341,7 +402,7 @@ namespace lx
 	std::vector<SearchState> SubpatternBackRef::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
@@ -365,7 +426,7 @@ namespace lx
 	std::vector<SearchState> SubpatternCapture::branches(const SearchContext& context, const SearchState& in) const
 	{
 		// TODO
-		return {};
+		return { in };
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -702,7 +763,7 @@ namespace lx
 		if (_root)
 		{
 			SearchContext context{ .env = env, .text = snippet.page_content() };
-			for (size_t i = 0; i < context.text.size(); ++i)
+			for (size_t i = 0; i <= context.text.size(); ++i)
 			{
 				std::vector<SearchState> states = _root->branches(context, SearchState(i));
 				// TODO optimize by exiting early in branches() if searching -> put in SearchContext?
@@ -718,7 +779,7 @@ namespace lx
 		if (_root)
 		{
 			SearchContext context{ .env = env, .text = snippet.page_content() };
-			for (size_t i = 0; i < context.text.size(); ++i)
+			for (size_t i = 0; i <= context.text.size(); ++i)
 			{
 				std::vector<SearchState> states = _root->branches(context, SearchState(i));
 				// TODO remove duplicates (should there even be any?)
