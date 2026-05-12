@@ -21,7 +21,6 @@ namespace lx
 		Whitespace,
 
 		Any,
-		Cap,
 		End,
 		Start,
 
@@ -49,7 +48,6 @@ namespace lx
 	enum class MarkerIdentifier
 	{
 		Any,
-		Cap,
 		End,
 		Start,
 	};

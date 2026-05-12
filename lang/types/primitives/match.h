@@ -38,6 +38,7 @@ namespace lx
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
 		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
+		bool exists() const;
 		void assert_exists(const EvalContext& env) const;
 		Highlight highlight_range() const;
 	};

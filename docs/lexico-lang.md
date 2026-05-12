@@ -13,6 +13,8 @@ TODO v0.3 aggregation / SQL constructs
 
 TODO v0.3 recursion built into patterns (see parentheses balancing example)
 
+TODO v0.3 reverse searching/patterns
+
 ## Data types
 
 ### `capid`
@@ -186,9 +188,6 @@ pattern $end
 
 pattern $any
 # no script equivalent - represents any character, like regex `.`
-
-pattern $cap
-# no script equivalent - represents an empty character, used purely for marking capture groups
 ```
 
 ### Negation
@@ -312,6 +311,8 @@ pattern quote
 append "\"", lazy $any*, "\""
 ```
 
+You can force greedy searches, perhaps in nested patterns, using `greedy`.
+
 ### Pattern order of operations
 
 Grouping with `()` parentheses forces order of operations, and each `append` statement is self-contained.
@@ -326,7 +327,7 @@ Otherwise a full breakdown is listed below (with equivalent precedence executed 
 | 4 | `except` | Binary |
 | 5 | `or` | Binary |
 | 6 | `,` | Binary |
-| 7 | `lazy`<br>`capture` | Wrapper |
+| 7 | `lazy`<br>`greedy`<br>`capture` | Wrapper |
 
 ## Match querying
 
@@ -361,7 +362,7 @@ let saveState = $page
 Lexico also uses a global state for match queries, stored in the built-in `%` matches variable. To re-generate it, use:
 
 ```
-find <pattern>
+search <pattern>
 let matches_ = %
 ```
 
@@ -377,6 +378,8 @@ To restore `%` to a previous state, simply reassign it:
 % = matches_
 ```
 
+Note that `search` generates a single match per [page scope](#scoping), while `findall` generates all matches in the page.
+
 ### Highlighting
 
 Like other match operations, highlighting works on the global `%` object.
@@ -389,10 +392,10 @@ highlight
 You can specify a specific `matches` or `match` object to highlight, or implicitly use an `irange`:
 
 ```
-find oldPattern
+search oldPattern
 let matches_ = %
 
-find newPattern
+search newPattern
 
 highlight matches_
 highlight matches_[0]
@@ -438,7 +441,7 @@ fn AtLeastLength(match m) -> bool
   return m.str.len > 10
 end fn
 
-find $alphanumeric+
+search $alphanumeric+
 filter AtLeastLength
 highlight
 
@@ -447,7 +450,7 @@ fn LessThan(match m) -> bool
   return m as int < x
 end fn
 
-find $digit+
+search $digit+
 filter LessThan
 highlight color Red
 
@@ -469,7 +472,7 @@ fn isAdult(match m) -> bool
   return m[!age] >= 18
 end fn
 
-find ageField
+search ageField
 filter isAdult
 ```
 
@@ -486,7 +489,7 @@ append capture ! $digit+
 pattern addition
 append adder*
 
-find addition
+search addition
 
 for m in %
   let sum = 0
@@ -518,13 +521,13 @@ fn switch(match m) -> string
   return m[!lastName].str + m[!middle].str + m[!firstName].str
 end fn
 
-find name
+search name
 apply switch
 ```
 
 ### Scoping
 
-You can limit the searching scope for `find` statements using `scope`:
+You can limit the searching scope for `findall`/`search` statements using `scope`:
 
 ```
 scope $line           # match must fit in single line (default)
@@ -585,7 +588,7 @@ fn validate(match m) -> bool
   return p1 and p2 or not p1 and not p2
 end fn
 
-find phoneNumber
+search phoneNumber
 filter validate
 ```
 
@@ -653,9 +656,10 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `end` |
 | `except` |
 | `filter` |
-| `find` |
+| `findall` |
 | `float` |
 | `fn` |
+| `greedy` |
 | `highlight` |
 | `if` |
 | `in` |
@@ -680,6 +684,7 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `repeat` |
 | `replace` |
 | `return` |
+| `search` |
 | `scope` |
 | `srange` |
 | `string` |
@@ -698,7 +703,6 @@ Here is a list of built-in symbols:
 | `%` |
 | `$alphanumeric` |
 | `$any` |
-| `$cap` |
 | `$digit` |
 | `$end` |
 | `$letter` |
@@ -725,7 +729,7 @@ cat
 ```
 pattern cat
 append "cat"
-find cat
+search cat
 ```
 
 ### Alternation
@@ -739,7 +743,7 @@ cat|dog|bird
 ```
 pattern pet
 append "cat" or "dog" or "bird"
-find pet
+search pet
 ```
 
 ### Repeated word
@@ -756,7 +760,7 @@ append capture !word $alphanumeric+
 append $space+
 append ref !word
 
-find repeatedWord
+search repeatedWord
 ```
 
 ### Date capturing
@@ -775,7 +779,7 @@ append capture !month $digit repeat 2
 append "-"
 append capture !day $digit repeat 2
 
-find date
+search date
 ```
 
 ### Blank line
@@ -789,7 +793,7 @@ find date
 ```
 pattern line
 append $start, $space*, $end
-find line
+search line
 ```
 
 ### Line length constraint
@@ -803,7 +807,7 @@ find line
 ```
 pattern line
 append $start, $any* repeat max 80, $end
-find line
+search line
 ```
 
 ### Email
@@ -829,7 +833,7 @@ append domainChar+
 append "."
 append $lowercase repeat min 2
 
-find email
+search email
 ```
 
 ### URL
@@ -870,7 +874,7 @@ fn switch(match m) -> string
   return m[!][1].str + " " + m[!][0].str
 end fn
 
-find name
+search name
 apply switch
 ```
 
@@ -898,7 +902,7 @@ fn rewrite(match m) -> string
   return m[!][2].str + "/" + m[!][1].str + "/" + m[!][0].str
 end fn
 
-find date
+search date
 apply rewrite
 ```
 
@@ -932,7 +936,7 @@ fn balanced(match m) -> bool
   let pass = true
 
   let old = %
-  find group
+  search group
   for m in %
     if not balanced(m)
       pass = false
@@ -945,7 +949,7 @@ fn balanced(match m) -> bool
   return pass
 end fn
 
-find group
+search group
 for m in %
   if not balanced(m)
     log "Unbalanced: ", m.str
@@ -984,7 +988,7 @@ append_stmt   ::= "append" pattern_expr ;
 
 pattern_expr  ::= wrapper_expr ;
 wrapper_expr  ::= { wrapper_op } binary_expr ;
-wrapper_op    ::= "capture" identifier | "lazy" ;
+wrapper_op    ::= "capture" capid_expr | "greedy" | "lazy" ;
 
 binary_expr   ::= or_expr { "," or_expr } ;
 or_expr       ::= except_expr { "or" except_expr } ;
@@ -1004,7 +1008,7 @@ primary_expr  ::= expression | "(" pattern_expr ")" ;
 
 ```
 scope_stmt   ::= "scope" builtin_symbol irange_expr ;
-find_stmt    ::= "find" identifier ;
+find_stmt    ::= "findall" identifier | "search" identifier ;
 filter_stmt  ::= "filter" identifier ;
 replace_stmt ::= "replace" match_expr "with" string_expr ;
 apply_stmt   ::= "apply" identifier ;

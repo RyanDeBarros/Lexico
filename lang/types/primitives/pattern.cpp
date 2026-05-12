@@ -5,6 +5,11 @@
 
 namespace lx
 {
+	SearchState::SearchState(size_t start)
+		: start(start), pos(start)
+	{
+	}
+
 	template<std::derived_from<SubpatternNode> T, typename... Args>
 	static T& clone_base(const T* from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena, Args&&... args)
 	{
@@ -27,14 +32,6 @@ namespace lx
 	SubpatternArray::SubpatternArray(std::vector<SubpatternNode*>&& array)
 		: _array(std::move(array))
 	{
-	}
-
-	SubpatternNode& SubpatternArray::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		auto& array = clone_base<SubpatternArray>(this, conv, arena);
-		for (const SubpatternNode* el : _array)
-			array.append(el->refer_node(conv, arena));
-		return array;
 	}
 
 	bool SubpatternArray::equals(const SubpatternNode* o) const
@@ -61,6 +58,12 @@ namespace lx
 		_array.push_back(&node);
 	}
 
+	void SubpatternArray::clone_array(SubpatternArray& into, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		for (const SubpatternNode* el : _array)
+			into.append(el->refer_node(conv, arena));
+	}
+
 	SubpatternChar::SubpatternChar(char ch)
 		: _ch(ch)
 	{
@@ -84,6 +87,12 @@ namespace lx
 	char SubpatternChar::chr() const
 	{
 		return _ch;
+	}
+
+	std::vector<SearchState> SubpatternChar::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
 	}
 
 	SubpatternString::SubpatternString(const std::string& string)
@@ -116,6 +125,12 @@ namespace lx
 		return _string;
 	}
 
+	std::vector<SearchState> SubpatternString::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
 	SubpatternMarker::SubpatternMarker(PatternMark marker)
 		: _marker(marker)
 	{
@@ -132,6 +147,38 @@ namespace lx
 			return _marker == ptr->_marker;
 		else
 			return false;
+	}
+
+	std::vector<SearchState> SubpatternMarker::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
+	SubpatternNode& SubpatternCatenation::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		auto& node = clone_base<SubpatternCatenation>(this, conv, arena);
+		clone_array(node, conv, arena);
+		return node;
+	}
+
+	std::vector<SearchState> SubpatternCatenation::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
+	SubpatternNode& SubpatternDisjunction::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		auto& node = clone_base<SubpatternDisjunction>(this, conv, arena);
+		clone_array(node, conv, arena);
+		return node;
+	}
+
+	std::vector<SearchState> SubpatternDisjunction::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
 	}
 
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
@@ -152,9 +199,21 @@ namespace lx
 			return false;
 	}
 
+	std::vector<SearchState> SubpatternException::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
 		: _subject(&subject), _range(range)
 	{
+	}
+
+	std::vector<SearchState> SubpatternRepetition::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
 	}
 
 	static IRange simple_repeat_range(PatternSimpleRepeatOperator op)
@@ -231,9 +290,21 @@ namespace lx
 			return false;
 	}
 
+	std::vector<SearchState> SubpatternLookaround::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
 		: _optional(&optional)
 	{
+	}
+
+	std::vector<SearchState> SubpatternOptional::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
 	}
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -267,6 +338,12 @@ namespace lx
 			return false;
 	}
 
+	std::vector<SearchState> SubpatternBackRef::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
+	}
+
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
 		: _capid(capid), _captured(&captured)
 	{
@@ -283,6 +360,12 @@ namespace lx
 			return _capid == ptr->_capid && _captured->equals(ptr->_captured);
 		else
 			return false;
+	}
+
+	std::vector<SearchState> SubpatternCapture::branches(const SearchContext& context, const SearchState& in) const
+	{
+		// TODO
+		return {};
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -303,8 +386,36 @@ namespace lx
 			return false;
 	}
 
-	Pattern::Pattern()
+	std::vector<SearchState> SubpatternLazy::branches(const SearchContext& context, const SearchState& in) const
 	{
+		SearchContext ctx = context;
+		ctx.greedy = false;
+		return _lazy->branches(ctx, in);
+	}
+
+	SubpatternGreedy::SubpatternGreedy(SubpatternNode& greedy)
+		: _greedy(&greedy)
+	{
+	}
+
+	SubpatternNode& SubpatternGreedy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternGreedy>(this, conv, arena, _greedy->refer_node(conv, arena));
+	}
+
+	bool SubpatternGreedy::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternGreedy*>(o))
+			return _greedy->equals(ptr->_greedy);
+		else
+			return false;
+	}
+
+	std::vector<SearchState> SubpatternGreedy::branches(const SearchContext& context, const SearchState& in) const
+	{
+		SearchContext ctx = context;
+		ctx.greedy = true;
+		return _greedy->branches(ctx, in);
 	}
 
 	Pattern::Pattern(const Pattern& other)
@@ -486,9 +597,6 @@ namespace lx
 		case BuiltinSymbol::Any:
 			ptn.make_root<SubpatternMarker>(PatternMark::Any);
 			break;
-		case BuiltinSymbol::Cap:
-			ptn.make_root<SubpatternMarker>(PatternMark::Cap);
-			break;
 		case BuiltinSymbol::End:
 			ptn.make_root<SubpatternMarker>(PatternMark::End);
 			break;
@@ -525,6 +633,14 @@ namespace lx
 		Pattern ptn;
 		SubpatternNode& subptn = ptn.take(std::move(pattern));
 		ptn.make_root<SubpatternLazy>(subptn);
+		return ptn;
+	}
+
+	Pattern Pattern::make_greedy(Pattern&& pattern)
+	{
+		Pattern ptn;
+		SubpatternNode& subptn = ptn.take(std::move(pattern));
+		ptn.make_root<SubpatternGreedy>(subptn);
 		return ptn;
 	}
 
@@ -580,14 +696,51 @@ namespace lx
 		}
 	}
 
-	Matches Pattern::find_all(const Snippet& snippet) const
+	Matches Pattern::search(const EvalContext& env, const Snippet& snippet) const
 	{
-		if (!_root)
-			return Matches();
+		Matches matches;
+		if (_root)
+		{
+			SearchContext context{ .env = env, .text = snippet.page_content() };
+			for (size_t i = 0; i < context.text.size(); ++i)
+			{
+				std::vector<SearchState> states = _root->branches(context, SearchState(i));
+				// TODO optimize by exiting early in branches() if searching -> put in SearchContext?
+				matches.push_back(env, env.runtime.unbound_variable(materialize(env, snippet, std::move(states[0]))));
+			}
+		}
+		return matches;
+	}
 
+	Matches Pattern::find_all(const EvalContext& env, const Snippet& snippet) const
+	{
+		Matches matches;
+		if (_root)
+		{
+			SearchContext context{ .env = env, .text = snippet.page_content() };
+			for (size_t i = 0; i < context.text.size(); ++i)
+			{
+				std::vector<SearchState> states = _root->branches(context, SearchState(i));
+				// TODO remove duplicates (should there even be any?)
+				for (SearchState& state : states)
+					matches.push_back(env, env.runtime.unbound_variable(materialize(env, snippet, std::move(state))));
+			}
+		}
+		return matches;
+	}
 
-
-		// TODO
-		return Matches();
+	Match Pattern::materialize(const EvalContext& env, const Snippet& snippet, SearchState&& state)
+	{
+		Match match(snippet, state.start, state.pos - state.start, true);
+		for (auto& capture : state.caps)
+		{
+			if (capture.exists)
+			{
+				// TODO use materialize(env, snippet, capture.substate) to create submatch object if capture.substate exists
+				Cap cap(env, snippet, capture.start, capture.length, capture.exists, std::nullopt);
+				match.add_capture(env, std::move(capture.capid), std::move(cap));
+			}
+		}
+		return match;
 	}
 }

@@ -149,6 +149,11 @@ namespace lx
 		_ordering.push_back(std::make_pair(std::move(id), idx));
 	}
 
+	bool Match::exists() const
+	{
+		return _exists;
+	}
+
 	void Match::assert_exists(const EvalContext& env) const
 	{
 		if (!_exists)

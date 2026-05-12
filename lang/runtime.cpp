@@ -193,7 +193,17 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	void Runtime::find(const ScriptSegment& segment)
+	void Runtime::find_all(const ScriptSegment& segment)
+	{
+		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.find_all(env, snippet)); });
+	}
+
+	void Runtime::search(const ScriptSegment& segment)
+	{
+		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.search(env, snippet)); });
+	}
+
+	void Runtime::do_find(const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&))
 	{
 		if (Pattern* pattern = focused_pattern(segment).ref().as<Pattern>())
 		{
@@ -201,8 +211,10 @@ namespace lx
 			const Scope& scope = search_scope();
 			const auto snippets = page.snippets(scope.lines());
 			global_matches() = Matches();
-			for (const auto& snippet : snippets)
-				global_matches().append(pattern->find_all(snippet));
+			EvalContext env{ .runtime = *this, .segment = &segment };
+			for (const Snippet& snippet : snippets)
+				func(env, global_matches(), *pattern, snippet);
+			// TODO remove duplicates
 		}
 		else
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");

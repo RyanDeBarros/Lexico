@@ -1823,6 +1823,45 @@ namespace lx
 		return _lazy_token.segment.combined_right(_expression.segment());
 	}
 
+	PatternGreedy::PatternGreedy(Token&& greedy_token, Expression& expression)
+		: _greedy_token(std::move(greedy_token)), _expression(expression)
+	{
+	}
+
+	void PatternGreedy::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	{
+		if (pass == AnalysisPass::Validation)
+		{
+			_validated = true;
+			_expression.analyse(ctx, pass);
+
+			try
+			{
+				evaltype(ctx);
+			}
+			catch (const LxError& e)
+			{
+				ctx.add_semantic_error(_expression.segment(), e.message());
+			}
+		}
+	}
+
+	Variable PatternGreedy::evaluate(Runtime& runtime) const
+	{
+		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
+		return runtime.unbound_variable(Pattern::make_greedy(std::move(ptn)));
+	}
+
+	DataType PatternGreedy::impl_evaltype(SemanticContext& ctx) const
+	{
+		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
+	}
+
+	ScriptSegment PatternGreedy::impl_segment() const
+	{
+		return _greedy_token.segment.combined_right(_expression.segment());
+	}
+
 	PatternCapture::PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression)
 		: _capture_token(std::move(capture_token)), _identifier(std::move(identifier)), _expression(expression)
 	{
@@ -1888,8 +1927,8 @@ namespace lx
 		return _append_token.segment;
 	}
 
-	FindStatement::FindStatement(Token&& find_token, Expression& pattern)
-		: _find_token(std::move(find_token)), _pattern(pattern)
+	FindStatement::FindStatement(Token&& find_token, Expression& pattern, bool findall)
+		: _find_token(std::move(find_token)), _pattern(pattern), _findall(findall)
 	{
 	}
 
@@ -1904,7 +1943,10 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& runtime) const
 	{
-		runtime.find(segment());
+		if (_findall)
+			runtime.find_all(segment());
+		else
+			runtime.search(segment());
 		return {};
 	}
 

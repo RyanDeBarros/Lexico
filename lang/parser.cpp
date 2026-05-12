@@ -333,14 +333,15 @@ namespace lx
 
 		bool parse_find_statement()
 		{
-			if (!peek_token_is(0, TokenType::Find))
+			if (!peek_token_is(0, TokenType::FindAll) && !peek_token_is(0, TokenType::Search))
 				return false;
 
+			bool findall = peek_token_is(0, TokenType::FindAll);
 			auto& find_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& pattern = parse_expression(offset);
 			offset.submit();
-			append_to_context(std::make_unique<FindStatement>(std::move(find_token), pattern));
+			append_to_context(std::make_unique<FindStatement>(std::move(find_token), pattern, findall));
 			return true;
 		}
 
@@ -1029,6 +1030,12 @@ namespace lx
 				auto& lazy_token = ref(0);
 				offset.add(1);
 				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset)));
+			}
+			else if (peek_token_is(0, TokenType::Greedy))
+			{
+				auto& greedy_token = ref(0);
+				offset.add(1);
+				return &_tree.add(std::make_unique<PatternGreedy>(std::move(greedy_token), parse_expression(offset)));
 			}
 			else
 				return nullptr;

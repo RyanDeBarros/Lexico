@@ -63,8 +63,8 @@ namespace lx
 			return TokenType::End;
 		else if (token.lexeme == "filter")
 			return TokenType::Filter;
-		else if (token.lexeme == "find")
-			return TokenType::Find;
+		else if (token.lexeme == "findall")
+			return TokenType::FindAll;
 		else if (token.lexeme == "fn")
 			return TokenType::Fn;
 		else if (token.lexeme == "for")
@@ -89,6 +89,8 @@ namespace lx
 			return TokenType::Replace;
 		else if (token.lexeme == "return")
 			return TokenType::Return;
+		else if (token.lexeme == "search")
+			return TokenType::Search;
 		else if (token.lexeme == "scope")
 			return TokenType::Scope;
 		else if (token.lexeme == "var")
@@ -109,6 +111,8 @@ namespace lx
 			return TokenType::Except;
 		else if (token.lexeme == "lazy")
 			return TokenType::Lazy;
+		else if (token.lexeme == "greedy")
+			return TokenType::Greedy;
 		else if (token.lexeme == "max")
 			return TokenType::Max;
 		else if (token.lexeme == "min")

@@ -19,8 +19,6 @@ namespace lx
 			return BuiltinSymbol::Alphanumeric;
 		else if (name == "any")
 			return BuiltinSymbol::Any;
-		else if (name == "cap")
-			return BuiltinSymbol::Cap;
 		else if (name == "digit")
 			return BuiltinSymbol::Digit;
 		else if (name == "end")
@@ -73,8 +71,6 @@ namespace lx
 		{
 		case BuiltinSymbol::Any:
 			return MarkerIdentifier::Any;
-		case BuiltinSymbol::Cap:
-			return MarkerIdentifier::Cap;
 		case BuiltinSymbol::End:
 			return MarkerIdentifier::End;
 		case BuiltinSymbol::Start:

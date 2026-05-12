@@ -770,6 +770,22 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
+	class PatternGreedy : public Expression
+	{
+		Token _greedy_token;
+		Expression& _expression;
+
+	public:
+		PatternGreedy(Token&& greedy_token, Expression& expression);
+
+		Variable evaluate(Runtime& runtime) const override;
+
+	protected:
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
+		DataType impl_evaltype(SemanticContext& ctx) const override;
+		ScriptSegment impl_segment() const override;
+	};
+
 	class PatternCapture : public Expression
 	{
 		Token _capture_token;
@@ -806,9 +822,10 @@ namespace lx
 	{
 		Token _find_token;
 		Expression& _pattern;
+		bool _findall;
 
 	public:
-		FindStatement(Token&& find_token, Expression& pattern);
+		FindStatement(Token&& find_token, Expression& pattern, bool findall);
 
 		ExecutionFlow execute(Runtime& runtime) const override;
 
