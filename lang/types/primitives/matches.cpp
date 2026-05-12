@@ -10,14 +10,14 @@ namespace lx
 		return DataType::Matches();
 	}
 
-	// TODO allow for casting to list?
-
 	TypeVariant Matches::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Matches)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
+		else if (type == DataType::List(DataType::Match()))
+			return List(ctx.env, std::vector(_matches.begin(), _matches.end()));
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
@@ -26,8 +26,12 @@ namespace lx
 	{
 		if (type.simple() == SimpleType::Matches)
 			return std::move(*this);
+		else if (type.simple() == SimpleType::Void)
+			return Void();
+		else if (type == DataType::List(DataType::Match()))
+			return List(ctx.env, std::vector(std::make_move_iterator(_matches.begin()), std::make_move_iterator(_matches.end())));
 		else
-			return cast_copy(ctx, type);
+			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
 	void Matches::print(const EvalContext& env, std::stringstream& ss) const

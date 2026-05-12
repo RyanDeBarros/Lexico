@@ -11,12 +11,35 @@ namespace lx
 
 	std::string_view Snippet::page_content() const
 	{
-		return _text.ref().as<String>()->value().substr(_start, _length);
+		return outer_page().substr(_start, _length);
+	}
+
+	std::string_view Snippet::outer_page() const
+	{
+		return _text.ref().as<String>()->value();
 	}
 
 	unsigned int Snippet::absolute(unsigned int i) const
 	{
 		return _start + i;
+	}
+
+	bool Snippet::placement_equals(const Snippet& other, unsigned int my_start, unsigned int my_length, unsigned int other_start, unsigned int other_length) const
+	{
+		if (my_length != other_length)
+			return false;
+
+		if (absolute(my_start) != other.absolute(other_start))
+			return false;
+
+		if (&_text.ref() == &other._text.ref())
+			return true;
+		else
+		{
+			std::string_view v1 = outer_page().substr(absolute(my_start), my_length);
+			std::string_view v2 = other.outer_page().substr(other.absolute(other_start), other_length);
+			return v1 == v2;
+		}
 	}
 
 	Page::Page(Runtime& runtime, std::string&& text)

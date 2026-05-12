@@ -73,13 +73,23 @@ namespace lx
 
 	void Cap::assign(const EvalContext& env, Cap&& o)
 	{
-		// TODO
+		*this = std::move(o);
 	}
 
 	bool Cap::equals(const EvalContext& env, const Cap& o) const
 	{
-		// TODO
-		return false;
+		if (_exists && o._exists)
+		{
+			if (!_snippet.placement_equals(o._snippet, _start, _length, o._start, o._length))
+				return false;
+
+			if (_submatch && o._submatch)
+				return _submatch->ref().get<Match>().equals(env, o._submatch->ref().get<Match>());
+			else
+				return !_submatch && !o._submatch;
+		}
+		else
+			return !_exists && !o._exists;
 	}
 
 	bool Cap::exists() const

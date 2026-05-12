@@ -20,8 +20,10 @@ namespace lx
 
 		std::string_view page_content() const;
 		unsigned int absolute(unsigned int i) const;
+		std::string_view outer_page() const;
 
 		bool operator==(const Snippet&) const = default;
+		bool placement_equals(const Snippet& other, unsigned int my_start, unsigned int my_length, unsigned int other_start, unsigned int other_length) const;
 	};
 
 	class Page

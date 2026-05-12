@@ -92,7 +92,12 @@ namespace lx
 	bool Match::equals(const EvalContext& env, const Match& o) const
 	{
 		if (_exists && o._exists)
-			return _snippet == o._snippet && _start == o._start && _length == o._length && _captures_by_id == o._captures_by_id && _ordering == o._ordering;
+		{
+			if (!_snippet.placement_equals(o._snippet, _start, _length, o._start, o._length))
+				return false;
+
+			return _ordering == o._ordering && _captures_by_id == o._captures_by_id;
+		}
 		else
 			return !_exists && !o._exists;
 	}
@@ -131,7 +136,6 @@ namespace lx
 		_ordering.push_back(std::make_pair(std::move(id), idx));
 	}
 
-	// TODO use assert_exists() in all methods
 	void Match::assert_exists(const EvalContext& env) const
 	{
 		if (!_exists)
