@@ -22,11 +22,17 @@ namespace lx
 			bool exists;
 
 			// TODO substate reference
+
+			size_t hash() const;
+			bool operator==(const CaptureFrame&) const = default;
 		};
 
 		std::vector<CaptureFrame> caps;
 
 		SearchState(size_t start);
+
+		size_t hash() const;
+		bool operator==(const SearchState&) const = default;
 	};
 
 	struct SearchContext
@@ -160,6 +166,9 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+
+	private:
+		std::vector<SearchState> repeated(const SearchContext& context, const SearchState& in, const int reps) const;
 	};
 
 	enum class LookaroundMode
@@ -332,3 +341,9 @@ namespace lx
 		static Match materialize(const EvalContext& env, const Snippet& snippet, SearchState&& state);
 	};
 }
+
+template<>
+struct std::hash<lx::SearchState>
+{
+	size_t operator()(const lx::SearchState&) const;
+};

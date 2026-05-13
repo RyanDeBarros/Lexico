@@ -9,6 +9,47 @@ namespace lx
 		: start(start), pos(start)
 	{
 	}
+	
+	// TODO move to util
+	static void hash_combine(std::size_t& hash, std::size_t value)
+	{
+		hash ^= value + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+	}
+
+	size_t SearchState::hash() const
+	{
+		size_t h = 0;
+		hash_combine(h, std::hash<size_t>{}(start));
+		hash_combine(h, std::hash<size_t>{}(pos));
+		for (const CaptureFrame& cap : caps)
+			hash_combine(h, cap.hash());
+		return h;
+	}
+
+	size_t SearchState::CaptureFrame::hash() const
+	{
+		size_t h = 0;
+		hash_combine(h, std::hash<size_t>{}(start));
+		hash_combine(h, std::hash<size_t>{}(length));
+		hash_combine(h, capid.hash());
+		hash_combine(h, std::hash<bool>{}(exists));
+		return h;
+	}
+
+	static std::vector<SearchState> remove_duplicates(std::vector<SearchState>&& outcomes)
+	{
+		std::unordered_set<SearchState> seen;
+		std::vector<SearchState> unique;
+		for (SearchState& state : outcomes)
+		{
+			if (!seen.count(state))
+			{
+				seen.insert(state);
+				unique.push_back(std::move(state));
+			}
+		}
+		return unique;
+	}
 
 	template<std::derived_from<SubpatternNode> T, typename... Args>
 	static T& clone_base(const T* from, NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena, Args&&... args)
@@ -207,7 +248,6 @@ namespace lx
 
 	std::vector<SearchState> SubpatternCatenation::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO use greedy bit?
 		std::vector<SearchState> frontier;
 		frontier.push_back(in);
 		for (const SubpatternNode* element : _array)
@@ -220,7 +260,8 @@ namespace lx
 			}
 			frontier = std::move(new_frontier);
 		}
-		return frontier;
+
+		return remove_duplicates(std::move(frontier));
 	}
 
 	SubpatternNode& SubpatternDisjunction::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -232,14 +273,26 @@ namespace lx
 
 	std::vector<SearchState> SubpatternDisjunction::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO use greedy bit?
 		std::vector<SearchState> outcomes;
-		for (const SubpatternNode* choice : _array)
+
+		if (context.greedy)
 		{
-			std::vector<SearchState> result = choice->branches(context, in);
-			outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+			for (auto it = _array.begin(); it != _array.end(); ++it)
+			{
+				std::vector<SearchState> result = (*it)->branches(context, in);
+				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+			}
 		}
-		return outcomes;
+		else
+		{
+			for (auto it = _array.rbegin(); it != _array.rend(); ++it)
+			{
+				std::vector<SearchState> result = (*it)->branches(context, in);
+				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+			}
+		}
+
+		return remove_duplicates(std::move(outcomes));
 	}
 
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
@@ -262,8 +315,15 @@ namespace lx
 
 	std::vector<SearchState> SubpatternException::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return { in };
+		std::vector<SearchState> outcomes = _subject->branches(context, in);
+		std::vector<SearchState> without = _exception->branches(context, in);
+		std::unordered_set<SearchState> forbidden(std::make_move_iterator(without.begin()), std::make_move_iterator(without.end()));
+
+		std::vector<SearchState> keep;
+		for (SearchState& outcome : outcomes)
+			if (!forbidden.count(outcome))
+				keep.push_back(std::move(outcome));
+		return keep;
 	}
 
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
@@ -273,8 +333,47 @@ namespace lx
 
 	std::vector<SearchState> SubpatternRepetition::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return { in };
+		const int min = _range.min() ? *_range.min() : 0;
+		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
+		if (min > max)
+			return {};
+
+		std::vector<SearchState> outcomes;
+		if (context.greedy)
+		{
+			for (int reps = max; reps >= min; --reps)
+			{
+				std::vector<SearchState> result = repeated(context, in, reps);
+				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+			}
+		}
+		else
+		{
+			for (int reps = min; reps <= max; ++reps)
+			{
+				std::vector<SearchState> result = repeated(context, in, reps);
+				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
+			}
+		}
+
+		return remove_duplicates(std::move(outcomes));
+	}
+
+	std::vector<SearchState> SubpatternRepetition::repeated(const SearchContext& context, const SearchState& in, const int reps) const
+	{
+		std::vector<SearchState> frontier;
+		frontier.push_back(in);
+		for (size_t i = 0; i < reps; ++i)
+		{
+			std::vector<SearchState> new_frontier;
+			for (const SearchState& state : frontier)
+			{
+				std::vector<SearchState> intermediate = _subject->branches(context, state);
+				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
+			}
+			frontier = std::move(new_frontier);
+		}
+		return frontier;
 	}
 
 	static IRange simple_repeat_range(PatternSimpleRepeatOperator op)
@@ -364,8 +463,12 @@ namespace lx
 
 	std::vector<SearchState> SubpatternOptional::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return { in };
+		std::vector<SearchState> outcomes = _optional->branches(context, in);
+		if (context.greedy)
+			outcomes.push_back(in);
+		else
+			outcomes.insert(outcomes.begin(), in);
+		return outcomes;
 	}
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -804,4 +907,9 @@ namespace lx
 		}
 		return match;
 	}
+}
+
+size_t std::hash<lx::SearchState>::operator()(const lx::SearchState& s) const
+{
+	return s.hash();
 }
