@@ -111,36 +111,22 @@ namespace lx
 		case BuiltinSymbol::Alphanumeric:
 		{
 			// TODO Don't use massive disjunctions like this internally. Define SubpatternIRange, SubpatternSRange, and SubpatternBuiltin.
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = 'a'; i <= 'z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
-			for (int i = 'A'; i <= 'Z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
-			for (int i = '0'; i <= '9'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			ptn.make_root<SubpatternSRange>(SRange(std::nullopt, std::nullopt));
 			break;
 		}
 		case BuiltinSymbol::Digit:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = '0'; i <= '9'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			ptn.make_root<SubpatternSRange>(SRange('0', '9'));
 			break;
 		}
 		case BuiltinSymbol::Letter:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = 'a'; i <= 'z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
-			for (int i = 'A'; i <= 'Z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			ptn.make_root<SubpatternSRange>(SRange('a', 'Z'));
 			break;
 		}
 		case BuiltinSymbol::Lowercase:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = 'a'; i <= 'z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			ptn.make_root<SubpatternSRange>(SRange('a', 'z'));
 			break;
 		}
 		case BuiltinSymbol::Newline:
@@ -160,20 +146,13 @@ namespace lx
 		}
 		case BuiltinSymbol::Uppercase:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = 'A'; i <= 'Z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			ptn.make_root<SubpatternSRange>(SRange('A', 'Z'));
 			break;
 		}
 		case BuiltinSymbol::Varname:
 		{
 			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (int i = 'a'; i <= 'z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
-			for (int i = 'A'; i <= 'Z'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
-			for (int i = '0'; i <= '9'; ++i)
-				sub.append(ptn.make_node<SubpatternChar>(i));
+			sub.append(ptn.make_node<SubpatternSRange>(SRange(std::nullopt, std::nullopt)));
 			sub.append(ptn.make_node<SubpatternChar>('_'));
 			break;
 		}
@@ -297,7 +276,7 @@ namespace lx
 			SearchContext context{ .env = env, .text = snippet.page_content() };
 			for (size_t i = 0; i <= context.text.size(); ++i)
 			{
-				std::vector<SearchState> states = _root->branches(context, SearchState(i));
+				std::vector<SearchState> states = _root->match(context, SearchState(i));
 				// TODO optimize by exiting early in branches() if searching -> put in SearchContext?
 				matches.push_back(env, env.runtime.unbound_variable(std::move(states[0]).materialize(env, snippet)));
 			}
@@ -313,16 +292,11 @@ namespace lx
 			SearchContext context{ .env = env, .text = snippet.page_content() };
 			for (size_t i = 0; i <= context.text.size(); ++i)
 			{
-				std::vector<SearchState> states = _root->branches(context, SearchState(i));
+				std::vector<SearchState> states = _root->match(context, SearchState(i));
 				for (SearchState& state : states)
 					matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet)));
 			}
 		}
 		return matches;
 	}
-}
-
-size_t std::hash<lx::SearchState>::operator()(const lx::SearchState& s) const
-{
-	return s.hash();
 }

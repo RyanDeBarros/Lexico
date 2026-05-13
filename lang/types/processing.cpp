@@ -193,7 +193,7 @@ namespace lx
 			if (lhs.ref().can_cast_implicit(DataType::Int()) && rhs.ref().can_cast_implicit(DataType::Int()))
 				return env.runtime.unbound_variable(IRange(std::move(lhs).consume_as<Int>(env).value(), std::move(rhs).consume_as<Int>(env).value()));
 			else if (lhs.ref().can_cast_implicit(DataType::String()) && rhs.ref().can_cast_implicit(DataType::String()))
-				return env.runtime.unbound_variable(SRange(std::move(lhs).consume_as<String>(env).value(), std::move(rhs).consume_as<String>(env).value()));
+				return env.runtime.unbound_variable(SRange(std::move(lhs).consume_as<String>(env).value(), env.segment, std::move(rhs).consume_as<String>(env).value(), env.segment));
 			else
 				break;
 		}

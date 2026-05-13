@@ -6,10 +6,56 @@
 
 namespace lx
 {
-	static constexpr int LOWER_A = 'a';
-	static constexpr int LOWER_Z = 'z';
-	static constexpr int UPPER_A = 'A';
-	static constexpr int UPPER_Z = 'Z';
+	constexpr unsigned char MIN_RANGE_CHAR = 1;
+	constexpr unsigned char MAX_RANGE_CHAR = 60;
+
+	static unsigned char to_range_char(char chr)
+	{
+		if (chr >= '0' && chr <= '9')
+			return chr - '0' + 1;
+		else if (chr >= 'a' && chr <= 'z')
+			return chr - 'a' + 11;
+		else if (chr >= 'A' && chr <= 'Z')
+			return chr - 'A' + 36;
+		else
+			return 0;
+	}
+
+	static char from_range_char(unsigned char index)
+	{
+		if (index >= 1 && index <= 10)
+			return index - 1 + '0';
+		else if (index >= 11 && index <= 35)
+			return index - 11 + 'a';
+		else if (index >= 36 && index <= 60)
+			return index - 36 + 'A';
+		else
+			return '\0';
+	}
+
+	static char upper_bound(char min)
+	{
+		if (min >= '0' && min <= '9')
+			return '9';
+		else if (min >= 'a' && min <= 'z')
+			return 'z';
+		else if (min >= 'A' && min <= 'Z')
+			return 'Z';
+		else
+			return '\0';
+	}
+
+	static char lower_bound(char max)
+	{
+		if (max >= '0' && max <= '9')
+			return '0';
+		else if (max >= 'a' && max <= 'z')
+			return 'a';
+		else if (max >= 'A' && max <= 'Z')
+			return 'A';
+		else
+			return '\0';
+	}
 
 	SRange::SRange(std::optional<char> min, std::optional<char> max)
 		: _min(min), _max(max)
@@ -27,10 +73,10 @@ namespace lx
 			else
 				throw LxError(ErrorType::Runtime, ss.str());
 		}
-		else if (m[0] < LOWER_A || (m[0] > LOWER_Z && m[0] < UPPER_A) || m[0] > UPPER_Z)
+		else if (to_range_char(m[0]) == 0)
 		{
 			std::stringstream ss;
-			ss << "\"" << m[0] << "\" out of range \"a-z\" and \"A-Z\"";
+			ss << "\"" << m[0] << "\" is not a valid range character (must be \"0\"-\"9\", \"a\"-\"z\" and \"A\"-\"Z\"";
 			if (segment)
 				throw LxError::segment_error(*segment, ErrorType::Runtime, ss.str());
 			else
@@ -70,18 +116,6 @@ namespace lx
 			throw LxErrorList(errors);
 	}
 	
-	SRange::SRange(std::optional<std::string> min, std::optional<std::string> max)
-		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
-	{
-		assert_valid_srange(min, nullptr, max, nullptr);
-	}
-
-	SRange::SRange(std::optional<std::string_view> min, std::optional<std::string_view> max)
-		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
-	{
-		assert_valid_srange(min, nullptr, max, nullptr);
-	}
-
 	SRange::SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment)
 		: _min(min && !min->empty() ? std::make_optional((*min)[0]) : std::nullopt), _max(max && !max->empty() ? std::make_optional((*max)[0]) : std::nullopt)
 	{
@@ -99,6 +133,8 @@ namespace lx
 		return DataType::SRange();
 	}
 
+	// TODO cast to list
+
 	TypeVariant SRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
@@ -110,9 +146,7 @@ namespace lx
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			for (char c : string())
-				sub.append(ptn.make_node<SubpatternChar>(c));
+			ptn.make_root<SubpatternSRange>(*this);
 			return ptn;
 		}
 		case SimpleType::Void:
@@ -140,6 +174,8 @@ namespace lx
 		}
 		else if (_max)
 			ss << "max " << *_max;
+		else
+			ss << "full " << data_type();
 		ss << '>';
 	}
 
@@ -163,72 +199,60 @@ namespace lx
 	{
 		return _min == o._min && _max == o._max;
 	}
-
-	static constexpr bool is_lower(char c)
+	
+	static size_t range_iterlen(char min, char max)
 	{
-		return c <= LOWER_Z;
-	}
-
-	static size_t range_iterlen(int min, int max)
-	{
-		return static_cast<size_t>(max - min + 1);
+		unsigned char m1 = to_range_char(min);
+		unsigned char m2 = to_range_char(max);
+		if (m1 > 0 && m2 > 0)
+			return static_cast<size_t>(m2 - m1 + 1);
+		else
+			return 0;
 	}
 
 	size_t SRange::iterlen(const EvalContext& env) const
 	{
 		if (!_min && !_max)
-			return 0;
+			return MAX_RANGE_CHAR - MIN_RANGE_CHAR + 1;
 
 		if (_min && !_max)
-			return range_iterlen(*_min, is_lower(*_min) ? 'z' : 'Z');
+			return range_iterlen(*_min, upper_bound(*_min));
 
 		if (_max && !_min)
-			return range_iterlen(is_lower(*_max) ? 'a' : 'A', *_max);
+			return range_iterlen(lower_bound(*_max), *_max);
 
 		if (*_min <= *_max)
 			return range_iterlen(*_min, *_max);
-
-		if (is_lower(*_min))
-			return range_iterlen(*_min, 'z') + range_iterlen('A', *_max);
 		else
-			return range_iterlen(*_min, 'Z') + range_iterlen('a', *_max);
+			return range_iterlen(*_max, *_min);
 	}
 
-	static String to_string(size_t c)
+	static String to_string(char c, signed char off)
 	{
-		return String({ static_cast<char>(c) });
+		unsigned char m = to_range_char(c);
+		if (m > 0)
+			return String({ from_range_char(m + off) });
+		else
+			return String("");
 	}
 
 	DataPoint SRange::iterget(const EvalContext& env, size_t i) const
 	{
 		if (!_min && !_max)
-			return String("");
+			return String({ from_range_char(MIN_RANGE_CHAR + i) });
 
 		std::stringstream ss;
 
 		if (_min && !_max)
-			return to_string(*_min + i);
+			return to_string(*_min, i);
 
 		if (_max && !_min)
-			return to_string((is_lower(*_max) ? 'a' : 'A') + i);
+			return to_string(lower_bound(*_max), i);
 
 		if (*_min <= *_max)
-			return to_string(*_min + i);
-
-		if (is_lower(*_min))
-		{
-			if (i < range_iterlen(*_min, 'z'))
-				return to_string(*_min + i);
-			else
-				return to_string('A' + i - range_iterlen(*_min, 'z'));
-		}
+			return to_string(*_min, i);
 		else
-		{
-			if (i < range_iterlen(*_min, 'Z'))
-				return to_string(*_min + i);
-			else
-				return to_string('a' + i - range_iterlen(*_min, 'Z'));
-		}
+			return to_string(*_min, -i);
 	}
 
 	std::optional<char> SRange::min() const
@@ -241,32 +265,49 @@ namespace lx
 		return _max;
 	}
 
-	static std::stringstream& append_range(std::stringstream& ss, int min, int max)
-	{
-		for (int i = min; i <= max; ++i)
-			ss << i;
-		return ss;
-	}
-
 	std::string SRange::string() const
 	{
-		if (!_min && !_max)
-			return "";
-
 		std::stringstream ss;
+		unsigned char min = MIN_RANGE_CHAR;
+		unsigned char max = MAX_RANGE_CHAR;
 
-		if (_min && !_max)
-			return append_range(ss, *_min, is_lower(*_min) ? 'z' : 'Z').str();
+		if (_min || _max)
+		{
+			min = to_range_char(_min ? *_min : lower_bound(*_max));
+			max = to_range_char(_max ? *_max : upper_bound(*_min));
+		}
 
-		if (_max && !_min)
-			return append_range(ss, is_lower(*_max) ? 'a' : 'A', *_max).str();
-
-		if (*_min <= *_max)
-			return append_range(ss, *_min, *_max).str();
-
-		if (is_lower(*_min))
-			return append_range(append_range(ss, *_min, 'z'), 'A', *_max).str();
+		if (min <= max)
+		{
+			for (unsigned char i = min; i <= max; ++i)
+				ss << from_range_char(i);
+		}
 		else
-			return append_range(append_range(ss, *_min, 'Z'), 'a', *_max).str();
+		{
+			for (unsigned char i = min; i >= max; --i)
+				ss << from_range_char(i);
+		}
+		return ss.str();
+	}
+
+	bool SRange::contains(char c) const
+	{
+		if (!_min && !_max)
+			return to_range_char(c) > 0;
+
+		unsigned char min = to_range_char(_min ? *_min : lower_bound(*_max));
+		unsigned char max = to_range_char(_max ? *_max : upper_bound(*_min));
+		const unsigned char ch = to_range_char(c);
+		return ch >= std::min(min, max) && ch <= std::max(min, max);
+	}
+
+	bool SRange::empty() const
+	{
+		if (!_min && !_max)
+			return false;
+
+		unsigned char min = to_range_char(_min ? *_min : lower_bound(*_max));
+		unsigned char max = to_range_char(_max ? *_max : upper_bound(*_min));
+		return min == 0 || max == 0;
 	}
 }

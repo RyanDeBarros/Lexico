@@ -2,6 +2,7 @@
 
 #include "types/primitives/capid.h"
 #include "types/primitives/irange.h"
+#include "types/primitives/srange.h"
 #include "page.h"
 
 #include <unordered_map>
@@ -268,6 +269,19 @@ namespace lx
 
 	public:
 		SubpatternGreedy(SubpatternNode& greedy);
+
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
+
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
+	};
+
+	class SubpatternSRange : public SubpatternNode
+	{
+		SRange _range;
+
+	public:
+		SubpatternSRange(SRange range);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;

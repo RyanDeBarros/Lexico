@@ -665,4 +665,46 @@ namespace lx
 		ctx.greedy = true;
 		return _greedy->match(ctx, in);
 	}
+
+	SubpatternSRange::SubpatternSRange(SRange range)
+		: _range(std::move(range))
+	{
+	}
+
+	SubpatternNode& SubpatternSRange::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternSRange>(this, conv, arena, _range);
+	}
+
+	bool SubpatternSRange::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternSRange*>(o))
+			return _range == ptr->_range;
+		else
+			return false;
+	}
+
+	std::vector<SearchState> SubpatternSRange::match(const SearchContext& context, const SearchState& in) const
+	{
+		if (in.pos >= context.text.size())
+		{
+			if (_range.empty())
+				return { in };
+			else
+				return {};
+		}
+		else if (_range.contains(context.text[in.pos]))
+		{
+			SearchState out = in;
+			++out.pos;
+			return { std::move(out) };
+		}
+		else
+			return {};
+	}
+}
+
+size_t std::hash<lx::SearchState>::operator()(const lx::SearchState& s) const
+{
+	return s.hash();
 }

@@ -15,6 +15,8 @@ namespace lx
 		return DataType::IRange();
 	}
 
+	// TODO cast to list
+
 	TypeVariant IRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::IRange)

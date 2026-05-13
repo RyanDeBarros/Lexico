@@ -87,6 +87,10 @@ namespace lx
 		ss << "]";
 	}
 
+	// TODO members to push, pop, insert, remove
+	// TODO '+' operator to combine lists
+	// TODO v0.2 compound assignment operators
+
 	StringMap<MemberSignature> List::members()
 	{
 		return {

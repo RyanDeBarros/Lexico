@@ -11,8 +11,6 @@ namespace lx
 
 	public:
 		SRange(std::optional<char> min, std::optional<char> max);
-		SRange(std::optional<std::string> min, std::optional<std::string> max);
-		SRange(std::optional<std::string_view> min, std::optional<std::string_view> max);
 		SRange(std::optional<std::string> min, const ScriptSegment* min_segment, std::optional<std::string> max, const ScriptSegment* max_segment);
 		SRange(std::optional<std::string_view> min, const ScriptSegment* min_segment, std::optional<std::string_view> max, const ScriptSegment* max_segment);
 
@@ -32,5 +30,9 @@ namespace lx
 		std::optional<char> min() const;
 		std::optional<char> max() const;
 		std::string string() const;
+		bool contains(char c) const;
+		bool empty() const;
+
+		bool operator==(const SRange&) const = default;
 	};
 }
