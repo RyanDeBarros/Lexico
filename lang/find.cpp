@@ -1,6 +1,5 @@
 #include "find.h"
 
-#include "util.h"
 #include "runtime.h"
 #include "types/evalcontext.h"
 #include "types/primitives/include.h"
@@ -12,25 +11,15 @@ namespace lx
 	{
 	}
 
-	size_t SearchState::hash() const
-	{
-		size_t h = 0;
-		h = hash_combine(h, std::hash<size_t>{}(start));
-		h = hash_combine(h, std::hash<size_t>{}(pos));
-		for (const auto& [capid, list] : *caps)
-		{
-			h = hash_combine(h, capid.hash());
-			h = hash_combine(h, list.hash());
-		}
-		return h;
-	}
-
-	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet) &&
+	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&
 	{
 		Match match(snippet, start, pos - start);
-		for (auto& [capid, list] : *caps)
-			for (auto& capture : std::move(list).materialize(env, snippet))
-				match.add_capture(env, CapId(capid), std::move(capture));
+		for (auto& list : *caps)
+		{
+			if (list)
+				for (Cap& capture : std::move(*list).materialize(env, snippet, context))
+					match.add_capture(env, context.from_local(list->capid), std::move(capture));
+		}
 		return match;
 	}
 
@@ -39,46 +28,45 @@ namespace lx
 	{
 	}
 
-	size_t CaptureFrame::hash() const
-	{
-		size_t h = 0;
-		h = hash_combine(h, std::hash<size_t>{}(start));
-		h = hash_combine(h, std::hash<size_t>{}(length));
-		h = hash_combine(h, substate.hash());
-		return h;
-	}
-
-	size_t CaptureList::hash() const
-	{
-		size_t h = 0;
-		h = hash_combine(h, capid.hash());
-		for (const auto& cap : frames)
-			h = hash_combine(h, cap.hash());
-		return h;
-	}
-
-	std::vector<Cap> CaptureList::materialize(const EvalContext& env, const Snippet& snippet) &&
+	std::vector<Cap> CaptureList::materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&
 	{
 		std::vector<Cap> caps;
-		for (auto& cap : frames)
+		for (CaptureFrame& cap : frames)
 			caps.emplace_back(env, snippet, static_cast<unsigned int>(cap.start), static_cast<unsigned int>(cap.length),
-				env.runtime.unbound_variable(std::move(cap.substate).materialize(env, snippet)));
+				env.runtime.unbound_variable(std::move(cap.substate).materialize(env, snippet, context)));
 		return caps;
 	}
 
-	static std::vector<SearchState> remove_duplicates(std::vector<SearchState>&& outcomes)
+	SearchContext::SearchContext(const EvalContext& env, const std::string_view text)
+		: env(env), text(text), greedy(true), local_capids(std::make_shared<std::unordered_map<CapId, unsigned int>>()),
+		reverse_lut(std::make_shared<std::unordered_map<unsigned int, CapId>>())
 	{
-		std::unordered_set<SearchState> seen;
-		std::vector<SearchState> unique;
-		for (SearchState& state : outcomes)
+	}
+
+	bool SearchContext::capid_exists(const CapId& capid) const
+	{
+		return local_capids->contains(capid);
+	}
+
+	unsigned int SearchContext::local_capid(const CapId& capid) const
+	{
+		auto it = local_capids->insert(std::make_pair(capid, static_cast<unsigned int>(local_capids->size())));
+		if (it.second)
+			reverse_lut->insert(std::make_pair(it.first->second, it.first->first));
+		return it.first->second;
+	}
+
+	CapId SearchContext::from_local(unsigned int capid) const
+	{
+		auto it = reverse_lut->find(capid);
+		if (it != reverse_lut->end())
+			return it->second;
+		else
 		{
-			if (!seen.contains(state))
-			{
-				seen.insert(state);
-				unique.push_back(std::move(state));
-			}
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": local capid not found";
+			throw LxError(ErrorType::Internal, ss.str());
 		}
-		return unique;
 	}
 
 	template<std::derived_from<SubpatternNode> T, typename... Args>
@@ -567,22 +555,26 @@ namespace lx
 
 	struct CaptureYield : public MatchYield
 	{
-		CapId capid;
+		unsigned int capid;
 		size_t start;
 		MatchYield& downstream;
 
-		CaptureYield(CapId capid, size_t start, MatchYield& downstream)
-			: capid(std::move(capid)), start(start), downstream(downstream)
+		CaptureYield(const SearchContext& context, CapId capid, size_t start, MatchYield& downstream)
+			: capid(context.local_capid(capid)), start(start), downstream(downstream)
 		{
 		}
 
 		bool operator()(SearchState state) override
 		{
-			if (!state.caps->contains(capid))
+			if (capid >= state.caps->size() || !(*state.caps)[capid].has_value())
 			{
 				SearchState substate = state;
 				substate.start = start;
-				state.caps->insert(std::make_pair(capid, CaptureList{ .capid = capid, .frames = { CaptureFrame(substate) } }));
+
+				if (capid >= state.caps->size())
+					state.caps->resize(static_cast<size_t>(capid + 1));
+
+				(*state.caps)[capid] = CaptureList{ .capid = capid, .frames = { CaptureFrame(substate) } };
 				return downstream(std::move(state));
 			}
 			else
@@ -592,7 +584,7 @@ namespace lx
 
 	bool SubpatternCapture::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		CaptureYield upstream(_capid, in.pos, yield);
+		CaptureYield upstream(context, _capid, in.pos, yield);
 		return _captured->match(context, in, upstream);
 	}
 
@@ -616,12 +608,15 @@ namespace lx
 
 	bool SubpatternBackRef::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		SearchState out = in;
-		auto it = out.caps->find(_capid);
-		if (it == out.caps->end())
+		if (!context.capid_exists(_capid))
 			return false;
 
-		CaptureList& caplist = it->second;
+		unsigned int capid = context.local_capid(_capid);
+		if (capid >= in.caps->size() || !(*in.caps)[capid].has_value())
+			return false;
+
+		SearchState out = in;
+		CaptureList& caplist = (*out.caps)[capid].value();
 		// TODO v0.2 if caplist is recursive -> recompute instead of matching initial frame exactly
 		const CaptureFrame& initial_frame = caplist.frames[0];
 		std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
@@ -799,9 +794,4 @@ namespace lx
 		else
 			return false;
 	}
-}
-
-size_t std::hash<lx::SearchState>::operator()(const lx::SearchState& s) const
-{
-	return s.hash();
 }

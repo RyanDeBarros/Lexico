@@ -9,23 +9,19 @@
 
 namespace lx
 {
-	// TODO for optimization, don't use CapId here. Put a local capture id system in SearchContext. Then in materialization, translate to runtime capture ids. That way, locally can use std::vector<std::optional<CaptureList>> instead of std::unordered_map<CapId, CaptureList> + hashing.
-
 	struct CaptureList;
+	struct SearchContext;
 
 	struct SearchState
 	{
 		size_t start = 0;
 		size_t pos = 0;
 
-		CowPtr<std::unordered_map<CapId, CaptureList>> caps;
+		CowPtr<std::vector<std::optional<CaptureList>>> caps;
 
 		SearchState(size_t start);
 
-		size_t hash() const;
-		bool operator==(const SearchState&) const = default;
-
-		Match materialize(const EvalContext& env, const Snippet& snippet)&&;
+		Match materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&;
 	};
 
 	struct CaptureFrame
@@ -35,20 +31,14 @@ namespace lx
 		SearchState substate;
 
 		CaptureFrame(const SearchState& substate);
-
-		size_t hash() const;
-		bool operator==(const CaptureFrame&) const = default;
 	};
 
 	struct CaptureList
 	{
-		CapId capid;
+		unsigned int capid;
 		std::vector<CaptureFrame> frames;
 
-		size_t hash() const;
-		bool operator==(const CaptureList&) const = default;
-
-		std::vector<Cap> materialize(const EvalContext& env, const Snippet& snippet) &&;
+		std::vector<Cap> materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&;
 	};
 
 	struct SearchContext
@@ -56,6 +46,14 @@ namespace lx
 		const EvalContext& env;
 		const std::string_view text;
 		bool greedy = true;
+		std::shared_ptr<std::unordered_map<CapId, unsigned int>> local_capids;
+		std::shared_ptr<std::unordered_map<unsigned int, CapId>> reverse_lut;
+
+		SearchContext(const EvalContext& env, const std::string_view text);
+
+		bool capid_exists(const CapId& capid) const;
+		unsigned int local_capid(const CapId& capid) const;
+		CapId from_local(unsigned int capid) const;
 	};
 
 	struct MatchYield
@@ -318,9 +316,3 @@ namespace lx
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 	};
 }
-
-template<>
-struct std::hash<lx::SearchState>
-{
-	size_t operator()(const lx::SearchState&) const;
-};

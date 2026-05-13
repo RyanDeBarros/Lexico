@@ -21,9 +21,4 @@ namespace lx
 	{
 		return a == b;
 	}
-
-	size_t hash_combine(size_t hash, size_t value)
-	{
-		return hash ^ (value + 0x9e3779b9 + (hash << 6) + (hash >> 2));
-	}
 }
