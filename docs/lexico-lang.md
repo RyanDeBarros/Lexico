@@ -23,7 +23,6 @@ TODO v0.3 reverse searching/patterns
 
 | Attribute | Type | Description |
 | - | - | - |
-| `exists` | `bool` | `true` if the group was captured, `false` otherwise |
 | `start` | `int` | starting position |
 | `len` | `int` | length of group |
 | `str` | `string` | string of characters captured |
@@ -33,7 +32,6 @@ TODO v0.3 reverse searching/patterns
 
 | Attribute | Type | Description |
 | - | - | - |
-| `exists` | `bool` | `true` if the match exists, `false` otherwise |
 | `start` | `int` | starting position |
 | `len` | `int` | length of group |
 | `str` | `string` | character subtext as a string |
@@ -583,8 +581,8 @@ append capture !par2 ")"
 append "-", $digit repeat 3, "-", $digit repeat 4
 
 fn validate(match m) -> bool
-  let p1 = m[!par1].exists
-  let p2 = m[!par2].exists
+  let p1 = m[!par1].len > 0
+  let p2 = m[!par2].len > 0
   return p1 and p2 or not p1 and not p2
 end fn
 
@@ -919,8 +917,8 @@ append capture !sub $any*
 append capture !par2 optional ")"
 
 fn balanced(match m) -> bool
-  let p1 = m[!par1].exists
-  let p2 = m[!par2].exists
+  let p1 = m[!par1].len > 0
+  let p2 = m[!par2].len > 0
   
   if not p1
     if p2

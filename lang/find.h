@@ -8,23 +8,12 @@
 
 namespace lx
 {
+	struct CaptureFrame;
+
 	struct SearchState
 	{
 		size_t start = 0;
 		size_t pos = 0;
-
-		struct CaptureFrame
-		{
-			size_t start;
-			size_t length;
-			CapId capid;
-			bool exists;
-
-			// TODO substate reference
-
-			size_t hash() const;
-			bool operator==(const CaptureFrame&) const = default;
-		};
 
 		CowPtr<std::vector<CaptureFrame>> caps;
 
@@ -33,7 +22,20 @@ namespace lx
 		size_t hash() const;
 		bool operator==(const SearchState&) const = default;
 
-		Match materialize(const EvalContext& env, const Snippet& snippet) &&;
+		Match materialize(const EvalContext& env, const Snippet& snippet)&&;
+	};
+
+	struct CaptureFrame
+	{
+		size_t start;
+		size_t length;
+		CapId capid;
+		SearchState substate;
+
+		size_t hash() const;
+		bool operator==(const CaptureFrame&) const = default;
+
+		Cap materialize(const EvalContext& env, const Snippet& snippet)&&;
 	};
 
 	struct SearchContext

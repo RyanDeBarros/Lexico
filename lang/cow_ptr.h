@@ -96,13 +96,13 @@ namespace lx
 
 		const T* operator->() const
 		{
-			return _ptr;
+			return _ptr.get();
 		}
 
 		T* operator->()
 		{
 			detach();
-			return _ptr;
+			return _ptr.get();
 		}
 
 		bool operator==(const CowPtr<T>& other) const

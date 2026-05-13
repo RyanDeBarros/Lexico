@@ -6,10 +6,10 @@
 
 namespace lx
 {
-	Cap::Cap(const EvalContext& env, Snippet snippet, unsigned int start, unsigned int length, bool exists, std::optional<Variable> submatch)
-		: _snippet(std::move(snippet)), _start(start), _length(length), _exists(exists), _submatch(std::move(submatch))
+	Cap::Cap(const EvalContext& env, Snippet snippet, unsigned int start, unsigned int length, Variable submatch)
+		: _snippet(std::move(snippet)), _start(start), _length(length), _submatch(std::move(submatch))
 	{
-		if (_submatch && _submatch->ref().data_type() != DataType::Match())
+		if (_submatch.ref().data_type() != DataType::Match())
 			throw env.internal_error("Cap() submatch does not have type " + DataType::Match().repr());
 	}
 
@@ -48,7 +48,6 @@ namespace lx
 	StringMap<MemberSignature> Cap::members()
 	{
 		return {
-			{ constants::MEMBER_EXISTS, MemberSignature::make_data(constants::MEMBER_EXISTS, DataType::Bool()) },
 			{ constants::MEMBER_START, MemberSignature::make_data(constants::MEMBER_START, DataType::Int()) },
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
 			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
@@ -58,21 +57,14 @@ namespace lx
 
 	Variable Cap::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		if (member == constants::MEMBER_EXISTS)
-			return ctx.variable(Bool(_exists));
-		else if (member == constants::MEMBER_START)
+		if (member == constants::MEMBER_START)
 			return ctx.variable(Int(_snippet.absolute(_start)));
 		else if (member == constants::MEMBER_LEN)
 			return ctx.variable(Int(_length));
 		else if (member == constants::MEMBER_STR)
 			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
 		else if (member == constants::MEMBER_SUB)
-		{
-			if (_submatch)
-				return *_submatch;
-			else
-				return ctx.variable(Match(_snippet, _start, _length, false));
-		}
+			return _submatch;
 
 		ctx.throw_no_data_member(member);
 	}
@@ -89,22 +81,6 @@ namespace lx
 
 	bool Cap::equals(const EvalContext& env, const Cap& o) const
 	{
-		if (_exists && o._exists)
-		{
-			if (!_snippet.placement_equals(o._snippet, _start, _length, o._start, o._length))
-				return false;
-
-			if (_submatch && o._submatch)
-				return _submatch->ref().get<Match>().equals(env, o._submatch->ref().get<Match>());
-			else
-				return !_submatch && !o._submatch;
-		}
-		else
-			return !_exists && !o._exists;
-	}
-
-	bool Cap::exists() const
-	{
-		return _exists;
+		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _submatch.ref().get<Match>().equals(env, o._submatch.ref().get<Match>());
 	}
 }

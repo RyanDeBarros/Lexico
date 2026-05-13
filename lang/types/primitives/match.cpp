@@ -6,8 +6,8 @@
 
 namespace lx
 {
-	Match::Match(Snippet snippet, unsigned int start, unsigned int length, bool exists)
-		: _snippet(std::move(snippet)), _start(start), _length(length), _exists(exists)
+	Match::Match(Snippet snippet, unsigned int start, unsigned int length)
+		: _snippet(std::move(snippet)), _start(start), _length(length)
 	{
 	}
 
@@ -43,7 +43,6 @@ namespace lx
 	StringMap<MemberSignature> Match::members()
 	{
 		return {
-			{ constants::MEMBER_EXISTS, MemberSignature::make_data(constants::MEMBER_EXISTS, DataType::Bool()) },
 			{ constants::MEMBER_START, MemberSignature::make_data(constants::MEMBER_START, DataType::Int()) },
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
 			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
@@ -55,23 +54,12 @@ namespace lx
 
 	Variable Match::data_member(VarContext& ctx, const std::string_view member) const
 	{
-		if (member == constants::MEMBER_EXISTS)
-			return ctx.variable(Bool(_exists));
-		else if (member == constants::MEMBER_START)
-		{
-			assert_exists(ctx.env);
+		if (member == constants::MEMBER_START)
 			return ctx.variable(Int(_snippet.absolute(_start)));
-		}
 		else if (member == constants::MEMBER_LEN)
-		{
-			assert_exists(ctx.env);
 			return ctx.variable(Int(_length));
-		}
 		else if (member == constants::MEMBER_STR)
-		{
-			assert_exists(ctx.env);
 			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
-		}
 
 		ctx.throw_no_data_member(member);
 	}
@@ -84,7 +72,6 @@ namespace lx
 			{
 				if (args[0].ref().data_type() == DataType::CapId())
 				{
-					assert_exists(ctx.env);
 					auto it = _captures_by_id.find(args[0].ref().get<CapId>());
 					if (it != _captures_by_id.end())
 						return it->second;
@@ -104,26 +91,16 @@ namespace lx
 
 	bool Match::equals(const EvalContext& env, const Match& o) const
 	{
-		if (_exists && o._exists)
-		{
-			if (!_snippet.placement_equals(o._snippet, _start, _length, o._start, o._length))
-				return false;
-
-			return _ordering == o._ordering && _captures_by_id == o._captures_by_id;
-		}
-		else
-			return !_exists && !o._exists;
+		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _ordering == o._ordering && _captures_by_id == o._captures_by_id;
 	}
 
 	size_t Match::iterlen(const EvalContext& env) const
 	{
-		assert_exists(env);
 		return _ordering.size();
 	}
 
 	DataPoint Match::iterget(const EvalContext& env, size_t i) const
 	{
-		assert_exists(env);
 		auto it = _captures_by_id.find(_ordering[i].first);
 		if (it != _captures_by_id.end())
 			return it->second.ref().iterget(env, _ordering[i].second);
@@ -137,8 +114,6 @@ namespace lx
 
 	void Match::add_capture(const EvalContext& env, CapId&& id, Cap&& cap)
 	{
-		assert_exists(env);
-
 		auto it = _captures_by_id.find(id);
 		if (it == _captures_by_id.end())
 			it = _captures_by_id.try_emplace(id, env.runtime.unbound_variable(List(env, DataType::Cap()))).first;
@@ -147,17 +122,6 @@ namespace lx
 		size_t idx = list.size();
 		list.push(env.runtime.unbound_variable(std::move(cap)));
 		_ordering.push_back(std::make_pair(std::move(id), idx));
-	}
-
-	bool Match::exists() const
-	{
-		return _exists;
-	}
-
-	void Match::assert_exists(const EvalContext& env) const
-	{
-		if (!_exists)
-			throw env.runtime_error("match does not exist: check .exists before using");
 	}
 
 	Highlight Match::highlight_range() const

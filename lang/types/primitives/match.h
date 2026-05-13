@@ -15,13 +15,12 @@ namespace lx
 		Snippet _snippet;
 		unsigned int _start = 0;
 		unsigned int _length = 0;
-		bool _exists;
 
 		std::unordered_map<CapId, Variable> _captures_by_id;
 		std::vector<std::pair<CapId, size_t>> _ordering;
 
 	public:
-		Match(Snippet snippet, unsigned int start, unsigned int length, bool exists);
+		Match(Snippet snippet, unsigned int start, unsigned int length);
 
 		static DataType data_type();
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
@@ -38,8 +37,6 @@ namespace lx
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
 		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
-		bool exists() const;
-		void assert_exists(const EvalContext& env) const;
 		Highlight highlight_range() const;
 	};
 }

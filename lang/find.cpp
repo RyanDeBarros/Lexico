@@ -1,6 +1,8 @@
 #include "find.h"
 
 #include "util.h"
+#include "runtime.h"
+#include "types/evalcontext.h"
 #include "types/primitives/include.h"
 
 namespace lx
@@ -20,29 +22,27 @@ namespace lx
 		return h;
 	}
 
-	size_t SearchState::CaptureFrame::hash() const
+	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet) &&
+	{
+		Match match(snippet, start, pos - start);
+		for (CaptureFrame& capture : *caps)
+			match.add_capture(env, std::move(capture.capid), std::move(capture).materialize(env, snippet));
+		return match;
+	}
+
+	size_t CaptureFrame::hash() const
 	{
 		size_t h = 0;
 		h = hash_combine(h, std::hash<size_t>{}(start));
 		h = hash_combine(h, std::hash<size_t>{}(length));
 		h = hash_combine(h, capid.hash());
-		h = hash_combine(h, std::hash<bool>{}(exists));
+		h = hash_combine(h, substate.hash());
 		return h;
 	}
 
-	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet) &&
+	Cap CaptureFrame::materialize(const EvalContext& env, const Snippet& snippet) &&
 	{
-		Match match(snippet, start, pos - start, true);
-		for (CaptureFrame& capture : *caps)
-		{
-			if (capture.exists)
-			{
-				// TODO use substate.materialize(env, snippet) to create submatch object if substate exists
-				Cap cap(env, snippet, capture.start, capture.length, capture.exists, std::nullopt);
-				match.add_capture(env, std::move(capture.capid), std::move(cap));
-			}
-		}
-		return match;
+		return Cap(env, snippet, start, length, env.runtime.unbound_variable(std::move(substate).materialize(env, snippet)));
 	}
 
 	static std::vector<SearchState> remove_duplicates(std::vector<SearchState>&& outcomes)
@@ -234,7 +234,7 @@ namespace lx
 			if (in.pos != 0)
 				return {};
 			else
-				return { in }; // TODO lots of copies of SearchStates being made throughout. Use CowPtr<std::vector<CaptureFrame>> for caps?
+				return { in };
 		}
 		case PatternMark::End:
 		{
@@ -537,8 +537,17 @@ namespace lx
 
 	std::vector<SearchState> SubpatternCapture::branches(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return { in };
+		std::vector<SearchState> inner = _captured->branches(context, in);
+
+		for (SearchState& state : inner)
+		{
+			SearchState substate = state;
+			substate.start = in.pos;
+			CaptureFrame frame{ .start = substate.start, .length = substate.pos - substate.start, .capid = _capid, .substate = substate };
+			state.caps->push_back(std::move(frame));
+		}
+
+		return inner;
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
