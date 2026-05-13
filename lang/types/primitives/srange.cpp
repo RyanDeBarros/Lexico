@@ -2,6 +2,7 @@
 
 #include "include.h"
 #include "runtime.h"
+#include "find.h"
 
 namespace lx
 {

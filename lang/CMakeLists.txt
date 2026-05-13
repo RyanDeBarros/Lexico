@@ -11,6 +11,7 @@ set(LANG_SOURCES
 	token.cpp
 	ast.cpp
 	operations.cpp
+	find.cpp
 	symbols.cpp
 	page.cpp
 	highlights.cpp

@@ -3,6 +3,7 @@
 #include "include.h"
 #include "runtime.h"
 #include "constants.h"
+#include "find.h"
 
 namespace lx
 {

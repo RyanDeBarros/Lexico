@@ -1,6 +1,7 @@
 #include "processing.h"
 
 #include "evalcontext.h"
+#include "find.h"
 
 namespace lx
 {
