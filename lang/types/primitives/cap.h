@@ -27,5 +27,6 @@ namespace lx
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
 		void assign(const EvalContext& env, Cap&& o);
 		bool equals(const EvalContext& env, const Cap& o) const;
+		String str() const;
 	};
 }

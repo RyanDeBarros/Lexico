@@ -36,6 +36,7 @@ TODO v0.3 reverse searching/patterns
 | `len` | `int` | length of group |
 | `str` | `string` | character subtext as a string |
 | `[capid]` | `list[cap]` | returns a capture list |
+| `str(capid)` | `string` | returns the string of characters captured by the capture id |
 
 ### `irange`
 
@@ -257,13 +258,9 @@ append $digit repeat 1 to 3
 
 pattern ageField
 append capture !age value  # named
-
-pattern weightField
-append "weight", "="
-append capture ! value  # unnamed
 ```
 
-Note that the data type of the capture group name is `capid`.
+Note that the data type of the capture group name is `capid`. Each capture id must be uniquely declared in a pattern.
 
 ### Back-referencing
 
@@ -478,11 +475,11 @@ You can also query by index:
 
 ```
 pattern addition
-append capture ! $digit+
+append capture !1 $digit+
 
 pattern adder
 append $space*, "+", $space*
-append capture ! $digit+
+append capture !2 $digit+
 
 pattern addition
 append adder*
@@ -864,12 +861,12 @@ $2 $1
 
 ```
 pattern name
-append capture ! $alphanumeric+
+append capture !1 $alphanumeric+
 append ", "
-append capture ! $alphanumeric+
+append capture !2 $alphanumeric+
 
 fn switch(match m) -> string
-  return m[!][1].str + " " + m[!][0].str
+  return m[!2][0].str + " " + m[!1][0].str
 end fn
 
 search name
@@ -890,14 +887,14 @@ $3/$2/$1
 #### lexico
 ```
 pattern date
-append capture ! $digit repeat 4
+append capture !1 $digit repeat 4
 append "-"
-append capture ! $digit repeat 2
+append capture !2 $digit repeat 2
 append "-"
-append capture ! $digit repeat 2
+append capture !3 $digit repeat 2
 
 fn rewrite(match m) -> string
-  return m[!][2].str + "/" + m[!][1].str + "/" + m[!][0].str
+  return m[!3][0].str + "/" + m[!2][0].str + "/" + m[!1][0].str
 end fn
 
 search date

@@ -62,7 +62,7 @@ namespace lx
 		else if (member == constants::MEMBER_LEN)
 			return ctx.variable(Int(_length));
 		else if (member == constants::MEMBER_STR)
-			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
+			return ctx.variable(str());
 		else if (member == constants::MEMBER_SUB)
 			return _submatch;
 
@@ -82,5 +82,10 @@ namespace lx
 	bool Cap::equals(const EvalContext& env, const Cap& o) const
 	{
 		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _submatch.ref().get<Match>().equals(env, o._submatch.ref().get<Match>());
+	}
+
+	String Cap::str() const
+	{
+		return String(std::string(_snippet.page_content().substr(_start, _length)));
 	}
 }

@@ -47,7 +47,10 @@ namespace lx
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
 			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
+				{ .return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
+			}) },
+			{ constants::MEMBER_STR, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+				{ .return_type = DataType::String(), .arg_types = { DataType::CapId() } },
 			}) },
 		};
 	}
@@ -77,6 +80,20 @@ namespace lx
 						return it->second;
 					else
 						return ctx.variable(List(ctx.env, DataType::Cap()));
+				}
+			}
+		}
+		else if (method == constants::MEMBER_STR)
+		{
+			if (args.size() == 1)
+			{
+				if (args[0].ref().data_type() == DataType::CapId())
+				{
+					auto it = _captures_by_id.find(args[0].ref().get<CapId>());
+					if (it != _captures_by_id.end())
+						return ctx.variable(it->second.ref().get<Cap>().str());
+					else
+						return ctx.variable(String(""));
 				}
 			}
 		}
