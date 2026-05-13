@@ -288,6 +288,27 @@ namespace lx
 
 		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
+
+	enum class BuiltinSubpattern
+	{
+		Newline,
+		Space,
+		Varname,
+		Whitespace,
+	};
+
+	class SubpatternBuiltin : public SubpatternNode
+	{
+		BuiltinSubpattern _type;
+
+	public:
+		SubpatternBuiltin(BuiltinSubpattern type);
+
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
+
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
+	};
 }
 
 template<>

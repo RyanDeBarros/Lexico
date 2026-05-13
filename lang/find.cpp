@@ -702,6 +702,84 @@ namespace lx
 		else
 			return {};
 	}
+
+	SubpatternBuiltin::SubpatternBuiltin(BuiltinSubpattern type)
+		: _type(type)
+	{
+	}
+
+	SubpatternNode& SubpatternBuiltin::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternBuiltin>(this, conv, arena, _type);
+	}
+
+	bool SubpatternBuiltin::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternBuiltin*>(o))
+			return _type == ptr->_type;
+		else
+			return false;
+	}
+
+	std::vector<SearchState> SubpatternBuiltin::match(const SearchContext& context, const SearchState& in) const
+	{
+		if (in.pos >= context.text.size())
+			return {};
+		
+		const char c = context.text[in.pos];
+		bool matches = false;
+
+		switch (_type)
+		{
+		case BuiltinSubpattern::Newline:
+			if (c == '\n')
+				matches = true;
+			else if (c == '\r')
+			{
+				if (in.pos + 1 < context.text.size() && context.text[in.pos + 1] == '\n')
+				{
+					SearchState out = in;
+					out.pos += 2;
+					return { std::move(out) };
+				}
+				else
+					matches = true;
+			}
+			break;
+		case BuiltinSubpattern::Space:
+			if (c == ' ' || c == '\t')
+				matches = true;
+			break;
+		case BuiltinSubpattern::Varname:
+			if (c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+				matches = true;
+			break;
+		case BuiltinSubpattern::Whitespace:
+			if (c == ' ' || c == '\t' || c == '\n')
+				matches = true;
+			else if (c == '\r')
+			{
+				if (in.pos + 1 < context.text.size() && context.text[in.pos + 1] == '\n')
+				{
+					SearchState out = in;
+					out.pos += 2;
+					return { std::move(out) };
+				}
+				else
+					matches = true;
+			}
+			break;
+		}
+
+		if (matches)
+		{
+			SearchState out = in;
+			++out.pos;
+			return { std::move(out) };
+		}
+		else
+			return {};
+	}
 }
 
 size_t std::hash<lx::SearchState>::operator()(const lx::SearchState& s) const

@@ -110,7 +110,6 @@ namespace lx
 		{
 		case BuiltinSymbol::Alphanumeric:
 		{
-			// TODO Don't use massive disjunctions like this internally. Define SubpatternIRange, SubpatternSRange, and SubpatternBuiltin.
 			ptn.make_root<SubpatternSRange>(SRange(std::nullopt, std::nullopt));
 			break;
 		}
@@ -131,17 +130,12 @@ namespace lx
 		}
 		case BuiltinSymbol::Newline:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			sub.append(ptn.make_node<SubpatternString>("\r\n"));
-			sub.append(ptn.make_node<SubpatternChar>('\n'));
-			sub.append(ptn.make_node<SubpatternChar>('\r'));
+			ptn.make_root<SubpatternBuiltin>(BuiltinSubpattern::Newline);
 			break;
 		}
 		case BuiltinSymbol::Space:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			sub.append(ptn.make_node<SubpatternChar>(' '));
-			sub.append(ptn.make_node<SubpatternChar>('\t'));
+			ptn.make_root<SubpatternBuiltin>(BuiltinSubpattern::Space);
 			break;
 		}
 		case BuiltinSymbol::Uppercase:
@@ -151,19 +145,12 @@ namespace lx
 		}
 		case BuiltinSymbol::Varname:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			sub.append(ptn.make_node<SubpatternSRange>(SRange(std::nullopt, std::nullopt)));
-			sub.append(ptn.make_node<SubpatternChar>('_'));
+			ptn.make_root<SubpatternBuiltin>(BuiltinSubpattern::Varname);
 			break;
 		}
 		case BuiltinSymbol::Whitespace:
 		{
-			auto& sub = ptn.make_root<SubpatternDisjunction>();
-			sub.append(ptn.make_node<SubpatternChar>(' '));
-			sub.append(ptn.make_node<SubpatternChar>('\t'));
-			sub.append(ptn.make_node<SubpatternString>("\r\n"));
-			sub.append(ptn.make_node<SubpatternChar>('\n'));
-			sub.append(ptn.make_node<SubpatternChar>('\r'));
+			ptn.make_root<SubpatternBuiltin>(BuiltinSubpattern::Whitespace);
 			break;
 		}
 		case BuiltinSymbol::Any:
