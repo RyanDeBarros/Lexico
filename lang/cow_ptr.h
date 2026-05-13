@@ -12,7 +12,10 @@ namespace lx
 		std::shared_ptr<size_t> _ref_count;
 
 	public:
-		CowPtr() = delete;
+		explicit CowPtr() requires std::default_initializable<T>
+			: _ptr(std::make_shared<T>()), _ref_count(std::make_shared<size_t>(1))
+		{
+		}
 
 		CowPtr(const CowPtr<T>& other)
 			: _ptr(other._ptr), _ref_count(other._ref_count)
@@ -100,6 +103,11 @@ namespace lx
 		{
 			detach();
 			return _ptr;
+		}
+
+		bool operator==(const CowPtr<T>& other) const
+		{
+			return this == &other || _ptr == other._ptr || *_ptr == *other._ptr;
 		}
 
 	private:

@@ -15,7 +15,7 @@ namespace lx
 		size_t h = 0;
 		h = hash_combine(h, std::hash<size_t>{}(start));
 		h = hash_combine(h, std::hash<size_t>{}(pos));
-		for (const CaptureFrame& cap : caps)
+		for (const CaptureFrame& cap : *caps)
 			h = hash_combine(h, cap.hash());
 		return h;
 	}
@@ -33,7 +33,7 @@ namespace lx
 	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet) &&
 	{
 		Match match(snippet, start, pos - start, true);
-		for (auto& capture : caps)
+		for (CaptureFrame& capture : *caps)
 		{
 			if (capture.exists)
 			{

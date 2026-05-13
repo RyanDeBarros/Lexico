@@ -26,7 +26,7 @@ namespace lx
 			bool operator==(const CaptureFrame&) const = default;
 		};
 
-		std::vector<CaptureFrame> caps;
+		CowPtr<std::vector<CaptureFrame>> caps;
 
 		SearchState(size_t start);
 
