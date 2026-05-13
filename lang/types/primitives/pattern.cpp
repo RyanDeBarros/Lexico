@@ -110,6 +110,7 @@ namespace lx
 		{
 		case BuiltinSymbol::Alphanumeric:
 		{
+			// TODO Don't use massive disjunctions like this internally. Define SubpatternIRange, SubpatternSRange, and SubpatternBuiltin.
 			auto& sub = ptn.make_root<SubpatternDisjunction>();
 			for (int i = 'a'; i <= 'z'; ++i)
 				sub.append(ptn.make_node<SubpatternChar>(i));

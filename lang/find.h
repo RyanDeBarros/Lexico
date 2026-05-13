@@ -70,7 +70,8 @@ namespace lx
 		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 		virtual bool equals(const SubpatternNode* o) const = 0;
 
-		virtual std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const = 0;
+		// TODO optimization: iterable generator of SearchStates rather than actually creating them or recursively calling match().
+		virtual std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const = 0;
 	};
 
 	class SubpatternArray : public SubpatternNode
@@ -100,7 +101,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 		char chr() const;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternString : public SubpatternNode
@@ -115,7 +116,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 		std::string_view string() const;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	enum class PatternMark
@@ -135,21 +136,21 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternCatenation : public SubpatternArray
 	{
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternDisjunction : public SubpatternArray
 	{
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternException : public SubpatternNode
@@ -163,7 +164,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternRepetition : public SubpatternNode
@@ -178,7 +179,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 
 	private:
 		std::vector<SearchState> repeated(const SearchContext& context, const SearchState& in, const int reps) const;
@@ -205,7 +206,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternOptional : public SubpatternNode
@@ -218,7 +219,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternCapture : public SubpatternNode
@@ -232,7 +233,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternBackRef : public SubpatternNode
@@ -245,7 +246,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternLazy : public SubpatternNode
@@ -258,7 +259,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 
 	class SubpatternGreedy : public SubpatternNode
@@ -271,7 +272,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+		std::vector<SearchState> match(const SearchContext& context, const SearchState& in) const override;
 	};
 }
 

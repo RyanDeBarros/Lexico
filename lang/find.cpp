@@ -160,7 +160,7 @@ namespace lx
 		return _ch;
 	}
 
-	std::vector<SearchState> SubpatternChar::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternChar::match(const SearchContext& context, const SearchState& in) const
 	{
 		if (in.pos >= context.text.size())
 			return {};
@@ -203,7 +203,7 @@ namespace lx
 		return _string;
 	}
 
-	std::vector<SearchState> SubpatternString::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternString::match(const SearchContext& context, const SearchState& in) const
 	{
 		if (in.pos >= context.text.size())
 			return {};
@@ -237,7 +237,7 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternMarker::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternMarker::match(const SearchContext& context, const SearchState& in) const
 	{
 		switch (_marker)
 		{
@@ -276,7 +276,7 @@ namespace lx
 		return node;
 	}
 
-	std::vector<SearchState> SubpatternCatenation::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternCatenation::match(const SearchContext& context, const SearchState& in) const
 	{
 		std::vector<SearchState> frontier;
 		frontier.push_back(in);
@@ -285,7 +285,7 @@ namespace lx
 			std::vector<SearchState> new_frontier;
 			for (const SearchState& state : frontier)
 			{
-				std::vector<SearchState> intermediate = element->branches(context, state);
+				std::vector<SearchState> intermediate = element->match(context, state);
 				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
 			}
 			frontier = std::move(new_frontier);
@@ -301,7 +301,7 @@ namespace lx
 		return node;
 	}
 
-	std::vector<SearchState> SubpatternDisjunction::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternDisjunction::match(const SearchContext& context, const SearchState& in) const
 	{
 		std::vector<SearchState> outcomes;
 
@@ -309,7 +309,7 @@ namespace lx
 		{
 			for (auto it = _array.begin(); it != _array.end(); ++it)
 			{
-				std::vector<SearchState> result = (*it)->branches(context, in);
+				std::vector<SearchState> result = (*it)->match(context, in);
 				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
 			}
 		}
@@ -317,7 +317,7 @@ namespace lx
 		{
 			for (auto it = _array.rbegin(); it != _array.rend(); ++it)
 			{
-				std::vector<SearchState> result = (*it)->branches(context, in);
+				std::vector<SearchState> result = (*it)->match(context, in);
 				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
 			}
 		}
@@ -343,10 +343,10 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternException::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternException::match(const SearchContext& context, const SearchState& in) const
 	{
-		std::vector<SearchState> outcomes = _subject->branches(context, in);
-		std::vector<SearchState> without = _exception->branches(context, in);
+		std::vector<SearchState> outcomes = _subject->match(context, in);
+		std::vector<SearchState> without = _exception->match(context, in);
 		std::unordered_set<SearchState> forbidden(std::make_move_iterator(without.begin()), std::make_move_iterator(without.end()));
 
 		std::vector<SearchState> keep;
@@ -361,7 +361,7 @@ namespace lx
 	{
 	}
 
-	std::vector<SearchState> SubpatternRepetition::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternRepetition::match(const SearchContext& context, const SearchState& in) const
 	{
 		const int min = _range.min() ? *_range.min() : 0;
 		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
@@ -371,6 +371,7 @@ namespace lx
 		std::vector<SearchState> outcomes;
 		if (context.greedy)
 		{
+			// TODO v0.2 multi-threading (add thread safety to all relevant classes) for dispatches like this. Make sure to assign to a priority so that the results can be compiled in the correct order for the outcomes vector, since multi-threaded execution doesn't is order-independent.
 			for (int reps = max; reps >= min; --reps)
 			{
 				std::vector<SearchState> result = repeated(context, in, reps);
@@ -398,7 +399,7 @@ namespace lx
 			std::vector<SearchState> new_frontier;
 			for (const SearchState& state : frontier)
 			{
-				std::vector<SearchState> intermediate = _subject->branches(context, state);
+				std::vector<SearchState> intermediate = _subject->match(context, state);
 				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
 			}
 			frontier = std::move(new_frontier);
@@ -480,10 +481,30 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternLookaround::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternLookaround::match(const SearchContext& context, const SearchState& in) const
 	{
-		// TODO
-		return { in };
+		switch (_mode)
+		{
+		case LookaroundMode::Ahead:
+			if (!_subject->match(context, in).empty()) // TODO optimize out on first exact match
+				return { in };
+			else
+				return {};
+		case LookaroundMode::NotAhead:
+			if (_subject->match(context, in).empty()) // TODO optimize out on first exact match
+				return { in };
+			else
+				return {};
+			break;
+		case LookaroundMode::Behind:
+			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
+			return {};
+		case LookaroundMode::NotBehind:
+			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
+			return {};
+		default:
+			return {};
+		}
 	}
 
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
@@ -491,9 +512,9 @@ namespace lx
 	{
 	}
 
-	std::vector<SearchState> SubpatternOptional::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternOptional::match(const SearchContext& context, const SearchState& in) const
 	{
-		std::vector<SearchState> outcomes = _optional->branches(context, in);
+		std::vector<SearchState> outcomes = _optional->match(context, in);
 		if (context.greedy)
 			outcomes.push_back(in);
 		else
@@ -532,9 +553,9 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternCapture::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternCapture::match(const SearchContext& context, const SearchState& in) const
 	{
-		std::vector<SearchState> inner = _captured->branches(context, in);
+		std::vector<SearchState> inner = _captured->match(context, in);
 		std::vector<SearchState> result;
 
 		for (SearchState& state : inner)
@@ -569,13 +590,14 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternBackRef::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternBackRef::match(const SearchContext& context, const SearchState& in) const
 	{
 		SearchState out = in;
 		auto it = out.caps->find(_capid);
 		if (it != out.caps->end())
 		{
 			CaptureList& caplist = it->second;
+			// TODO v0.2 if caplist is recursive -> recompute instead of matching initial frame exactly
 			const CaptureFrame& initial_frame = caplist.frames[0];
 			std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
 			if (in.pos + sv.size() <= context.text.size())
@@ -612,11 +634,11 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternLazy::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternLazy::match(const SearchContext& context, const SearchState& in) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = false;
-		return _lazy->branches(ctx, in);
+		return _lazy->match(ctx, in);
 	}
 
 	SubpatternGreedy::SubpatternGreedy(SubpatternNode& greedy)
@@ -637,12 +659,10 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternGreedy::branches(const SearchContext& context, const SearchState& in) const
+	std::vector<SearchState> SubpatternGreedy::match(const SearchContext& context, const SearchState& in) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = true;
-		return _greedy->branches(ctx, in);
+		return _greedy->match(ctx, in);
 	}
-
-
 }
