@@ -160,17 +160,17 @@ namespace lx
 		return _ch;
 	}
 
-	std::vector<SearchState> SubpatternChar::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternChar::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return {};
+			return false;
 
 		if (context.text[in.pos] != _ch)
-			return {};
+			return false;
 
 		SearchState out = in;
 		++out.pos;
-		return { std::move(out) };
+		return yield(std::move(out));
 	}
 
 	SubpatternString::SubpatternString(const std::string& string)
@@ -203,20 +203,20 @@ namespace lx
 		return _string;
 	}
 
-	std::vector<SearchState> SubpatternString::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternString::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return {};
+			return false;
 
 		if (in.pos + _string.size() > context.text.size())
-			return {};
+			return false;
 
 		if (context.text.substr(in.pos, _string.size()) != _string)
-			return {};
+			return false;
 
 		SearchState out = in;
 		out.pos += _string.size();
-		return { std::move(out) };
+		return yield(std::move(out));
 	}
 
 	SubpatternMarker::SubpatternMarker(PatternMark marker)
@@ -237,36 +237,34 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternMarker::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternMarker::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		switch (_marker)
 		{
 		case PatternMark::Any:
 		{
-			if (in.pos >= context.text.size())
-				return {};
-
-			SearchState out = in;
-			++out.pos;
-			return { std::move(out) };
+			if (in.pos < context.text.size())
+			{
+				SearchState out = in;
+				++out.pos;
+				return yield(std::move(out));
+			}
+			break;
 		}
 		case PatternMark::Start:
 		{
-			if (in.pos != 0)
-				return {};
-			else
-				return { in };
+			if (in.pos == 0)
+				return yield(in);
+			break;
 		}
 		case PatternMark::End:
 		{
-			if (in.pos != context.text.size())
-				return {};
-			else
-				return { in };
+			if (in.pos == context.text.size())
+				return yield(in);
+			break;
 		}
-		default:
-			return {};
 		}
+		return false;
 	}
 
 	SubpatternNode& SubpatternCatenation::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -275,23 +273,37 @@ namespace lx
 		clone_array(node, conv, arena);
 		return node;
 	}
-
-	std::vector<SearchState> SubpatternCatenation::match(const SearchContext& context, const SearchState& in) const
+	
+	bool SubpatternCatenation::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		std::vector<SearchState> frontier;
-		frontier.push_back(in);
-		for (const SubpatternNode* element : _array)
+		return match_from(0, context, in, yield);
+	}
+
+	struct SubsequentYield : public MatchYield
+	{
+		const SubpatternCatenation& node;
+		const SearchContext& context;
+		size_t index;
+		MatchYield& downstream;
+
+		SubsequentYield(const SubpatternCatenation& node, const SearchContext& context, size_t index, MatchYield& downstream)
+			: node(node), context(context), index(index), downstream(downstream)
 		{
-			std::vector<SearchState> new_frontier;
-			for (const SearchState& state : frontier)
-			{
-				std::vector<SearchState> intermediate = element->match(context, state);
-				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
-			}
-			frontier = std::move(new_frontier);
 		}
 
-		return remove_duplicates(std::move(frontier));
+		bool operator()(SearchState state) override
+		{
+			return node.match_from(index + 1, context, state, downstream);
+		}
+	};
+
+	bool SubpatternCatenation::match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	{
+		if (index >= _array.size())
+			return yield(in);
+
+		SubsequentYield subseq(*this, context, index, yield);
+		return _array[index]->match(context, in, subseq);
 	}
 
 	SubpatternNode& SubpatternDisjunction::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -301,28 +313,21 @@ namespace lx
 		return node;
 	}
 
-	std::vector<SearchState> SubpatternDisjunction::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternDisjunction::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		std::vector<SearchState> outcomes;
-
 		if (context.greedy)
 		{
 			for (auto it = _array.begin(); it != _array.end(); ++it)
-			{
-				std::vector<SearchState> result = (*it)->match(context, in);
-				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
-			}
+				if ((*it)->match(context, in, yield))
+					return true;
 		}
 		else
 		{
 			for (auto it = _array.rbegin(); it != _array.rend(); ++it)
-			{
-				std::vector<SearchState> result = (*it)->match(context, in);
-				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
-			}
+				if ((*it)->match(context, in, yield))
+					return true;
 		}
-
-		return remove_duplicates(std::move(outcomes));
+		return false;
 	}
 
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
@@ -343,17 +348,21 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternException::match(const SearchContext& context, const SearchState& in) const
+	struct ProbeYield : public MatchYield
 	{
-		std::vector<SearchState> outcomes = _subject->match(context, in);
-		std::vector<SearchState> without = _exception->match(context, in);
-		std::unordered_set<SearchState> forbidden(std::make_move_iterator(without.begin()), std::make_move_iterator(without.end()));
+		bool operator()(SearchState) override
+		{
+			return true;
+		}
+	};
 
-		std::vector<SearchState> keep;
-		for (SearchState& outcome : outcomes)
-			if (!forbidden.contains(outcome))
-				keep.push_back(std::move(outcome));
-		return keep;
+	bool SubpatternException::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	{
+		ProbeYield probe;
+		if (!_exception->match(context, in, probe))
+			return _subject->match(context, in, yield);
+		else
+			return false;
 	}
 
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
@@ -361,50 +370,53 @@ namespace lx
 	{
 	}
 
-	std::vector<SearchState> SubpatternRepetition::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		const int min = _range.min() ? *_range.min() : 0;
 		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
 		if (min > max)
-			return {};
+			return false;
 
-		std::vector<SearchState> outcomes;
 		if (context.greedy)
 		{
-			// TODO v0.2 multi-threading (add thread safety to all relevant classes) for dispatches like this. Make sure to assign to a priority so that the results can be compiled in the correct order for the outcomes vector, since multi-threaded execution doesn't is order-independent.
 			for (int reps = max; reps >= min; --reps)
-			{
-				std::vector<SearchState> result = repeated(context, in, reps);
-				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
-			}
+				if (match_next(context, in, yield, reps))
+					return true;
 		}
 		else
 		{
 			for (int reps = min; reps <= max; ++reps)
-			{
-				std::vector<SearchState> result = repeated(context, in, reps);
-				outcomes.insert(outcomes.end(), std::make_move_iterator(result.begin()), std::make_move_iterator(result.end()));
-			}
+				if (match_next(context, in, yield, reps))
+					return true;
 		}
-
-		return remove_duplicates(std::move(outcomes));
+		return false;
 	}
 
-	std::vector<SearchState> SubpatternRepetition::repeated(const SearchContext& context, const SearchState& in, const int reps) const
+	struct RepeatYield : public MatchYield
 	{
-		std::vector<SearchState> frontier;
-		frontier.push_back(in);
-		for (size_t i = 0; i < reps; ++i)
+		const SubpatternRepetition& node;
+		const SearchContext& context;
+		int reps_left;
+		MatchYield& downstream;
+
+		RepeatYield(const SubpatternRepetition& node, const SearchContext& context, int reps_left, MatchYield& downstream)
+			: node(node), context(context), reps_left(reps_left), downstream(downstream)
 		{
-			std::vector<SearchState> new_frontier;
-			for (const SearchState& state : frontier)
-			{
-				std::vector<SearchState> intermediate = _subject->match(context, state);
-				new_frontier.insert(new_frontier.end(), std::make_move_iterator(intermediate.begin()), std::make_move_iterator(intermediate.end()));
-			}
-			frontier = std::move(new_frontier);
 		}
-		return frontier;
+
+		bool operator()(SearchState state) override
+		{
+			return node.match_next(context, state, downstream, reps_left - 1);
+		}
+	};
+
+	bool SubpatternRepetition::match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const
+	{
+		if (reps_left <= 0)
+			return yield(in);
+
+		RepeatYield repeat(*this, context, reps_left, yield);
+		return _subject->match(context, in, repeat);
 	}
 
 	static IRange simple_repeat_range(PatternSimpleRepeatOperator op)
@@ -481,30 +493,32 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternLookaround::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternLookaround::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		switch (_mode)
 		{
 		case LookaroundMode::Ahead:
-			if (!_subject->match(context, in).empty()) // TODO optimize out on first exact match
-				return { in };
-			else
-				return {};
-		case LookaroundMode::NotAhead:
-			if (_subject->match(context, in).empty()) // TODO optimize out on first exact match
-				return { in };
-			else
-				return {};
+		{
+			ProbeYield probe;
+			if (_subject->match(context, in, probe))
+				return yield(in);
 			break;
+		}
+		case LookaroundMode::NotAhead:
+		{
+			ProbeYield probe;
+			if (!_subject->match(context, in, probe))
+				return yield(in);
+			break;
+		}
 		case LookaroundMode::Behind:
 			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
-			return {};
+			break;
 		case LookaroundMode::NotBehind:
 			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
-			return {};
-		default:
-			return {};
+			break;
 		}
+		return false;
 	}
 
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
@@ -512,14 +526,12 @@ namespace lx
 	{
 	}
 
-	std::vector<SearchState> SubpatternOptional::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternOptional::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		std::vector<SearchState> outcomes = _optional->match(context, in);
 		if (context.greedy)
-			outcomes.push_back(in);
+			return _optional->match(context, in, yield) || yield(in);
 		else
-			outcomes.insert(outcomes.begin(), in);
-		return outcomes;
+			return yield(in) || _optional->match(context, in, yield);
 	}
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -553,23 +565,35 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternCapture::match(const SearchContext& context, const SearchState& in) const
+	struct CaptureYield : public MatchYield
 	{
-		std::vector<SearchState> inner = _captured->match(context, in);
-		std::vector<SearchState> result;
+		CapId capid;
+		size_t start;
+		MatchYield& downstream;
 
-		for (SearchState& state : inner)
+		CaptureYield(CapId capid, size_t start, MatchYield& downstream)
+			: capid(std::move(capid)), start(start), downstream(downstream)
 		{
-			if (!state.caps->contains(_capid))
-			{
-				SearchState substate = state;
-				substate.start = in.pos;
-				state.caps->insert(std::make_pair(_capid, CaptureList{ .capid = _capid, .frames = { CaptureFrame(substate) } }));
-				result.push_back(std::move(state));
-			}
 		}
 
-		return result;
+		bool operator()(SearchState state) override
+		{
+			if (!state.caps->contains(capid))
+			{
+				SearchState substate = state;
+				substate.start = start;
+				state.caps->insert(std::make_pair(capid, CaptureList{ .capid = capid, .frames = { CaptureFrame(substate) } }));
+				return downstream(std::move(state));
+			}
+			else
+				return false;
+		}
+	};
+
+	bool SubpatternCapture::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	{
+		CaptureYield upstream(_capid, in.pos, yield);
+		return _captured->match(context, in, upstream);
 	}
 
 	SubpatternBackRef::SubpatternBackRef(CapId capid)
@@ -590,30 +614,28 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternBackRef::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternBackRef::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchState out = in;
 		auto it = out.caps->find(_capid);
-		if (it != out.caps->end())
-		{
-			CaptureList& caplist = it->second;
-			// TODO v0.2 if caplist is recursive -> recompute instead of matching initial frame exactly
-			const CaptureFrame& initial_frame = caplist.frames[0];
-			std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
-			if (in.pos + sv.size() <= context.text.size())
-			{
-				if (context.text.substr(in.pos, sv.size()) == sv)
-				{
-					SearchState substate = initial_frame.substate;
-					substate.start = in.pos;
-					substate.pos = in.pos + sv.size();
-					caplist.frames.push_back(CaptureFrame(substate));
-					return { std::move(out) };
-				}
-			}
-		}
+		if (it == out.caps->end())
+			return false;
 
-		return {};
+		CaptureList& caplist = it->second;
+		// TODO v0.2 if caplist is recursive -> recompute instead of matching initial frame exactly
+		const CaptureFrame& initial_frame = caplist.frames[0];
+		std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
+		if (in.pos + sv.size() > context.text.size())
+			return false;
+
+		if (context.text.substr(in.pos, sv.size()) != sv)
+			return false;
+
+		SearchState substate = initial_frame.substate;
+		substate.start = in.pos;
+		substate.pos = in.pos + sv.size();
+		caplist.frames.push_back(CaptureFrame(substate));
+		return yield(std::move(out));
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -634,11 +656,11 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternLazy::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternLazy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = false;
-		return _lazy->match(ctx, in);
+		return _lazy->match(ctx, in, yield);
 	}
 
 	SubpatternGreedy::SubpatternGreedy(SubpatternNode& greedy)
@@ -659,11 +681,11 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternGreedy::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternGreedy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = true;
-		return _greedy->match(ctx, in);
+		return _greedy->match(ctx, in, yield);
 	}
 
 	SubpatternSRange::SubpatternSRange(SRange range)
@@ -684,23 +706,20 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternSRange::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternSRange::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
 		{
 			if (_range.empty())
-				return { in };
-			else
-				return {};
+				return yield(in);
 		}
 		else if (_range.contains(context.text[in.pos]))
 		{
 			SearchState out = in;
 			++out.pos;
-			return { std::move(out) };
+			return yield(std::move(out));
 		}
-		else
-			return {};
+		return false;
 	}
 
 	SubpatternBuiltin::SubpatternBuiltin(BuiltinSubpattern type)
@@ -721,10 +740,10 @@ namespace lx
 			return false;
 	}
 
-	std::vector<SearchState> SubpatternBuiltin::match(const SearchContext& context, const SearchState& in) const
+	bool SubpatternBuiltin::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return {};
+			return false;
 		
 		const char c = context.text[in.pos];
 		bool matches = false;
@@ -740,7 +759,7 @@ namespace lx
 				{
 					SearchState out = in;
 					out.pos += 2;
-					return { std::move(out) };
+					return yield(std::move(out));
 				}
 				else
 					matches = true;
@@ -763,7 +782,7 @@ namespace lx
 				{
 					SearchState out = in;
 					out.pos += 2;
-					return { std::move(out) };
+					return yield(std::move(out));
 				}
 				else
 					matches = true;
@@ -775,10 +794,10 @@ namespace lx
 		{
 			SearchState out = in;
 			++out.pos;
-			return { std::move(out) };
+			return yield(std::move(out));
 		}
 		else
-			return {};
+			return false;
 	}
 }
 

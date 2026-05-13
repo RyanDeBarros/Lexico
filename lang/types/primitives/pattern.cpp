@@ -257,21 +257,31 @@ namespace lx
 
 	Matches Pattern::search(const EvalContext& env, const Snippet& snippet) const
 	{
-		Matches matches;
-		if (_root)
-		{
-			SearchContext context{ .env = env, .text = snippet.page_content() };
-			for (size_t i = 0; i <= context.text.size(); ++i)
-			{
-				std::vector<SearchState> states = _root->match(context, SearchState(i));
-				// TODO optimize by exiting early in branches() if searching -> put in SearchContext?
-				matches.push_back(env, env.runtime.unbound_variable(std::move(states[0]).materialize(env, snippet)));
-			}
-		}
-		return matches;
+		return find(env, snippet, true);
 	}
 
 	Matches Pattern::find_all(const EvalContext& env, const Snippet& snippet) const
+	{
+		return find(env, snippet, false);
+	}
+
+	struct SearchYield : public MatchYield
+	{
+		const EvalContext& env;
+		const Snippet& snippet;
+		Matches& matches;
+		bool find_first;
+
+		SearchYield(const EvalContext& env, const Snippet& snippet, Matches& matches, bool find_first) : env(env), snippet(snippet), matches(matches), find_first(find_first) {}
+
+		bool operator()(SearchState state) override
+		{
+			matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet)));
+			return find_first;
+		}
+	};
+
+	Matches Pattern::find(const EvalContext& env, const Snippet& snippet, bool find_first) const
 	{
 		Matches matches;
 		if (_root)
@@ -279,9 +289,8 @@ namespace lx
 			SearchContext context{ .env = env, .text = snippet.page_content() };
 			for (size_t i = 0; i <= context.text.size(); ++i)
 			{
-				std::vector<SearchState> states = _root->match(context, SearchState(i));
-				for (SearchState& state : states)
-					matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet)));
+				SearchYield yield(env, snippet, matches, find_first);
+				_root->match(context, SearchState(i), yield);
 			}
 		}
 		return matches;

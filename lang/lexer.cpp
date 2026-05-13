@@ -2,7 +2,7 @@
 
 namespace lx
 {
-	// TODO v0.2 types should not be token types - they should only be resolved during parsing: this will be beneficial for members that happen to have the names of types or for using the types of custom structs
+	// TODO v0.2 types should not be token types - they should only be resolved during parsing: this will be beneficial for members that happen to have the names of types or for using the types of custom structs. Same thing for keywords (everything here except for literals)?
 
 	static TokenType resolve_identifier(const Token& token)
 	{
