@@ -8,14 +8,14 @@
 
 namespace lx
 {
-	struct CaptureFrame;
+	struct CaptureList;
 
 	struct SearchState
 	{
 		size_t start = 0;
 		size_t pos = 0;
 
-		CowPtr<std::vector<CaptureFrame>> caps;
+		CowPtr<std::unordered_map<CapId, CaptureList>> caps;
 
 		SearchState(size_t start);
 
@@ -29,13 +29,23 @@ namespace lx
 	{
 		size_t start;
 		size_t length;
-		CapId capid;
 		SearchState substate;
+
+		CaptureFrame(const SearchState& substate);
 
 		size_t hash() const;
 		bool operator==(const CaptureFrame&) const = default;
+	};
 
-		Cap materialize(const EvalContext& env, const Snippet& snippet)&&;
+	struct CaptureList
+	{
+		CapId capid;
+		std::vector<CaptureFrame> frames;
+
+		size_t hash() const;
+		bool operator==(const CaptureList&) const = default;
+
+		std::vector<Cap> materialize(const EvalContext& env, const Snippet& snippet) &&;
 	};
 
 	struct SearchContext
@@ -211,19 +221,6 @@ namespace lx
 		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
 	};
 
-	class SubpatternBackRef : public SubpatternNode
-	{
-		CapId _capid;
-
-	public:
-		SubpatternBackRef(CapId capid);
-
-		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		bool equals(const SubpatternNode* o) const override;
-
-		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
-	};
-
 	class SubpatternCapture : public SubpatternNode
 	{
 		CapId _capid;
@@ -231,6 +228,19 @@ namespace lx
 
 	public:
 		SubpatternCapture(CapId capid, SubpatternNode& captured);
+
+		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
+		bool equals(const SubpatternNode* o) const override;
+
+		std::vector<SearchState> branches(const SearchContext& context, const SearchState& in) const override;
+	};
+
+	class SubpatternBackRef : public SubpatternNode
+	{
+		CapId _capid;
+
+	public:
+		SubpatternBackRef(CapId capid);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;

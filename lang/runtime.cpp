@@ -6,7 +6,7 @@ namespace lx
 {
 	void RuntimeSymbolTable::register_variable(const std::string_view identifier, Variable&& dp)
 	{
-		if (_variable_table.count(identifier))
+		if (_variable_table.contains(identifier))
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": variable already registered: " << identifier;

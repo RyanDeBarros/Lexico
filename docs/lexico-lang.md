@@ -9,11 +9,11 @@
 
 TODO v0.2 match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
-TODO v0.3 aggregation / SQL constructs
-
-TODO v0.3 recursion built into patterns (see parentheses balancing example)
+TODO v0.2 recursion built into patterns (see parentheses balancing example -> add recursive option to capture declaration that will re-compute capture in backref rather than matching exactly)
 
 TODO v0.3 reverse searching/patterns
+
+TODO v0.3 aggregation / SQL constructs
 
 ## Data types
 

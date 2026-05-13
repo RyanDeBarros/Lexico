@@ -17,17 +17,26 @@ namespace lx
 		size_t h = 0;
 		h = hash_combine(h, std::hash<size_t>{}(start));
 		h = hash_combine(h, std::hash<size_t>{}(pos));
-		for (const CaptureFrame& cap : *caps)
-			h = hash_combine(h, cap.hash());
+		for (const auto& [capid, list] : *caps)
+		{
+			h = hash_combine(h, capid.hash());
+			h = hash_combine(h, list.hash());
+		}
 		return h;
 	}
 
 	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet) &&
 	{
 		Match match(snippet, start, pos - start);
-		for (CaptureFrame& capture : *caps)
-			match.add_capture(env, std::move(capture.capid), std::move(capture).materialize(env, snippet));
+		for (auto& [capid, list] : *caps)
+			for (auto& capture : std::move(list).materialize(env, snippet))
+				match.add_capture(env, CapId(capid), std::move(capture));
 		return match;
+	}
+
+	CaptureFrame::CaptureFrame(const SearchState& substate)
+		: start(substate.start), length(substate.pos - substate.start), substate(substate)
+	{
 	}
 
 	size_t CaptureFrame::hash() const
@@ -35,14 +44,26 @@ namespace lx
 		size_t h = 0;
 		h = hash_combine(h, std::hash<size_t>{}(start));
 		h = hash_combine(h, std::hash<size_t>{}(length));
-		h = hash_combine(h, capid.hash());
 		h = hash_combine(h, substate.hash());
 		return h;
 	}
 
-	Cap CaptureFrame::materialize(const EvalContext& env, const Snippet& snippet) &&
+	size_t CaptureList::hash() const
 	{
-		return Cap(env, snippet, start, length, env.runtime.unbound_variable(std::move(substate).materialize(env, snippet)));
+		size_t h = 0;
+		h = hash_combine(h, capid.hash());
+		for (const auto& cap : frames)
+			h = hash_combine(h, cap.hash());
+		return h;
+	}
+
+	std::vector<Cap> CaptureList::materialize(const EvalContext& env, const Snippet& snippet) &&
+	{
+		std::vector<Cap> caps;
+		for (auto& cap : frames)
+			caps.emplace_back(env, snippet, static_cast<unsigned int>(cap.start), static_cast<unsigned int>(cap.length),
+				env.runtime.unbound_variable(std::move(cap.substate).materialize(env, snippet)));
+		return caps;
 	}
 
 	static std::vector<SearchState> remove_duplicates(std::vector<SearchState>&& outcomes)
@@ -51,7 +72,7 @@ namespace lx
 		std::vector<SearchState> unique;
 		for (SearchState& state : outcomes)
 		{
-			if (!seen.count(state))
+			if (!seen.contains(state))
 			{
 				seen.insert(state);
 				unique.push_back(std::move(state));
@@ -330,7 +351,7 @@ namespace lx
 
 		std::vector<SearchState> keep;
 		for (SearchState& outcome : outcomes)
-			if (!forbidden.count(outcome))
+			if (!forbidden.contains(outcome))
 				keep.push_back(std::move(outcome));
 		return keep;
 	}
@@ -493,30 +514,6 @@ namespace lx
 			return false;
 	}
 
-	SubpatternBackRef::SubpatternBackRef(CapId capid)
-		: _capid(capid)
-	{
-	}
-
-	SubpatternNode& SubpatternBackRef::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		return clone_base<SubpatternBackRef>(this, conv, arena, _capid);
-	}
-
-	bool SubpatternBackRef::equals(const SubpatternNode* o) const
-	{
-		if (auto ptr = dynamic_cast<const SubpatternBackRef*>(o))
-			return _capid == ptr->_capid;
-		else
-			return false;
-	}
-
-	std::vector<SearchState> SubpatternBackRef::branches(const SearchContext& context, const SearchState& in) const
-	{
-		// TODO
-		return { in };
-	}
-
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
 		: _capid(capid), _captured(&captured)
 	{
@@ -538,16 +535,63 @@ namespace lx
 	std::vector<SearchState> SubpatternCapture::branches(const SearchContext& context, const SearchState& in) const
 	{
 		std::vector<SearchState> inner = _captured->branches(context, in);
+		std::vector<SearchState> result;
 
 		for (SearchState& state : inner)
 		{
-			SearchState substate = state;
-			substate.start = in.pos;
-			CaptureFrame frame{ .start = substate.start, .length = substate.pos - substate.start, .capid = _capid, .substate = substate };
-			state.caps->push_back(std::move(frame));
+			if (!state.caps->contains(_capid))
+			{
+				SearchState substate = state;
+				substate.start = in.pos;
+				state.caps->insert(std::make_pair(_capid, CaptureList{ .capid = _capid, .frames = { CaptureFrame(substate) } }));
+				result.push_back(std::move(state));
+			}
 		}
 
-		return inner;
+		return result;
+	}
+
+	SubpatternBackRef::SubpatternBackRef(CapId capid)
+		: _capid(capid)
+	{
+	}
+
+	SubpatternNode& SubpatternBackRef::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	{
+		return clone_base<SubpatternBackRef>(this, conv, arena, _capid);
+	}
+
+	bool SubpatternBackRef::equals(const SubpatternNode* o) const
+	{
+		if (auto ptr = dynamic_cast<const SubpatternBackRef*>(o))
+			return _capid == ptr->_capid;
+		else
+			return false;
+	}
+
+	std::vector<SearchState> SubpatternBackRef::branches(const SearchContext& context, const SearchState& in) const
+	{
+		SearchState out = in;
+		auto it = out.caps->find(_capid);
+		if (it != out.caps->end())
+		{
+			CaptureList& caplist = it->second;
+			const CaptureFrame& initial_frame = caplist.frames[0];
+			std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
+			if (in.pos + sv.size() <= context.text.size())
+			{
+				if (context.text.substr(in.pos, sv.size()) == sv)
+				{
+					SearchState substate = initial_frame.substate;
+					substate.start = in.pos;
+					substate.pos = in.pos + sv.size();
+					caplist.frames.push_back(CaptureFrame(substate));
+					return { std::move(out) };
+				}
+			}
+		}
+
+		return {};
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)

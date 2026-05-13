@@ -38,12 +38,12 @@ namespace lx
 	void SemanticFunctionTable::register_function(FunctionDefinition& decl_node, const std::string_view identifier,
 		DataType&& return_type, std::vector<DataType>&& arg_types, unsigned int line_number)
 	{
-		if (!_lut.count(identifier))
+		if (!_lut.contains(identifier))
 			_lut[std::string(identifier)] = {};
 
 		auto& registered_args = _lut.find(identifier)->second;
 		FunctionCallSignature fc{ .identifier = std::string(identifier), .arg_types = arg_types };
-		if (registered_args.count(fc))
+		if (registered_args.contains(fc))
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": function already registered: " << identifier;

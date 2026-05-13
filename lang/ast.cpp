@@ -1042,7 +1042,7 @@ namespace lx
 			std::unordered_set<std::string_view> argnames;
 			for (const auto& [_, identifier] : _arglist)
 			{
-				if (argnames.count(identifier.lexeme))
+				if (argnames.contains(identifier.lexeme))
 					ctx.add_semantic_error(identifier, "repeated argument identifier");
 				else
 					argnames.insert(identifier.lexeme);

@@ -18,7 +18,7 @@ namespace lx
 
 	void SemanticVariableTable::register_variable(const std::string_view identifier, DataType&& type, unsigned int line_number)
 	{
-		if (_map.count(identifier))
+		if (_map.contains(identifier))
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": variable already registered: " << identifier;
@@ -35,7 +35,7 @@ namespace lx
 
 	bool VarConsistencyTest::seen(const FunctionDefinition& fn) const
 	{
-		return _seen_functions.count(&fn);
+		return _seen_functions.contains(&fn);
 	}
 	
 	void VarConsistencyTest::see(const FunctionDefinition& fn, const FunctionCallExpression& call_site)
@@ -70,7 +70,7 @@ namespace lx
 
 	void VarConsistencyTest::test(SemanticContext& ctx, const Token& var) const
 	{
-		if (!_declared_vars.count(var.lexeme) && !_declared_locals.back().count(var.lexeme))
+		if (!_declared_vars.contains(var.lexeme) && !_declared_locals.back().contains(var.lexeme))
 		{
 			std::vector<ScriptSegment> segments;
 			segments.push_back(var.segment);
