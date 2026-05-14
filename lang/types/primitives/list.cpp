@@ -6,7 +6,7 @@
 
 namespace lx
 {
-	// TODO ListView - maybe even modify StringView to become a generic View. At the very least, define generic View for List and Matches
+	// TODO v0.2 ListView - maybe even modify StringView to become a generic View. At the very least, define generic View for List and Matches
 	// TODO v0.2 negative indexes - even in StringView
 
 	static DataType underlying_of(const EvalContext& env, const std::vector<Variable>& elements)

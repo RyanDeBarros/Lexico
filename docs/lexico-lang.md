@@ -11,6 +11,8 @@ TODO v0.2 match word, match case, built-in functions for changing case, etc. Bui
 
 TODO v0.2 recursion built into patterns (see parentheses balancing example -> add recursive option to capture declaration that will re-compute capture in backref rather than matching exactly)
 
+TODO v0.2 more flags other than just greedy or lazy, like case-sensitive or case-insensitive? May not be necessary
+
 TODO v0.3 reverse searching/patterns
 
 TODO v0.3 aggregation / SQL constructs

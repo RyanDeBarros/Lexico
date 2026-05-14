@@ -67,10 +67,8 @@ namespace lx
 		}
 		catch (const LxError& e)
 		{
-			// TODO better error propogation/ignoring/duplication handling
-			if (e.type() != ErrorType::Internal)
-				ctx.errors().push_back(e);
-			// TODO v0.2 optional debug log for else branch - also internal error should fail?
+			ctx.errors().push_back(e);
+			// TODO v0.2 for internal errors, log in optional debug log and just print "Internal error - see debug log" in regular log
 		}
 	}
 

@@ -43,6 +43,15 @@ namespace lx
 	{
 	}
 
+	SearchContext SearchContext::up_to(size_t pos) const
+	{
+		SearchContext ctx(env, text.substr(0, pos));
+		ctx.greedy = greedy;
+		ctx.local_capids = local_capids;
+		ctx.reverse_lut = reverse_lut;
+		return ctx;
+	}
+
 	bool SearchContext::capid_exists(const CapId& capid) const
 	{
 		return local_capids->contains(capid);
@@ -67,6 +76,12 @@ namespace lx
 			ss << __FUNCTION__ << ": local capid not found";
 			throw LxError(ErrorType::Internal, ss.str());
 		}
+	}
+
+	bool SearchYield::operator()(SearchState state)
+	{
+		final_states.push_back(std::move(state));
+		return find_first;
 	}
 
 	template<std::derived_from<SubpatternNode> T, typename... Args>
@@ -480,6 +495,23 @@ namespace lx
 		else
 			return false;
 	}
+	
+	struct BackSearchYield : public MatchYield
+	{
+		size_t end;
+		bool exact = false;
+
+		BackSearchYield(size_t end) : end(end) {}
+
+		bool operator()(SearchState state) override
+		{
+			if (state.pos < end)
+				return false;
+
+			exact = state.pos == end;
+			return true;
+		}
+	};
 
 	bool SubpatternLookaround::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
@@ -500,11 +532,37 @@ namespace lx
 			break;
 		}
 		case LookaroundMode::Behind:
-			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
+		{
+			// TODO virtual max_range() function that calculate the lower bound of where iteration index should end, instead of always going to 0
+			for (int i = in.pos; i >= 0; --i)
+			{
+				BackSearchYield back_search(i);
+				_subject->match(context.up_to(i), SearchState(i), back_search);
+				if (back_search.exact)
+				{
+					yield(in);
+					break;
+				}
+			}
 			break;
+		}
 		case LookaroundMode::NotBehind:
-			// TODO backward consumption -> start at previous position, then resultant pos should match in.pos
+		{
+			bool pass = true;
+			for (int i = in.pos; i >= 0; --i)
+			{
+				BackSearchYield back_search(i);
+				_subject->match(context.up_to(i), SearchState(i), back_search);
+				if (back_search.exact)
+				{
+					pass = false;
+					break;
+				}
+			}
+			if (pass)
+				yield(in);
 			break;
+		}
 		}
 		return false;
 	}

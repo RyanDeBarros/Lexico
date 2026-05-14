@@ -265,20 +265,6 @@ namespace lx
 		return find(env, snippet, false);
 	}
 
-	struct SearchYield : public MatchYield
-	{
-		std::vector<SearchState> final_states;
-		bool find_first;
-
-		SearchYield(bool find_first) : find_first(find_first) {}
-
-		bool operator()(SearchState state) override
-		{
-			final_states.push_back(std::move(state));
-			return find_first;
-		}
-	};
-
 	Matches Pattern::find(const EvalContext& env, const Snippet& snippet, bool find_first) const
 	{
 		Matches matches;

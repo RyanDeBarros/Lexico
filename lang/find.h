@@ -51,6 +51,8 @@ namespace lx
 
 		SearchContext(const EvalContext& env, const std::string_view text);
 
+		SearchContext up_to(size_t pos) const;
+
 		bool capid_exists(const CapId& capid) const;
 		unsigned int local_capid(const CapId& capid) const;
 		CapId from_local(unsigned int capid) const;
@@ -60,6 +62,16 @@ namespace lx
 	{
 		virtual ~MatchYield() = default;
 		virtual bool operator()(SearchState state) = 0;
+	};
+
+	struct SearchYield : public MatchYield
+	{
+		std::vector<SearchState> final_states;
+		bool find_first;
+
+		SearchYield(bool find_first) : find_first(find_first) {}
+
+		bool operator()(SearchState state) override;
 	};
 
 	class SubpatternNode;

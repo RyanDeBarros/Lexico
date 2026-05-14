@@ -133,8 +133,6 @@ namespace lx
 		return DataType::SRange();
 	}
 
-	// TODO cast to list
-
 	TypeVariant SRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
