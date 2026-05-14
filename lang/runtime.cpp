@@ -214,7 +214,7 @@ namespace lx
 			EvalContext env{ .runtime = *this, .segment = &segment };
 			for (const Snippet& snippet : snippets)
 				func(env, global_matches(), *pattern, snippet);
-			// TODO remove duplicates
+			global_matches().remove_duplicates();
 		}
 		else
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");

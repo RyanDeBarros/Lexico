@@ -88,4 +88,14 @@ namespace lx
 	{
 		return String(std::string(_snippet.page_content().substr(_start, _length)));
 	}
+
+	unsigned int Cap::start() const
+	{
+		return _start;
+	}
+
+	unsigned int Cap::length() const
+	{
+		return _length;
+	}
 }

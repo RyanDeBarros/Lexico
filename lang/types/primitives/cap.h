@@ -28,5 +28,8 @@ namespace lx
 		void assign(const EvalContext& env, Cap&& o);
 		bool equals(const EvalContext& env, const Cap& o) const;
 		String str() const;
+
+		unsigned int start() const;
+		unsigned int length() const;
 	};
 }

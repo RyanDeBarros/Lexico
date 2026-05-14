@@ -171,4 +171,9 @@ namespace lx
 	{
 		return _elements.size();
 	}
+
+	const Variable& List::operator[](size_t i) const
+	{
+		return _elements[i];
+	}
 }

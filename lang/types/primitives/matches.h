@@ -29,5 +29,7 @@ namespace lx
 		void push_back(const EvalContext& env, Variable match);
 		const Match& match(size_t i) const;
 		size_t size() const;
+
+		void remove_duplicates();
 	};
 }

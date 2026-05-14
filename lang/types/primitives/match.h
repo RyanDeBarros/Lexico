@@ -33,6 +33,9 @@ namespace lx
 		void assign(const EvalContext& env, Match&& o);
 		bool equals(const EvalContext& env, const Match& o) const;
 
+		size_t hash() const;
+		bool equals(const Match& o) const;
+
 		size_t iterlen(const EvalContext& env) const;
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 

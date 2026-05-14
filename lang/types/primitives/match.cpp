@@ -108,6 +108,29 @@ namespace lx
 
 	bool Match::equals(const EvalContext& env, const Match& o) const
 	{
+		return equals(o);
+	}
+
+	size_t Match::hash() const
+	{
+		size_t h = 0;
+		h = hash_combine(h, std::hash<unsigned int>{}(_snippet.absolute(_start)));
+		h = hash_combine(h, std::hash<unsigned int>{}(_length));
+		for (const auto& [capid, index] : _ordering)
+		{
+			auto it = _captures_by_id.find(capid);
+			if (it != _captures_by_id.end())
+			{
+				const Cap& cap = it->second.ref().get<List>()[index].ref().get<Cap>();
+				h = hash_combine(h, std::hash<unsigned int>{}(cap.start()));
+				h = hash_combine(h, std::hash<unsigned int>{}(cap.length()));
+			}
+		}
+		return h;
+	}
+
+	bool Match::equals(const Match& o) const
+	{
 		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _ordering == o._ordering && _captures_by_id == o._captures_by_id;
 	}
 

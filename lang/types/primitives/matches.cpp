@@ -122,4 +122,38 @@ namespace lx
 	{
 		return _matches.size();
 	}
+
+	struct MatchPtrHash
+	{
+		size_t operator()(const Match* m) const
+		{
+			return m->hash();
+		}
+	};
+
+	struct MatchPtrEqual
+	{
+		bool operator()(const Match* a, const Match* b) const
+		{
+			return a->equals(*b);
+		}
+	};
+
+	void Matches::remove_duplicates()
+	{
+		std::vector<Variable> unique_matches;
+		std::unordered_set<const Match*, MatchPtrHash, MatchPtrEqual> seen;
+
+		for (Variable& v : _matches)
+		{
+			const Match& m = v.ref().get<Match>();
+			if (!seen.contains(&m))
+			{
+				seen.insert(&m);
+				unique_matches.push_back(std::move(v));
+			}
+		}
+
+		_matches = std::move(unique_matches);
+	}
 }
