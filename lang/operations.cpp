@@ -8,37 +8,37 @@
 
 namespace lx
 {
-	DataType data_type(TokenType type, const std::vector<TokenType>& underlying_types)
+	DataType data_type(Keyword simple_type, const std::vector<Keyword>& underlying_types)
 	{
-		switch (type)
+		switch (simple_type)
 		{
-		case TokenType::IntType:
+		case Keyword::IntType:
 			return DataType::Int();
-		case TokenType::FloatType:
+		case Keyword::FloatType:
 			return DataType::Float();
-		case TokenType::BoolType:
+		case Keyword::BoolType:
 			return DataType::Bool();
-		case TokenType::StringType:
+		case Keyword::StringType:
 			return DataType::String();
-		case TokenType::StringViewType:
+		case Keyword::StringViewType:
 			return DataType::StringView();
-		case TokenType::VoidType:
+		case Keyword::VoidType:
 			return DataType::Void();
-		case TokenType::PatternType:
+		case Keyword::PatternType:
 			return DataType::Pattern();
-		case TokenType::MatchType:
+		case Keyword::MatchType:
 			return DataType::Match();
-		case TokenType::MatchesType:
+		case Keyword::MatchesType:
 			return DataType::Matches();
-		case TokenType::CapIdType:
+		case Keyword::CapIdType:
 			return DataType::CapId();
-		case TokenType::CapType:
+		case Keyword::CapType:
 			return DataType::Cap();
-		case TokenType::IRangeType:
+		case Keyword::IRangeType:
 			return DataType::IRange();
-		case TokenType::SRangeType:
+		case Keyword::SRangeType:
 			return DataType::SRange();
-		case TokenType::ListType:
+		case Keyword::ListType:
 		{
 			if (underlying_types.empty())
 			{
@@ -46,7 +46,7 @@ namespace lx
 				ss << __FUNCTION__ << ": cannot list token without underlying types";
 				throw LxError(ErrorType::Internal, ss.str());
 			}
-			std::vector<TokenType> rest;
+			std::vector<Keyword> rest;
 			for (size_t i = 1; i < underlying_types.size(); ++i)
 				rest.push_back(underlying_types[i]);
 			return DataType::List(data_type(underlying_types[0], rest));
@@ -54,7 +54,7 @@ namespace lx
 		default:
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
+			ss << __FUNCTION__ << ": cannot convert keyword simple type " << static_cast<int>(simple_type);
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		}
@@ -83,12 +83,10 @@ namespace lx
 		}
 	}
 
-	BinaryOperator binary_operator(TokenType type)
+	BinaryOperator binary_operator(const Token& token)
 	{
-		switch (type)
+		switch (token.type)
 		{
-		case TokenType::And:
-			return BinaryOperator::And;
 		case TokenType::Assign:
 			return BinaryOperator::Assign;
 		case TokenType::Asterisk:
@@ -97,8 +95,6 @@ namespace lx
 			return BinaryOperator::Comma;
 		case TokenType::EqualTo:
 			return BinaryOperator::EqualTo;
-		case TokenType::Except:
-			return BinaryOperator::Except;
 		case TokenType::GreaterThan:
 			return BinaryOperator::GreaterThan;
 		case TokenType::GreaterThanOrEqualTo:
@@ -109,25 +105,41 @@ namespace lx
 			return BinaryOperator::LessThanOrEqualTo;
 		case TokenType::Minus:
 			return BinaryOperator::Minus;
-		case TokenType::Mod:
-			return BinaryOperator::Mod;
 		case TokenType::NotEqualTo:
 			return BinaryOperator::NotEqualTo;
-		case TokenType::Or:
-			return BinaryOperator::Or;
 		case TokenType::Plus:
 			return BinaryOperator::Plus;
-		case TokenType::Repeat:
-			return BinaryOperator::Repeat;
 		case TokenType::Slash:
 			return BinaryOperator::Slash;
-		case TokenType::To:
-			return BinaryOperator::To;
 		default:
 		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
-			throw LxError(ErrorType::Internal, ss.str());
+			switch (token.keyword())
+			{
+			case Keyword::And:
+				return BinaryOperator::And;
+			case Keyword::Except:
+				return BinaryOperator::Except;
+			case Keyword::Mod:
+				return BinaryOperator::Mod;
+			case Keyword::Or:
+				return BinaryOperator::Or;
+			case Keyword::Repeat:
+				return BinaryOperator::Repeat;
+			case Keyword::To:
+				return BinaryOperator::To;
+			case Keyword::_None:
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(token.type);
+				throw LxError(ErrorType::Internal, ss.str());
+			}
+			default:
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": cannot convert token keyword " << static_cast<int>(token.keyword());
+				throw LxError(ErrorType::Internal, ss.str());
+			}
+			}
 		}
 		}
 	}
@@ -215,34 +227,41 @@ namespace lx
 		return op == BinaryOperator::Assign;
 	}
 
-	PrefixOperator prefix_operator(TokenType type)
+	PrefixOperator prefix_operator(const Token& token)
 	{
-		switch (type)
-		{
-		case TokenType::Ahead:
-			return PrefixOperator::Ahead;
-		case TokenType::Behind:
-			return PrefixOperator::Behind;
-		case TokenType::Max:
-			return PrefixOperator::Max;
-		case TokenType::Min:
-			return PrefixOperator::Min;
-		case TokenType::Minus:
+		if (token.type == TokenType::Minus)
 			return PrefixOperator::Minus;
-		case TokenType::Not:
+
+		switch (token.keyword())
+		{
+		case Keyword::Ahead:
+			return PrefixOperator::Ahead;
+		case Keyword::Behind:
+			return PrefixOperator::Behind;
+		case Keyword::Max:
+			return PrefixOperator::Max;
+		case Keyword::Min:
+			return PrefixOperator::Min;
+		case Keyword::Not:
 			return PrefixOperator::Not;
-		case TokenType::NotAhead:
+		case Keyword::NotAhead:
 			return PrefixOperator::NotAhead;
-		case TokenType::NotBehind:
+		case Keyword::NotBehind:
 			return PrefixOperator::NotBehind;
-		case TokenType::Optional:
+		case Keyword::Optional:
 			return PrefixOperator::Optional;
-		case TokenType::Ref:
+		case Keyword::Ref:
 			return PrefixOperator::Ref;
+		case Keyword::_None:
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(token.type);
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 		default:
 		{
 			std::stringstream ss;
-			ss << __FUNCTION__ << ": cannot convert token type " << static_cast<int>(type);
+			ss << __FUNCTION__ << ": cannot convert token keyword " << static_cast<int>(token.keyword());
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 		}

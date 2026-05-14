@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,6 +28,27 @@ namespace lx
 		Bool,
 		CapId,
 
+		// Punctuation
+		Asterisk,
+		EqualTo,
+		GreaterThan,
+		GreaterThanOrEqualTo,
+		LBracket,
+		LessThan,
+		LessThanOrEqualTo,
+		LParen,
+		Minus,
+		NotEqualTo,
+		Plus,
+		RBracket,
+		RParen,
+		Slash,
+	};
+
+	enum class Keyword
+	{
+		_None = 0,
+
 		// Types
 		IntType,
 		FloatType,
@@ -44,73 +66,53 @@ namespace lx
 		ListType,
 
 		// Keywords
+		Ahead,
+		And,
+		Append,
 		Apply,
+		As,
+		Behind,
 		Break,
+		Capture,
 		Color,
 		Continue,
 		Delete,
 		Elif,
 		Else,
 		End,
+		Except,
 		Filter,
 		FindAll,
 		For,
 		Fn,
+		Greedy,
 		Highlight,
 		If,
 		In,
+		Lazy,
 		Let,
 		Log,
-		Page,
-		Pop,
-		Push,
-		Replace,
-		Return,
-		Search,
-		Scope,
-		Var,
-		While,
-		With,
-
-		// Pattern grammar
-		Append,
-		Ahead,
-		Behind,
-		Capture,
-		Except,
-		Greedy,
-		Lazy,
 		Max,
 		Min,
+		Mod,
 		Not,
 		NotAhead,
 		NotBehind,
 		Optional,
 		Or,
+		Page,
+		Pop,
+		Push,
 		Ref,
 		Repeat,
+		Replace,
+		Return,
+		Search,
+		Scope,
 		To,
-
-		// Punctuation
-		LParen,
-		RParen,
-		LBracket,
-		RBracket,
-
-		// Operators
-		And,
-		As,
-		Asterisk,
-		EqualTo,
-		GreaterThan,
-		GreaterThanOrEqualTo,
-		LessThan,
-		LessThanOrEqualTo,
-		Minus,
-		Mod,
-		NotEqualTo,
-		Plus,
-		Slash,
+		Var,
+		While,
+		With,
 	};
 
 	enum class Precedence
@@ -164,11 +166,23 @@ namespace lx
 	{
 		TokenType type = TokenType::EndOfFile;
 
+	private:
+		mutable std::optional<Keyword> _keyword = std::nullopt;
+
+	public:
 		std::string_view lexeme;
 		ScriptSegment segment;
 
-		std::string resolved() const;
+		Token(const ScriptSegment& segment);
 
+		std::string resolved() const;
+		Keyword keyword() const;
+		void set_keyword(Keyword kw);
+
+	private:
+		std::optional<Keyword> impl_keyword() const;
+
+	public:
 		bool is_datatype() const;
 		bool is_literal() const;
 

@@ -221,6 +221,14 @@ namespace lx
 				throw_error(err, n);
 		}
 
+		Token& parse_token(int n, Keyword kw, const char* err)
+		{
+			if (tokens_exist(n) && peek(n).keyword() == kw)
+				return ref(n);
+			else
+				throw_error(err, n);
+		}
+
 		Token& parse_datatype(int n)
 		{
 			if (tokens_exist(n) && peek(n).is_datatype())
@@ -239,9 +247,19 @@ namespace lx
 			return tokens_exist(n) && peek(n).type == type;
 		}
 
+		bool peek_token_is(size_t n, Keyword kw) const
+		{
+			return tokens_exist(n) && peek(n).keyword() == kw;
+		}
+
 		bool peek_token_is_not(size_t n, TokenType type) const
 		{
 			return tokens_exist(n) && peek(n).type != type;
+		}
+
+		bool peek_token_is_not(size_t n, Keyword kw) const
+		{
+			return tokens_exist(n) && peek(n).keyword() != kw;
 		}
 
 		void assert_tokens_exist(size_t n, const char* err) const
@@ -275,7 +293,7 @@ namespace lx
 		}
 
 		template<typename Node>
-		bool parse_declaration(TokenType first)
+		bool parse_declaration(Keyword first)
 		{
 			if (!peek_token_is(0, first))
 				return false;
@@ -290,17 +308,17 @@ namespace lx
 
 		bool parse_pattern_declaration()
 		{
-			return parse_declaration<PatternDeclaration>(TokenType::PatternType);
+			return parse_declaration<PatternDeclaration>(Keyword::PatternType);
 		}
 
 		bool parse_delete_pattern()
 		{
-			return parse_declaration<DeletePattern>(TokenType::Delete);
+			return parse_declaration<DeletePattern>(Keyword::Delete);
 		}
 
 		bool parse_append_statement()
 		{
-			if (!peek_token_is(0, TokenType::Append))
+			if (!peek_token_is(0, Keyword::Append))
 				return false;
 
 			assert_tokens_exist(1, errors::EXPECTED_PATTERN_EXPRESSION);
@@ -314,7 +332,7 @@ namespace lx
 
 		bool parse_scope_statement()
 		{
-			if (!peek_token_is(0, TokenType::Scope))
+			if (!peek_token_is(0, Keyword::Scope))
 				return false;
 			
 			auto& scope_token = ref(0);
@@ -334,10 +352,10 @@ namespace lx
 
 		bool parse_find_statement()
 		{
-			if (!peek_token_is(0, TokenType::FindAll) && !peek_token_is(0, TokenType::Search))
+			if (!peek_token_is(0, Keyword::FindAll) && !peek_token_is(0, Keyword::Search))
 				return false;
 
-			bool findall = peek_token_is(0, TokenType::FindAll);
+			bool findall = peek_token_is(0, Keyword::FindAll);
 			auto& find_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& pattern = parse_expression(offset);
@@ -348,18 +366,18 @@ namespace lx
 
 		bool parse_filter_statement()
 		{
-			return parse_declaration<FilterStatement>(TokenType::Filter);
+			return parse_declaration<FilterStatement>(Keyword::Filter);
 		}
 
 		bool parse_replace_statement()
 		{
-			if (!peek_token_is(0, TokenType::Filter))
+			if (!peek_token_is(0, Keyword::Filter))
 				return false;
 
 			auto& replace_token = ref(0);
 			auto offset = token_offset(1);
 			Expression& match_expr = parse_expression(offset);
-			parse_token(0, TokenType::With, errors::EXPECTED_WITH_CLAUSE);
+			parse_token(0, Keyword::With, errors::EXPECTED_WITH_CLAUSE);
 			offset.add(1);
 			Expression& string_expr = parse_expression(offset);
 			offset.submit();
@@ -369,17 +387,17 @@ namespace lx
 
 		bool parse_apply_statement()
 		{
-			return parse_declaration<ApplyStatement>(TokenType::Apply);
+			return parse_declaration<ApplyStatement>(Keyword::Apply);
 		}
 
 		bool parse_page_statement()
 		{
-			if (!peek_token_is(0, TokenType::Page))
+			if (!peek_token_is(0, Keyword::Page))
 				return false;
 
 			assert_tokens_exist(1, errors::EXPECTED_OPERAND);
 
-			if (peek_token_is(1, TokenType::Push))
+			if (peek_token_is(1, Keyword::Push))
 			{
 				assert_tokens_exist(2, errors::EXPECTED_EXPRESSION);
 				auto& page_token = ref(0);
@@ -389,14 +407,14 @@ namespace lx
 				append_to_context(std::make_unique<PagePush>(std::move(page_token), page));
 				return true;
 			}
-			else if (peek_token_is(1, TokenType::Pop))
+			else if (peek_token_is(1, Keyword::Pop))
 			{
 				auto& page_token = ref(0);
 				token_offset(2).submit();
 				append_to_context(std::make_unique<PagePop>(std::move(page_token)));
 				return true;
 			}
-			else if (peek_token_is(1, TokenType::Delete))
+			else if (peek_token_is(1, Keyword::Delete))
 			{
 				auto& page_token = ref(0);
 				token_offset(2).submit();
@@ -430,7 +448,7 @@ namespace lx
 
 		bool parse_function_definition()
 		{
-			if (!peek_token_is(0, TokenType::Fn))
+			if (!peek_token_is(0, Keyword::Fn))
 				return false;
 
 			auto& fn_token = ref(0);
@@ -474,16 +492,16 @@ namespace lx
 
 			offset.submit();
 			auto ctx = context(append_to_context(std::make_unique<FunctionDefinition>(std::move(fn_token), std::move(identifier), std::move(arglist), std::move(return_type))));
-			parse_simple_block(TokenType::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
+			parse_simple_block(Keyword::Fn, errors::EXPECTED_FN_END, errors::EXPECTED_FN);
 			return true;
 		}
 
 		bool parse_variable_declaration()
 		{
 			bool global;
-			if (peek_token_is(0, TokenType::Var))
+			if (peek_token_is(0, Keyword::Var))
 				global = true;
-			else if (peek_token_is(0, TokenType::Let))
+			else if (peek_token_is(0, Keyword::Let))
 				global = false;
 			else
 				return false;
@@ -534,9 +552,9 @@ namespace lx
 		}
 
 		template<typename Node>
-		bool parse_unary_control_statement(TokenType type)
+		bool parse_unary_control_statement(Keyword kw)
 		{
-			if (!peek_token_is(0, type))
+			if (!peek_token_is(0, kw))
 				return false;
 
 			auto& token = ref(0);
@@ -547,17 +565,17 @@ namespace lx
 
 		bool parse_break_statement()
 		{
-			return parse_unary_control_statement<BreakStatement>(TokenType::Break);
+			return parse_unary_control_statement<BreakStatement>(Keyword::Break);
 		}
 
 		bool parse_continue_statement()
 		{
-			return parse_unary_control_statement<ContinueStatement>(TokenType::Continue);
+			return parse_unary_control_statement<ContinueStatement>(Keyword::Continue);
 		}
 
 		bool parse_return_statement()
 		{
-			if (!peek_token_is(0, TokenType::Return))
+			if (!peek_token_is(0, Keyword::Return))
 				return false;
 			
 			auto& return_token = ref(0);
@@ -574,7 +592,7 @@ namespace lx
 
 		bool parse_if_statement()
 		{
-			if (!peek_token_is(0, TokenType::If))
+			if (!peek_token_is(0, Keyword::If))
 				return false;
 
 			auto& if_token = ref(0);
@@ -590,7 +608,7 @@ namespace lx
 
 		bool parse_elif_statement(IfConditionalBlock& cond)
 		{
-			if (!peek_token_is(0, TokenType::Elif))
+			if (!peek_token_is(0, Keyword::Elif))
 				return false;
 
 			auto& elif_token = ref(0);
@@ -607,7 +625,7 @@ namespace lx
 
 		bool parse_else_statement(IfConditionalBlock& cond)
 		{
-			if (!peek_token_is(0, TokenType::Else))
+			if (!peek_token_is(0, Keyword::Else))
 				return false;
 
 			auto& else_token = ref(0);
@@ -615,13 +633,13 @@ namespace lx
 			auto& stmt = _tree.add(std::make_unique<ElseStatement>(std::move(else_token)));
 			cond.set_fallback(&stmt);
 			auto ctx = context(stmt);
-			parse_simple_block(TokenType::If, errors::EXPECTED_IF_END, errors::EXPECTED_IF);
+			parse_simple_block(Keyword::If, errors::EXPECTED_IF_END, errors::EXPECTED_IF);
 			return true;
 		}
 
 		bool parse_while_loop()
 		{
-			if (!peek_token_is(0, TokenType::While))
+			if (!peek_token_is(0, Keyword::While))
 				return false;
 
 			auto& loop_token = ref(0);
@@ -630,31 +648,31 @@ namespace lx
 
 			offset.submit();
 			auto ctx = context(append_to_context(std::make_unique<WhileLoop>(std::move(loop_token), expr)));
-			parse_simple_block(TokenType::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
+			parse_simple_block(Keyword::While, errors::EXPECTED_WHILE_END, errors::EXPECTED_WHILE);
 			return true;
 		}
 
 		bool parse_for_loop()
 		{
-			if (!peek_token_is(0, TokenType::For))
+			if (!peek_token_is(0, Keyword::For))
 				return false;
 
 			auto& loop_token = ref(0);
 			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
-			parse_token(2, TokenType::In, errors::EXPECTED_IN_CLAUSE);
+			parse_token(2, Keyword::In, errors::EXPECTED_IN_CLAUSE);
 
 			auto offset = token_offset(3);
 			Expression& expr = parse_expression(offset);
 
 			offset.submit();
 			auto ctx = context(append_to_context(std::make_unique<ForLoop>(std::move(loop_token), std::move(identifier), expr)));
-			parse_simple_block(TokenType::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
+			parse_simple_block(Keyword::For, errors::EXPECTED_FOR_END, errors::EXPECTED_FOR);
 			return true;
 		}
 
 		bool parse_log_statement()
 		{
-			if (!peek_token_is(0, TokenType::Log))
+			if (!peek_token_is(0, Keyword::Log))
 				return false;
 
 			auto& log_token = ref(0);
@@ -686,7 +704,7 @@ namespace lx
 
 		bool parse_highlight_statement()
 		{
-			if (!peek_token_is(0, TokenType::Highlight))
+			if (!peek_token_is(0, Keyword::Highlight))
 				return false;
 
 			auto& highlight_token = ref(0);
@@ -694,7 +712,7 @@ namespace lx
 			offset.add(1);
 
 			bool clear = false;
-			if (peek_token_is(0, TokenType::Delete))
+			if (peek_token_is(0, Keyword::Delete))
 			{
 				offset.add(1);
 				clear = true;
@@ -704,10 +722,10 @@ namespace lx
 			BuiltinSymbol color = BuiltinSymbol::Yellow;
 			Expression* expr = nullptr;
 
-			if (peek_token_is_not(0, TokenType::Color))
+			if (peek_token_is_not(0, Keyword::Color))
 				expr = &parse_expression(offset);
 
-			if (peek_token_is(0, TokenType::Color))
+			if (peek_token_is(0, Keyword::Color))
 			{
 				color_token = &ref(0);
 				offset.add(1);
@@ -727,9 +745,9 @@ namespace lx
 			return true;
 		}
 
-		bool parse_end_statement(TokenType end, const char* missing_end_kw_err)
+		bool parse_end_statement(Keyword end, const char* missing_end_kw_err)
 		{
-			if (!peek_token_is(0, TokenType::End))
+			if (!peek_token_is(0, Keyword::End))
 				return false;
 
 			parse_token(1, end, missing_end_kw_err);
@@ -737,7 +755,7 @@ namespace lx
 			return true;
 		}
 
-		void parse_simple_block(TokenType end, const char* missing_end_err, const char* missing_end_kw_err)
+		void parse_simple_block(Keyword end, const char* missing_end_err, const char* missing_end_kw_err)
 		{
 			while (!eof())
 			{
@@ -754,13 +772,13 @@ namespace lx
 		{
 			while (!eof())
 			{
-				if (parse_end_statement(TokenType::If, errors::EXPECTED_IF))
+				if (parse_end_statement(Keyword::If, errors::EXPECTED_IF))
 					return;
 
-				if (peek_token_is(0, TokenType::Elif) && parse_elif_statement(cond))
+				if (peek_token_is(0, Keyword::Elif) && parse_elif_statement(cond))
 					return;
 
-				if (peek_token_is(0, TokenType::Else) && parse_else_statement(cond))
+				if (peek_token_is(0, Keyword::Else) && parse_else_statement(cond))
 					return;
 
 				parse_statement();
@@ -817,7 +835,7 @@ namespace lx
 						peek(1).is_literal() ||
 						peek(1).is_prefix_operator()))
 					{
-						if (peek_token_is(0, TokenType::As))
+						if (peek_token_is(0, Keyword::As))
 							lhs = &parse_as_expression(*lhs, offset);
 						else
 							lhs = &parse_simple_repeat_expression(*lhs, offset);
@@ -1021,7 +1039,7 @@ namespace lx
 
 		Expression* parse_wrapper_pattern_expression(TokenOffset& offset)
 		{
-			if (peek_token_is(0, TokenType::Capture))
+			if (peek_token_is(0, Keyword::Capture))
 			{
 				auto& capture_token = ref(0);
 				offset.add(1);
@@ -1029,13 +1047,13 @@ namespace lx
 				offset.add(1);
 				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset)));
 			}
-			else if (peek_token_is(0, TokenType::Lazy))
+			else if (peek_token_is(0, Keyword::Lazy))
 			{
 				auto& lazy_token = ref(0);
 				offset.add(1);
 				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset)));
 			}
-			else if (peek_token_is(0, TokenType::Greedy))
+			else if (peek_token_is(0, Keyword::Greedy))
 			{
 				auto& greedy_token = ref(0);
 				offset.add(1);

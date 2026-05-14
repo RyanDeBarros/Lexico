@@ -4,137 +4,6 @@ namespace lx
 {
 	// TODO types should not be token types - they should only be resolved during parsing: this will be beneficial for members that happen to have the names of types or for using the types of custom structs. Same thing for keywords (everything here except for literals)?
 
-	static TokenType resolve_identifier(const Token& token)
-	{
-		if (token.type != TokenType::Identifier)
-			return token.type;
-
-		if (token.lexeme == "true")
-			return TokenType::Bool;
-		else if (token.lexeme == "false")
-			return TokenType::Bool;
-		else if (token.lexeme == "int")
-			return TokenType::IntType;
-		else if (token.lexeme == "float")
-			return TokenType::FloatType;
-		else if (token.lexeme == "bool")
-			return TokenType::BoolType;
-		else if (token.lexeme == "string")
-			return TokenType::StringType;
-		else if (token.lexeme == "string_view")
-			return TokenType::StringViewType;
-		else if (token.lexeme == "void")
-			return TokenType::VoidType;
-		else if (token.lexeme == "pattern")
-			return TokenType::PatternType;
-		else if (token.lexeme == "match")
-			return TokenType::MatchType;
-		else if (token.lexeme == "matches")
-			return TokenType::MatchesType;
-		else if (token.lexeme == "capid")
-			return TokenType::CapIdType;
-		else if (token.lexeme == "cap")
-			return TokenType::CapType;
-		else if (token.lexeme == "irange")
-			return TokenType::IRangeType;
-		else if (token.lexeme == "srange")
-			return TokenType::SRangeType;
-		else if (token.lexeme == "list")
-			return TokenType::ListType;
-		else if (token.lexeme == "and")
-			return TokenType::And;
-		else if (token.lexeme == "apply")
-			return TokenType::Apply;
-		else if (token.lexeme == "as")
-			return TokenType::As;
-		else if (token.lexeme == "break")
-			return TokenType::Break;
-		else if (token.lexeme == "color")
-			return TokenType::Color;
-		else if (token.lexeme == "continue")
-			return TokenType::Continue;
-		else if (token.lexeme == "delete")
-			return TokenType::Delete;
-		else if (token.lexeme == "elif")
-			return TokenType::Elif;
-		else if (token.lexeme == "else")
-			return TokenType::Else;
-		else if (token.lexeme == "end")
-			return TokenType::End;
-		else if (token.lexeme == "filter")
-			return TokenType::Filter;
-		else if (token.lexeme == "findall")
-			return TokenType::FindAll;
-		else if (token.lexeme == "fn")
-			return TokenType::Fn;
-		else if (token.lexeme == "for")
-			return TokenType::For;
-		else if (token.lexeme == "highlight")
-			return TokenType::Highlight;
-		else if (token.lexeme == "if")
-			return TokenType::If;
-		else if (token.lexeme == "in")
-			return TokenType::In;
-		else if (token.lexeme == "let")
-			return TokenType::Let;
-		else if (token.lexeme == "log")
-			return TokenType::Log;
-		else if (token.lexeme == "page")
-			return TokenType::Page;
-		else if (token.lexeme == "pop")
-			return TokenType::Pop;
-		else if (token.lexeme == "push")
-			return TokenType::Push;
-		else if (token.lexeme == "replace")
-			return TokenType::Replace;
-		else if (token.lexeme == "return")
-			return TokenType::Return;
-		else if (token.lexeme == "search")
-			return TokenType::Search;
-		else if (token.lexeme == "scope")
-			return TokenType::Scope;
-		else if (token.lexeme == "var")
-			return TokenType::Var;
-		else if (token.lexeme == "while")
-			return TokenType::While;
-		else if (token.lexeme == "with")
-			return TokenType::With;
-		else if (token.lexeme == "append")
-			return TokenType::Append;
-		else if (token.lexeme == "ahead")
-			return TokenType::Ahead;
-		else if (token.lexeme == "behind")
-			return TokenType::Behind;
-		else if (token.lexeme == "capture")
-			return TokenType::Capture;
-		else if (token.lexeme == "except")
-			return TokenType::Except;
-		else if (token.lexeme == "lazy")
-			return TokenType::Lazy;
-		else if (token.lexeme == "greedy")
-			return TokenType::Greedy;
-		else if (token.lexeme == "max")
-			return TokenType::Max;
-		else if (token.lexeme == "min")
-			return TokenType::Min;
-		else if (token.lexeme == "mod")
-			return TokenType::Mod;
-		else if (token.lexeme == "not")
-			return TokenType::Not;
-		else if (token.lexeme == "optional")
-			return TokenType::Optional;
-		else if (token.lexeme == "or")
-			return TokenType::Or;
-		else if (token.lexeme == "ref")
-			return TokenType::Ref;
-		else if (token.lexeme == "repeat")
-			return TokenType::Repeat;
-		else if (token.lexeme == "to")
-			return TokenType::To;
-		else
-			return TokenType::Identifier;
-	}
-
 	class ScriptPointer
 	{
 		unsigned int _line = 1;
@@ -394,7 +263,7 @@ namespace lx
 
 		Token new_token() const
 		{
-			return { .segment = _script_lines };
+			return Token(ScriptSegment(_script_lines));
 		}
 
 		void start_token(TokenType type)
@@ -417,7 +286,11 @@ namespace lx
 			_token.segment.end_column = _ptr.last_column();
 
 			_token.lexeme = _script.substr(_str_offset, _ptr.index() - _str_offset);
-			_token.type = resolve_identifier(_token);
+			if (_token.type == TokenType::Identifier)
+			{
+				if (_token.lexeme == "true" || _token.lexeme == "false")
+					_token.type = TokenType::Bool;
+			}
 
 			_tokens.push_back(std::move(_token));
 			
@@ -492,25 +365,25 @@ namespace lx
 					continue;
 				}
 
-				if (_tokens[i].type == TokenType::Not)
+				if (_tokens[i].keyword() == Keyword::Not)
 				{
-					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Ahead)
+					if (i + 1 < _tokens.size() && _tokens[i + 1].keyword() == Keyword::Ahead)
 					{
 						_token = std::move(_tokens[i]);
 						_token.segment.end_column = _tokens[i + 1].segment.end_column;
 						_token.segment.end_line = _tokens[i + 1].segment.end_line;
-						_token.type = TokenType::NotAhead;
+						_token.set_keyword(Keyword::NotAhead);
 						final_tokens.push_back(std::move(_token));
 						++i;
 						continue;
 					}
 
-					if (i + 1 < _tokens.size() && _tokens[i + 1].type == TokenType::Behind)
+					if (i + 1 < _tokens.size() && _tokens[i + 1].keyword() == Keyword::Behind)
 					{
 						_token = std::move(_tokens[i]);
 						_token.segment.end_column = _tokens[i + 1].segment.end_column;
 						_token.segment.end_line = _tokens[i + 1].segment.end_line;
-						_token.type = TokenType::NotBehind;
+						_token.set_keyword(Keyword::NotBehind);
 						final_tokens.push_back(std::move(_token));
 						++i;
 						continue;
@@ -561,7 +434,7 @@ namespace lx
 
 	Token Lexer::start_token() const
 	{
-		Token token{ .segment = ScriptSegment(_script_lines) };
+		Token token = Token(ScriptSegment(_script_lines));
 		token.segment.start_line = 1;
 		token.segment.end_line = 1;
 		token.segment.start_column = 1;

@@ -15,9 +15,9 @@ namespace lx
 {
 	class FullTypeKeyword
 	{
-		TokenType _simple;
+		Keyword _simple;
 		ScriptSegment _segment;
-		std::vector<TokenType> _underlying;
+		std::vector<Keyword> _underlying;
 
 	public:
 		FullTypeKeyword(const Token& simple, const std::vector<Token>& underlying);

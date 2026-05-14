@@ -6,7 +6,7 @@
 
 namespace lx
 {
-	extern DataType data_type(TokenType simple_type, const std::vector<TokenType>& underlying_types);
+	extern DataType data_type(Keyword simple_type, const std::vector<Keyword>& underlying_types);
 	extern DataType literal_type(TokenType type);
 
 	enum class BinaryOperator
@@ -31,7 +31,7 @@ namespace lx
 		To,
 	};
 
-	extern BinaryOperator binary_operator(TokenType type);
+	extern BinaryOperator binary_operator(const Token& token);
 	extern std::optional<DataType> evaltype(BinaryOperator op, const DataType& lhs, const DataType& rhs);
 	extern bool is_imperative(BinaryOperator op);
 
@@ -49,7 +49,7 @@ namespace lx
 		Ref,
 	};
 
-	extern PrefixOperator prefix_operator(TokenType type);
+	extern PrefixOperator prefix_operator(const Token& token);
 	extern std::optional<DataType> evaltype(PrefixOperator op, const DataType& type);
 
 	enum class PatternSimpleRepeatOperator

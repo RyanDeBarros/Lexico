@@ -151,6 +151,11 @@ namespace lx
 		return combo;
 	}
 
+	Token::Token(const ScriptSegment& segment)
+		: segment(segment)
+	{
+	}
+
 	std::string Token::resolved() const
 	{
 		if (type != TokenType::String)
@@ -189,25 +194,169 @@ namespace lx
 		return str;
 	}
 
+	Keyword Token::keyword() const
+	{
+		if (!_keyword)
+		{
+			_keyword = impl_keyword();
+			if (!_keyword)
+				_keyword = Keyword::_None;
+		}
+		return *_keyword;
+	}
+
+	void Token::set_keyword(Keyword kw)
+	{
+		_keyword = kw;
+	}
+
+	std::optional<Keyword> Token::impl_keyword() const
+	{
+		if (type != TokenType::Identifier)
+			return std::nullopt;
+
+		if (lexeme == "int")
+			return Keyword::IntType;
+		else if (lexeme == "float")
+			return Keyword::FloatType;
+		else if (lexeme == "bool")
+			return Keyword::BoolType;
+		else if (lexeme == "string")
+			return Keyword::StringType;
+		else if (lexeme == "string_view")
+			return Keyword::StringViewType;
+		else if (lexeme == "void")
+			return Keyword::VoidType;
+		else if (lexeme == "pattern")
+			return Keyword::PatternType;
+		else if (lexeme == "match")
+			return Keyword::MatchType;
+		else if (lexeme == "matches")
+			return Keyword::MatchesType;
+		else if (lexeme == "capid")
+			return Keyword::CapIdType;
+		else if (lexeme == "cap")
+			return Keyword::CapType;
+		else if (lexeme == "irange")
+			return Keyword::IRangeType;
+		else if (lexeme == "srange")
+			return Keyword::SRangeType;
+		else if (lexeme == "list")
+			return Keyword::ListType;
+		else if (lexeme == "and")
+			return Keyword::And;
+		else if (lexeme == "apply")
+			return Keyword::Apply;
+		else if (lexeme == "as")
+			return Keyword::As;
+		else if (lexeme == "break")
+			return Keyword::Break;
+		else if (lexeme == "color")
+			return Keyword::Color;
+		else if (lexeme == "continue")
+			return Keyword::Continue;
+		else if (lexeme == "delete")
+			return Keyword::Delete;
+		else if (lexeme == "elif")
+			return Keyword::Elif;
+		else if (lexeme == "else")
+			return Keyword::Else;
+		else if (lexeme == "end")
+			return Keyword::End;
+		else if (lexeme == "filter")
+			return Keyword::Filter;
+		else if (lexeme == "findall")
+			return Keyword::FindAll;
+		else if (lexeme == "fn")
+			return Keyword::Fn;
+		else if (lexeme == "for")
+			return Keyword::For;
+		else if (lexeme == "highlight")
+			return Keyword::Highlight;
+		else if (lexeme == "if")
+			return Keyword::If;
+		else if (lexeme == "in")
+			return Keyword::In;
+		else if (lexeme == "let")
+			return Keyword::Let;
+		else if (lexeme == "log")
+			return Keyword::Log;
+		else if (lexeme == "page")
+			return Keyword::Page;
+		else if (lexeme == "pop")
+			return Keyword::Pop;
+		else if (lexeme == "push")
+			return Keyword::Push;
+		else if (lexeme == "replace")
+			return Keyword::Replace;
+		else if (lexeme == "return")
+			return Keyword::Return;
+		else if (lexeme == "search")
+			return Keyword::Search;
+		else if (lexeme == "scope")
+			return Keyword::Scope;
+		else if (lexeme == "var")
+			return Keyword::Var;
+		else if (lexeme == "while")
+			return Keyword::While;
+		else if (lexeme == "with")
+			return Keyword::With;
+		else if (lexeme == "append")
+			return Keyword::Append;
+		else if (lexeme == "ahead")
+			return Keyword::Ahead;
+		else if (lexeme == "behind")
+			return Keyword::Behind;
+		else if (lexeme == "capture")
+			return Keyword::Capture;
+		else if (lexeme == "except")
+			return Keyword::Except;
+		else if (lexeme == "lazy")
+			return Keyword::Lazy;
+		else if (lexeme == "greedy")
+			return Keyword::Greedy;
+		else if (lexeme == "max")
+			return Keyword::Max;
+		else if (lexeme == "min")
+			return Keyword::Min;
+		else if (lexeme == "mod")
+			return Keyword::Mod;
+		else if (lexeme == "not")
+			return Keyword::Not;
+		else if (lexeme == "optional")
+			return Keyword::Optional;
+		else if (lexeme == "or")
+			return Keyword::Or;
+		else if (lexeme == "ref")
+			return Keyword::Ref;
+		else if (lexeme == "repeat")
+			return Keyword::Repeat;
+		else if (lexeme == "to")
+			return Keyword::To;
+		else
+			return std::nullopt;
+	}
+
 	bool Token::is_datatype() const
 	{
-		switch (type)
+		switch (keyword())
 		{
-		case TokenType::IntType:
-		case TokenType::FloatType:
-		case TokenType::BoolType:
-		case TokenType::StringType:
-		case TokenType::StringViewType:
-		case TokenType::VoidType:
-		case TokenType::PatternType:
-		case TokenType::MatchType:
-		case TokenType::MatchesType:
-		case TokenType::CapIdType:
-		case TokenType::CapType:
-		case TokenType::IRangeType:
-		case TokenType::SRangeType:
-		case TokenType::ListType:
+		case Keyword::IntType:
+		case Keyword::FloatType:
+		case Keyword::BoolType:
+		case Keyword::StringType:
+		case Keyword::StringViewType:
+		case Keyword::VoidType:
+		case Keyword::PatternType:
+		case Keyword::MatchType:
+		case Keyword::MatchesType:
+		case Keyword::CapIdType:
+		case Keyword::CapType:
+		case Keyword::IRangeType:
+		case Keyword::SRangeType:
+		case Keyword::ListType:
 			return true;
+
 		default:
 			return false;
 		}
@@ -232,45 +381,54 @@ namespace lx
 	{
 		switch (type)
 		{
-		case TokenType::And:
 		case TokenType::Assign:
 		case TokenType::Asterisk:
 		case TokenType::Comma:
 		case TokenType::EqualTo:
-		case TokenType::Except:
 		case TokenType::GreaterThan:
 		case TokenType::GreaterThanOrEqualTo:
 		case TokenType::LessThan:
 		case TokenType::LessThanOrEqualTo:
 		case TokenType::Minus:
-		case TokenType::Mod:
 		case TokenType::NotEqualTo:
-		case TokenType::Or:
 		case TokenType::Plus:
-		case TokenType::Repeat:
 		case TokenType::Slash:
-		case TokenType::To:
 			return true;
+
 		default:
+			switch (keyword())
+			{
+			case Keyword::And:
+			case Keyword::Except:
+			case Keyword::Mod:
+			case Keyword::Or:
+			case Keyword::Repeat:
+			case Keyword::To:
+				return true;
+			}
+
 			return false;
 		}
 	}
 
 	bool Token::is_prefix_operator() const
 	{
-		switch (type)
-		{
-		case TokenType::Ahead:
-		case TokenType::Behind:
-		case TokenType::Max:
-		case TokenType::Min:
-		case TokenType::Minus:
-		case TokenType::Not:
-		case TokenType::NotAhead:
-		case TokenType::NotBehind:
-		case TokenType::Optional:
-		case TokenType::Ref:
+		if (type == TokenType::Minus)
 			return true;
+
+		switch (keyword())
+		{
+		case Keyword::Ahead:
+		case Keyword::Behind:
+		case Keyword::Max:
+		case Keyword::Min:
+		case Keyword::Not:
+		case Keyword::NotAhead:
+		case Keyword::NotBehind:
+		case Keyword::Optional:
+		case Keyword::Ref:
+			return true;
+
 		default:
 			return false;
 		}
@@ -280,13 +438,15 @@ namespace lx
 	{
 		switch (type)
 		{
-		case TokenType::As:
 		case TokenType::Asterisk:
 		case TokenType::Plus:
 			return true;
-		default:
-			return false;
 		}
+
+		if (keyword() == Keyword::As)
+			return true;
+
+		return false;
 	}
 
 	Precedence Token::precedence() const
@@ -295,7 +455,6 @@ namespace lx
 		{
 		case TokenType::Asterisk:
 		case TokenType::Slash:
-		case TokenType::Mod:
 			return Precedence::Mult;
 
 		case TokenType::Plus:
@@ -312,21 +471,6 @@ namespace lx
 		case TokenType::NotEqualTo:
 			return Precedence::Equality;
 
-		case TokenType::And:
-			return Precedence::And;
-
-		case TokenType::Or:
-			return Precedence::Or;
-
-		case TokenType::To:
-			return Precedence::To;
-
-		case TokenType::Repeat:
-			return Precedence::Repeat;
-
-		case TokenType::Except:
-			return Precedence::Except;
-
 		case TokenType::Comma:
 			return Precedence::Comma;
 
@@ -334,7 +478,30 @@ namespace lx
 			return Precedence::Assign;
 
 		default:
+		{
+			switch (keyword())
+			{
+			case Keyword::Mod:
+				return Precedence::Mult;
+
+			case Keyword::And:
+				return Precedence::And;
+
+			case Keyword::Or:
+				return Precedence::Or;
+
+			case Keyword::To:
+				return Precedence::To;
+
+			case Keyword::Repeat:
+				return Precedence::Repeat;
+
+			case Keyword::Except:
+				return Precedence::Except;
+			}
+
 			return Precedence::None;
+		}
 		}
 	}
 

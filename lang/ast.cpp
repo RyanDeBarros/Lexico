@@ -35,10 +35,10 @@ namespace lx
 	}
 
 	FullTypeKeyword::FullTypeKeyword(const Token& simple, const std::vector<Token>& underlying)
-		: _simple(simple.type), _segment(underlying.empty() ? simple.segment : simple.segment.combined_right(underlying.back().segment))
+		: _simple(simple.keyword()), _segment(underlying.empty() ? simple.segment : simple.segment.combined_right(underlying.back().segment))
 	{
 		for (const Token& token : underlying)
-			_underlying.push_back(token.type);
+			_underlying.push_back(token.keyword());
 	}
 
 	DataType FullTypeKeyword::type() const
@@ -490,7 +490,7 @@ namespace lx
 
 	BinaryOperator BinaryExpression::op() const
 	{
-		return binary_operator(_op.type);
+		return binary_operator(_op);
 	}
 
 	MemberAccessExpression::MemberAccessExpression(Expression& object, Token&& member)
@@ -504,7 +504,7 @@ namespace lx
 		{
 			_validated = true;
 			_object.analyse(ctx, pass);
-			evaltype(ctx);
+			member(ctx);
 		}
 	}
 
@@ -613,7 +613,7 @@ namespace lx
 
 	PrefixOperator PrefixExpression::op() const
 	{
-		return prefix_operator(_op.type);
+		return prefix_operator(_op);
 	}
 
 	AsExpression::AsExpression(Expression& expr, FullTypeKeyword&& type)
