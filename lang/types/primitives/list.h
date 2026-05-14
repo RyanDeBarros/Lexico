@@ -34,5 +34,6 @@ namespace lx
 		bool push(Variable element);
 		size_t size() const;
 		const Variable& operator[](size_t i) const;
+		Variable& operator[](size_t i);
 	};
 }

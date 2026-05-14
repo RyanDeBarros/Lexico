@@ -944,30 +944,33 @@ namespace lx
 			auto& lbracket_token = parse_token(0, TokenType::LBracket, errors::EXPECTED_LBRACKET);
 			offset.add(1);  // '['
 
-			std::vector<Expression*> elements;
-			bool comma_ended = false;
-			while (continue_statement() && !peek_token_is(0, TokenType::RBracket))
-			{
-				elements.push_back(&parse_expression(offset));
-
-				if (peek_token_is(0, TokenType::Comma))
-				{
-					comma_ended = true;
-					offset.add(1);
-				}
-				else
-				{
-					comma_ended = false;
-					break;
-				}
-			}
-
-			if (comma_ended)
-				throw_error(errors::EXPECTED_EXPRESSION, 0);
-
 			std::optional<DataType> underlying_type;
-			if (elements.empty())
+			std::vector<Expression*> elements;
+
+			if (tokens_exist(0) && peek(0).is_datatype())
 				underlying_type = parse_full_type(offset).type();
+			else
+			{
+				bool comma_ended = false;
+				while (continue_statement() && !peek_token_is(0, TokenType::RBracket))
+				{
+					elements.push_back(&parse_expression(offset, false));
+
+					if (peek_token_is(0, TokenType::Comma))
+					{
+						comma_ended = true;
+						offset.add(1);
+					}
+					else
+					{
+						comma_ended = false;
+						break;
+					}
+				}
+
+				if (comma_ended)
+					throw_error(errors::EXPECTED_EXPRESSION, 0);
+			}
 
 			auto& rbracket_token = parse_token(0, TokenType::RBracket, errors::EXPECTED_RBRACKET);
 			offset.add(1);  // ']'

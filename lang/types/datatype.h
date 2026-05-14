@@ -27,6 +27,7 @@ namespace lx
 	};
 
 	class MemberSignature;
+	struct ScriptSegment;
 
 	class DataType
 	{
@@ -59,9 +60,9 @@ namespace lx
 		static DataType List(const DataType& underlying);
 		static DataType List(DataType&& underlying);
 
-		std::string repr() const;
+		std::string repr(bool delimit = true) const;
 		SimpleType simple() const;
-		const DataType& underlying() const;
+		const DataType& underlying(const ScriptSegment* segment = nullptr) const;
 		size_t hash() const;
 		bool operator==(const DataType& other) const;
 

@@ -89,7 +89,6 @@ namespace lx
 
 	// TODO members to push, pop, insert, remove
 	// TODO '+' operator to combine lists
-	// TODO v0.2 compound assignment operators
 
 	StringMap<MemberSignature> List::members()
 	{
@@ -173,6 +172,11 @@ namespace lx
 	}
 
 	const Variable& List::operator[](size_t i) const
+	{
+		return _elements[i];
+	}
+
+	Variable& List::operator[](size_t i)
 	{
 		return _elements[i];
 	}

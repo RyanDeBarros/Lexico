@@ -5,6 +5,110 @@
 
 namespace lx
 {
+	static std::optional<Variable> arithmetic_operate(const EvalContext& env, BinaryOperator op, Variable& lhs, Variable& rhs)
+	{
+		bool lint = lhs.ref().can_cast_implicit(DataType::Int());
+		bool rint = rhs.ref().can_cast_implicit(DataType::Int());
+		if (lint && rint)
+		{
+			int l = std::move(lhs).consume_as<Int>(env).value();
+			int r = std::move(rhs).consume_as<Int>(env).value();
+
+			int res = 0;
+			switch (op)
+			{
+			case BinaryOperator::Asterisk:
+				res = l * r;
+				break;
+			case BinaryOperator::Minus:
+				res = l - r;
+				break;
+			case BinaryOperator::Mod:
+				res = l % r;
+				break;
+			case BinaryOperator::Plus:
+				res = l + r;
+				break;
+			case BinaryOperator::Slash:
+				res = l / r;
+				break;
+			}
+			return env.runtime.unbound_variable(Int(res));
+		}
+		else
+		{
+			if ((lint || lhs.ref().can_cast_implicit(DataType::Float())) && (rint || rhs.ref().can_cast_implicit(DataType::Float())))
+			{
+				float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>(env).value()) : std::move(lhs).consume_as<Float>(env).value();
+				float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>(env).value()) : std::move(rhs).consume_as<Float>(env).value();
+
+				float res = 0.f;
+				switch (op)
+				{
+				case BinaryOperator::Asterisk:
+					res = l * r;
+					break;
+				case BinaryOperator::Minus:
+					res = l - r;
+					break;
+				case BinaryOperator::Mod:
+					res = std::fmod(l, r);
+					break;
+				case BinaryOperator::Plus:
+					res = l + r;
+					break;
+				case BinaryOperator::Slash:
+					res = l / r;
+					break;
+				}
+				return env.runtime.unbound_variable(Float(res));
+			}
+		}
+		return std::nullopt;
+	}
+	
+	static std::optional<Variable> add_strings(const EvalContext& env, Variable& lhs, Variable& rhs)
+	{
+		if ((lhs.ref().can_cast_implicit(DataType::String()) || lhs.ref().can_cast_implicit(DataType::StringView()))
+			&& (rhs.ref().can_cast_implicit(DataType::String()) || rhs.ref().can_cast_implicit(DataType::StringView())))
+		{
+			std::string sum;
+
+			if (lhs.ref().can_cast_implicit(DataType::String()))
+				sum += std::move(lhs).consume_as<String>(env).steal();
+			else
+				sum += std::move(lhs).consume_as<StringView>(env).consume_value(env);
+
+			if (rhs.ref().can_cast_implicit(DataType::String()))
+				sum += std::move(rhs).consume_as<String>(env).steal();
+			else
+				sum += std::move(rhs).consume_as<StringView>(env).consume_value(env);
+
+			return env.runtime.unbound_variable(String(std::move(sum)));
+		}
+		return std::nullopt;
+	}
+
+	static std::optional<Variable> add_lists(const EvalContext& env, Variable& lhs, Variable& rhs)
+	{
+		if (lhs.ref().data_type().simple() == SimpleType::List && lhs.ref().data_type() == rhs.ref().data_type())
+		{
+			List sum(env, lhs.ref().data_type().underlying());
+
+			List lhs_list = std::move(std::move(lhs).consume().get<List>());
+			for (size_t i = 0; i < lhs_list.size(); ++i)
+				sum.push(std::move(lhs_list[i]));
+
+			List rhs_list = std::move(std::move(rhs).consume().get<List>());
+			for (size_t i = 0; i < rhs_list.size(); ++i)
+				sum.push(std::move(rhs_list[i]));
+
+			return env.runtime.unbound_variable(std::move(sum));
+		}
+
+		return std::nullopt;
+	}
+
 	Variable operate(const EvalContext& env, BinaryOperator op, Variable&& lhs, Variable&& rhs)
 	{
 		switch (op)
@@ -30,86 +134,23 @@ namespace lx
 		case BinaryOperator::Asterisk:
 		case BinaryOperator::Minus:
 		case BinaryOperator::Mod:
-		case BinaryOperator::Plus:
 		case BinaryOperator::Slash:
 		{
-			if ((lhs.ref().can_cast_implicit(DataType::String()) || lhs.ref().can_cast_implicit(DataType::StringView()))
-				&& (rhs.ref().can_cast_implicit(DataType::String()) || rhs.ref().can_cast_implicit(DataType::StringView())))
-			{
-				std::string sum;
+			if (auto var = arithmetic_operate(env, op, lhs, rhs))
+				return *var;
+			break;
+		}
 
-				if (lhs.ref().can_cast_implicit(DataType::String()))
-					sum += std::move(lhs).consume_as<String>(env).steal();
-				else
-					sum += std::move(lhs).consume_as<StringView>(env).consume_value(env);
+		case BinaryOperator::Plus:
+		{
+			if (auto var = add_strings(env, lhs, rhs))
+				return *var;
+			else if (auto var = arithmetic_operate(env, op, lhs, rhs))
+				return *var;
+			else if (auto var = add_lists(env, lhs, rhs))
+				return *var;
 
-				if (rhs.ref().can_cast_implicit(DataType::String()))
-					sum += std::move(rhs).consume_as<String>(env).steal();
-				else
-					sum += std::move(rhs).consume_as<StringView>(env).consume_value(env);
-
-				return env.runtime.unbound_variable(String(std::move(sum)));
-			}
-
-			bool lint = lhs.ref().can_cast_implicit(DataType::Int());
-			bool rint = rhs.ref().can_cast_implicit(DataType::Int());
-			if (lint && rint)
-			{
-				int l = std::move(lhs).consume_as<Int>(env).value();
-				int r = std::move(rhs).consume_as<Int>(env).value();
-				
-				int res = 0;
-				switch (op)
-				{
-				case BinaryOperator::Asterisk:
-					res = l * r;
-					break;
-				case BinaryOperator::Minus:
-					res = l - r;
-					break;
-				case BinaryOperator::Mod:
-					res = l % r;
-					break;
-				case BinaryOperator::Plus:
-					res = l + r;
-					break;
-				case BinaryOperator::Slash:
-					res = l / r;
-					break;
-				}
-				return env.runtime.unbound_variable(Int(res));
-			}
-			else
-			{
-				if ((lint || lhs.ref().can_cast_implicit(DataType::Float())) && (rint || rhs.ref().can_cast_implicit(DataType::Float())))
-				{
-					float l = lint ? static_cast<float>(std::move(lhs).consume_as<Int>(env).value()) : std::move(lhs).consume_as<Float>(env).value();
-					float r = rint ? static_cast<float>(std::move(rhs).consume_as<Int>(env).value()) : std::move(rhs).consume_as<Float>(env).value();
-
-					float res = 0.f;
-					switch (op)
-					{
-					case BinaryOperator::Asterisk:
-						res = l * r;
-						break;
-					case BinaryOperator::Minus:
-						res = l - r;
-						break;
-					case BinaryOperator::Mod:
-						res = std::fmod(l, r);
-						break;
-					case BinaryOperator::Plus:
-						res = l + r;
-						break;
-					case BinaryOperator::Slash:
-						res = l / r;
-						break;
-					}
-					return env.runtime.unbound_variable(Float(res));
-				}
-				else
-					break;
-			}
+			break;
 		}
 
 		case BinaryOperator::Comma:

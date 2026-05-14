@@ -132,6 +132,8 @@ namespace lx
 		}
 	}
 
+	// TODO v0.2 compound assignment operators
+
 	std::optional<DataType> evaltype(BinaryOperator op, const DataType& lhs, const DataType& rhs)
 	{
 		switch (op)
@@ -168,6 +170,8 @@ namespace lx
 			else if ((lhs.can_cast_implicit(DataType::String()) || lhs.can_cast_implicit(DataType::StringView()))
 				&& (rhs.can_cast_implicit(DataType::String()) || rhs.can_cast_implicit(DataType::StringView())))
 				return DataType::String();
+			else if (lhs.simple() == SimpleType::List && lhs == rhs)
+				return lhs;
 			break;
 
 		case BinaryOperator::EqualTo:

@@ -112,47 +112,64 @@ namespace lx
 
 	DataType DataType::List(const DataType& underlying)
 	{
-		return DataType(SimpleType::List);
+		return DataType(SimpleType::List, underlying);
 	}
 
 	DataType DataType::List(DataType&& underlying)
 	{
-		return DataType(SimpleType::List);
+		return DataType(SimpleType::List, std::move(underlying));
 	}
 
-	std::string DataType::repr() const
+	std::string DataType::repr(bool delimit) const
 	{
+		std::string repr;
+		if (delimit)
+			repr += "'";
 		switch (_simple)
 		{
 		case SimpleType::Int:
-			return "'int'";
+			repr += "int";
+			break;
 		case SimpleType::Float:
-			return "'float'";
+			repr += "float";
+			break;
 		case SimpleType::Bool:
-			return "'bool'";
+			repr += "bool";
+			break;
 		case SimpleType::String:
-			return "'string'";
+			repr += "string";
+			break;
 		case SimpleType::Void:
-			return "'void'";
+			repr += "void";
+			break;
 		case SimpleType::Pattern:
-			return "'pattern'";
+			repr += "pattern";
+			break;
 		case SimpleType::Match:
-			return "'match'";
+			repr += "match";
+			break;
 		case SimpleType::Matches:
-			return "'matches'";
+			repr += "matches";
+			break;
 		case SimpleType::CapId:
-			return "'capid'";
+			repr += "capid";
+			break;
 		case SimpleType::Cap:
-			return "'cap'";
+			repr += "cap";
+			break;
 		case SimpleType::IRange:
-			return "'irange'";
+			repr += "irange";
+			break;
 		case SimpleType::SRange:
-			return "'srange'";
+			repr += "srange";
+			break;
 		case SimpleType::List:
-			return "'list[" + _underlying->repr() + "]'";
-		default:
-			return "''";
+			repr += "list[" + _underlying->repr(false) + "]";
+			break;
 		}
+		if (delimit)
+			repr += "'";
+		return repr;
 	}
 
 	SimpleType DataType::simple() const
@@ -160,9 +177,18 @@ namespace lx
 		return _simple;
 	}
 
-	const DataType& DataType::underlying() const
+	const DataType& DataType::underlying(const ScriptSegment* segment) const
 	{
-		return *_underlying;
+		if (_underlying)
+			return *_underlying;
+		else
+		{
+			std::string err = "underlying type is null for simple type " + std::to_string(static_cast<int>(_simple));
+			if (segment)
+				throw LxError::segment_error(*segment, ErrorType::Internal, err);
+			else
+				throw LxError(ErrorType::Internal, std::move(err));
+		}
 	}
 
 	size_t DataType::hash() const
