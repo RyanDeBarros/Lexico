@@ -104,6 +104,13 @@ namespace lx
 			return clone(conv, arena);
 	}
 
+	IRange SubpatternNode::matching_range() const
+	{
+		if (!_matching_range)
+			_matching_range = impl_matching_range();
+		return *_matching_range;
+	}
+
 	SubpatternArray::SubpatternArray(std::vector<SubpatternNode*>&& array)
 		: _array(std::move(array))
 	{
@@ -177,9 +184,8 @@ namespace lx
 		return yield(std::move(out));
 	}
 
-	IRange SubpatternChar::matching_range() const
+	IRange SubpatternChar::impl_matching_range() const
 	{
-		// TODO cache range in SubpatternNode?
 		return IRange(1, 1);
 	}
 
@@ -229,7 +235,7 @@ namespace lx
 		return yield(std::move(out));
 	}
 
-	IRange SubpatternString::matching_range() const
+	IRange SubpatternString::impl_matching_range() const
 	{
 		int sz = static_cast<int>(_string.size());
 		return IRange(sz, sz);
@@ -283,7 +289,7 @@ namespace lx
 		return false;
 	}
 
-	IRange SubpatternMarker::matching_range() const
+	IRange SubpatternMarker::impl_matching_range() const
 	{
 		switch (_marker)
 		{
@@ -310,7 +316,7 @@ namespace lx
 		return match_from(0, context, in, yield);
 	}
 
-	IRange SubpatternCatenation::matching_range() const
+	IRange SubpatternCatenation::impl_matching_range() const
 	{
 		int total_min = 0;
 		std::optional<int> total_max = 0;
@@ -382,7 +388,7 @@ namespace lx
 		return false;
 	}
 
-	IRange SubpatternDisjunction::matching_range() const
+	IRange SubpatternDisjunction::impl_matching_range() const
 	{
 		std::optional<int> min = std::nullopt;
 		std::optional<int> max = 0;
@@ -443,7 +449,7 @@ namespace lx
 			return false;
 	}
 
-	IRange SubpatternException::matching_range() const
+	IRange SubpatternException::impl_matching_range() const
 	{
 		return _subject->matching_range();
 	}
@@ -488,13 +494,21 @@ namespace lx
 			return false;
 	}
 
-	// TODO protected against infinite loops like with this pattern: (a*)*
-
 	bool SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
-		// TODO use matching_range() to further restrict min/max
+		const int left = context.text.size() - in.pos;
+		const IRange bounds = matching_range();
+		if (bounds.min() && *bounds.min() > left)
+			return false;
+
+		const IRange subbounds = _subject->matching_range();
+		const int submin = subbounds.min() ? *subbounds.min() : 0;
+		const int fullmax = bounds.max() ? std::min(*bounds.max(), left) : left;
+		const int absmax = submin > 0 ? (fullmax + submin - 1) / submin : left;
+		
 		const int min = _range.min() ? *_range.min() : 0;
-		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
+		const int max = std::min(absmax, _range.max() ? *_range.max() : left);
+
 		if (min > max)
 			return false;
 
@@ -513,7 +527,7 @@ namespace lx
 		return false;
 	}
 
-	IRange SubpatternRepetition::matching_range() const
+	IRange SubpatternRepetition::impl_matching_range() const
 	{
 		IRange range = _subject->matching_range();
 		if (range.min())
@@ -538,16 +552,20 @@ namespace lx
 		const SubpatternRepetition& node;
 		const SearchContext& context;
 		int reps_left;
+		size_t previous_pos;
 		MatchYield& downstream;
 
-		RepeatYield(const SubpatternRepetition& node, const SearchContext& context, int reps_left, MatchYield& downstream)
-			: node(node), context(context), reps_left(reps_left), downstream(downstream)
+		RepeatYield(const SubpatternRepetition& node, const SearchContext& context, size_t previous_pos, int reps_left, MatchYield& downstream)
+			: node(node), context(context), reps_left(reps_left), previous_pos(previous_pos), downstream(downstream)
 		{
 		}
 
 		bool operator()(SearchState state) override
 		{
-			return node.match_next(context, state, downstream, reps_left - 1);
+			if (state.pos > previous_pos)
+				return node.match_next(context, state, downstream, reps_left - 1);
+			else
+				return false;
 		}
 	};
 
@@ -556,7 +574,7 @@ namespace lx
 		if (reps_left <= 0)
 			return yield(in);
 
-		RepeatYield repeat(*this, context, reps_left, yield);
+		RepeatYield repeat(*this, context, in.pos, reps_left, yield);
 		return _subject->match(context, in, repeat);
 	}
 
@@ -672,7 +690,7 @@ namespace lx
 		return false;
 	}
 
-	IRange SubpatternLookaround::matching_range() const
+	IRange SubpatternLookaround::impl_matching_range() const
 	{
 		if (_mode == LookaroundMode::Ahead)
 			return _subject->matching_range();
@@ -693,7 +711,7 @@ namespace lx
 			return yield(in) || _optional->match(context, in, yield);
 	}
 
-	IRange SubpatternOptional::matching_range() const
+	IRange SubpatternOptional::impl_matching_range() const
 	{
 		return IRange(0, _optional->matching_range().max());
 	}
@@ -765,7 +783,7 @@ namespace lx
 		return _captured->match(context, in, upstream);
 	}
 
-	IRange SubpatternCapture::matching_range() const
+	IRange SubpatternCapture::impl_matching_range() const
 	{
 		return _captured->matching_range();
 	}
@@ -814,7 +832,7 @@ namespace lx
 		return yield(std::move(out));
 	}
 
-	IRange SubpatternBackRef::matching_range() const
+	IRange SubpatternBackRef::impl_matching_range() const
 	{
 		return IRange(0, std::nullopt);
 	}
@@ -844,7 +862,7 @@ namespace lx
 		return _lazy->match(ctx, in, yield);
 	}
 
-	IRange SubpatternLazy::matching_range() const
+	IRange SubpatternLazy::impl_matching_range() const
 	{
 		return IRange(0, 0);
 	}
@@ -874,7 +892,7 @@ namespace lx
 		return _greedy->match(ctx, in, yield);
 	}
 
-	IRange SubpatternGreedy::matching_range() const
+	IRange SubpatternGreedy::impl_matching_range() const
 	{
 		return IRange(0, 0);
 	}
@@ -913,7 +931,7 @@ namespace lx
 		return false;
 	}
 
-	IRange SubpatternSRange::matching_range() const
+	IRange SubpatternSRange::impl_matching_range() const
 	{
 		if (_range.empty())
 			return IRange(0, 0);
@@ -999,7 +1017,7 @@ namespace lx
 			return false;
 	}
 
-	IRange SubpatternBuiltin::matching_range() const
+	IRange SubpatternBuiltin::impl_matching_range() const
 	{
 		switch (_type)
 		{
