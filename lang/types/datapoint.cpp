@@ -134,8 +134,8 @@ namespace lx
 		return std::visit([&ctx, member](const auto& v) -> Variable { return remove_cow(v).data_member(ctx, member); }, _storage);
 	}
 
-	Variable DataPoint::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
+	Variable DataPoint::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
-		return std::visit([&ctx, method, &args](const auto& v) -> Variable { return remove_cow(v).invoke_method(ctx, method, std::move(args)); }, _storage);
+		return std::visit([&ctx, method, &args](auto& v) -> Variable { return remove_cow(v).invoke_method(ctx, method, std::move(args)); }, _storage);
 	}
 }

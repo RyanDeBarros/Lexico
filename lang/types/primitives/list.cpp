@@ -87,8 +87,6 @@ namespace lx
 		ss << "]";
 	}
 
-	// TODO members to push, pop, insert, remove
-
 	StringMap<MemberSignature> List::members()
 	{
 		return {
@@ -100,7 +98,15 @@ namespace lx
 	{
 		return {
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = underlying, .arg_types = { DataType::Int() }},
+				{ .return_type = underlying, .arg_types = { DataType::Int() } },
+			}) },
+			{ constants::MEMBER_PUSH, MemberSignature::make_method(constants::MEMBER_PUSH, {
+				{ .return_type = DataType::Void(), .arg_types = { underlying } },
+				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), underlying } },
+			}) },
+			{ constants::MEMBER_POP, MemberSignature::make_method(constants::MEMBER_POP, {
+				{ .return_type = underlying, .arg_types = {} },
+				{ .return_type = underlying, .arg_types = { DataType::Int() } },
 			}) },
 		};
 	}
@@ -113,7 +119,7 @@ namespace lx
 		ctx.throw_no_data_member(member);
 	}
 
-	Variable List::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
+	Variable List::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{
@@ -121,6 +127,33 @@ namespace lx
 			{
 				if (args[0].ref().data_type().simple() == SimpleType::Int)
 					return _elements[std::move(args[0]).consume_as<Int>(ctx.env).value()];
+			}
+		}
+		else if (method == constants::MEMBER_PUSH)
+		{
+			if (args.size() == 1)
+			{
+				push(ctx.env, std::move(args[0]));
+				return ctx.variable(Void());
+			}
+			else if (args.size() == 2)
+			{
+				if (args[0].ref().data_type().simple() == SimpleType::Int)
+				{
+					int index = std::move(args[0]).consume_as<Int>(ctx.env).value();
+					insert(ctx.env, index, std::move(args[1]));
+					return ctx.variable(Void());
+				}
+			}
+		}
+		else if (method == constants::MEMBER_POP)
+		{
+			if (args.size() == 0)
+				return pop(ctx.env);
+			else if (args.size() == 1)
+			{
+				if (args[0].ref().data_type().simple() == SimpleType::Int)
+					return remove(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env).value());
 			}
 		}
 

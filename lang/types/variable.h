@@ -49,7 +49,7 @@ namespace lx
 		bool operator==(const Variable&) const = default;
 
 		Variable data_member(const EvalContext& env, const std::string_view member) const;
-		Variable invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args);
 	};
 }
 

@@ -20,7 +20,7 @@ namespace lx
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
-		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, IRange&& o);
 		bool equals(const EvalContext& env, const IRange& o) const;
 

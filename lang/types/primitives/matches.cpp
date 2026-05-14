@@ -59,7 +59,7 @@ namespace lx
 		ctx.throw_no_data_member(member);
 	}
 
-	Variable Matches::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Matches::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
 		if (method == constants::SUBSCRIPT_OP)
 		{

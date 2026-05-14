@@ -69,7 +69,7 @@ namespace lx
 		ctx.throw_no_data_member(member);
 	}
 
-	Variable Cap::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Cap::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
 		ctx.throw_no_method(method, args);
 	}

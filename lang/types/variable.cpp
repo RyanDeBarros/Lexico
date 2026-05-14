@@ -141,7 +141,7 @@ namespace lx
 		return ref().data_member(ctx, member);
 	}
 
-	Variable Variable::invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args) const
+	Variable Variable::invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args)
 	{
 		VarContext ctx(env, *this);
 		return ref().invoke_method(ctx, method, std::move(args));

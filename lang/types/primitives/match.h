@@ -29,7 +29,7 @@ namespace lx
 
 		static StringMap<MemberSignature> members();
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
-		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, Match&& o);
 		bool equals(const EvalContext& env, const Match& o) const;
 

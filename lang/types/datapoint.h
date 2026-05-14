@@ -98,7 +98,7 @@ namespace lx
 		std::string page_content(const EvalContext& env) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member) const;
-		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args) const;
+		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 	};
 
 	template<typename T>
