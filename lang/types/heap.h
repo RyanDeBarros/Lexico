@@ -2,6 +2,7 @@
 
 #include "datapoint.h"
 #include "variable.h"
+#include "box.h"
 
 #include <stack>
 
@@ -9,7 +10,7 @@ namespace lx
 {
 	class VirtualHeap
 	{
-		std::vector<DataPoint> _arena;
+		std::vector<Box<DataPoint>> _arena;
 		std::stack<unsigned int> _free_slots;
 		std::vector<unsigned int> _ref_counts;
 

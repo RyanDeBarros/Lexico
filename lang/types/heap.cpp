@@ -23,17 +23,17 @@ namespace lx
 
 	const DataPoint& VirtualHeap::get(unsigned int id) const
 	{
-		return _arena[id];
+		return *_arena[id];
 	}
 
 	DataPoint& VirtualHeap::get(unsigned int id)
 	{
-		return _arena[id];
+		return *_arena[id];
 	}
 
 	DataPoint VirtualHeap::detach(unsigned int id)
 	{
-		DataPoint dp = unbound(id) ? std::move(_arena[id]) : _arena[id];
+		DataPoint dp = unbound(id) ? std::move(*_arena[id]) : *_arena[id];
 		decrement_ref_count(id);
 		return dp;
 	}
@@ -54,7 +54,7 @@ namespace lx
 		if (_ref_counts[id] == 0)
 		{
 			_free_slots.push(id);
-			_arena[id] = Void();
+			*_arena[id] = Void();
 		}
 	}
 }

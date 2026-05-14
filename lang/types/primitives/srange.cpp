@@ -7,7 +7,7 @@
 namespace lx
 {
 	constexpr unsigned char MIN_RANGE_CHAR = 1;
-	constexpr unsigned char MAX_RANGE_CHAR = 60;
+	constexpr unsigned char MAX_RANGE_CHAR = 62;
 
 	static unsigned char to_range_char(char chr)
 	{
@@ -16,7 +16,7 @@ namespace lx
 		else if (chr >= 'a' && chr <= 'z')
 			return chr - 'a' + 11;
 		else if (chr >= 'A' && chr <= 'Z')
-			return chr - 'A' + 36;
+			return chr - 'A' + 37;
 		else
 			return 0;
 	}
@@ -25,10 +25,10 @@ namespace lx
 	{
 		if (index >= 1 && index <= 10)
 			return index - 1 + '0';
-		else if (index >= 11 && index <= 35)
+		else if (index >= 11 && index <= 36)
 			return index - 11 + 'a';
-		else if (index >= 36 && index <= 60)
-			return index - 36 + 'A';
+		else if (index >= 37 && index <= 62)
+			return index - 37 + 'A';
 		else
 			return '\0';
 	}

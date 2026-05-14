@@ -267,20 +267,14 @@ namespace lx
 
 	struct SearchYield : public MatchYield
 	{
-		const EvalContext& env;
-		const Snippet& snippet;
-		const SearchContext& context;
-		Matches& matches;
+		std::vector<SearchState> final_states;
 		bool find_first;
 
-		SearchYield(const EvalContext& env, const Snippet& snippet, const SearchContext& context, Matches& matches, bool find_first)
-			: env(env), snippet(snippet), context(context), matches(matches), find_first(find_first)
-		{
-		}
+		SearchYield(bool find_first) : find_first(find_first) {}
 
 		bool operator()(SearchState state) override
 		{
-			matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet, context)));
+			final_states.push_back(std::move(state));
 			return find_first;
 		}
 	};
@@ -294,8 +288,10 @@ namespace lx
 			for (size_t i = 0; i <= text.size(); ++i)
 			{
 				SearchContext context(env, text);
-				SearchYield yield(env, snippet, context, matches, find_first);
+				SearchYield yield(find_first);
 				_root->match(context, SearchState(i), yield);
+				for (SearchState& state : yield.final_states)
+					matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet, context)));
 			}
 		}
 		return matches;

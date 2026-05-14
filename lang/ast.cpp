@@ -1401,6 +1401,7 @@ namespace lx
 	void WhileLoop::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		auto scope = enter_scope(ctx);
+		_condition.analyse(ctx, pass);
 		if (pass == AnalysisPass::Validation)
 			validate_implicitly_casts(ctx, _condition, DataType::Bool());
 		Loop::analyse_subnodes(ctx, pass);
@@ -1435,6 +1436,7 @@ namespace lx
 
 		if (pass == AnalysisPass::Validation)
 		{
+			_iterable.analyse(ctx, pass);
 			if (auto itertype = _iterable.evaltype(ctx).itertype())
 				ctx.register_variable(_iterator.lexeme, std::move(*itertype), _iterator.segment.start_line, Namespace::Local);
 			else
@@ -1703,9 +1705,7 @@ namespace lx
 	Variable RepeatOperation::evaluate(Runtime& runtime) const
 	{
 		auto env = eval_context(runtime);
-		IRange range = _range.evaluate(runtime).consume_as<IRange>(env);
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(env);
-		return runtime.unbound_variable(Pattern::make_repeat(std::move(ptn), range));
+		return runtime.unbound_variable(Pattern::make_repeat(_expression.evaluate(runtime).consume_as<Pattern>(env), _range.evaluate(runtime).consume_as<IRange>(env)));
 	}
 
 	DataType RepeatOperation::impl_evaltype(SemanticContext& ctx) const
@@ -1809,8 +1809,7 @@ namespace lx
 
 	Variable PatternLazy::evaluate(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
-		return runtime.unbound_variable(Pattern::make_lazy(std::move(ptn)));
+		return runtime.unbound_variable(Pattern::make_lazy(_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime))));
 	}
 
 	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
@@ -1848,8 +1847,7 @@ namespace lx
 
 	Variable PatternGreedy::evaluate(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
-		return runtime.unbound_variable(Pattern::make_greedy(std::move(ptn)));
+		return runtime.unbound_variable(Pattern::make_greedy(_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime))));
 	}
 
 	DataType PatternGreedy::impl_evaltype(SemanticContext& ctx) const
@@ -1887,8 +1885,8 @@ namespace lx
 
 	Variable PatternCapture::evaluate(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
-		return runtime.unbound_variable(Pattern::make_capture(std::move(ptn), runtime.capture_id(_identifier.lexeme)));
+		return runtime.unbound_variable(Pattern::make_capture(
+			_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime)), runtime.capture_id(_identifier.lexeme)));
 	}
 
 	DataType PatternCapture::impl_evaltype(SemanticContext& ctx) const
@@ -1917,8 +1915,7 @@ namespace lx
 
 	ExecutionFlow AppendStatement::execute(Runtime& runtime) const
 	{
-		Pattern ptn = _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
-		runtime.focused_pattern(segment()).ref().get<Pattern>().append(std::move(ptn));
+		runtime.focused_pattern(segment()).ref().get<Pattern>().append(_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime)));
 		return {};
 	}
 

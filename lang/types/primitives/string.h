@@ -33,5 +33,6 @@ namespace lx
 		std::string page_content(const EvalContext& env) const;
 
 		std::string_view value() const;
+		std::string steal() &&;
 	};
 }

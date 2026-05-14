@@ -49,7 +49,7 @@ namespace lx
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
 			}) },
-			{ constants::MEMBER_STR, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ constants::MEMBER_STR, MemberSignature::make_method(constants::MEMBER_STR, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::CapId() } },
 			}) },
 		};

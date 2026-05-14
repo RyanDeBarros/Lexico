@@ -33,6 +33,24 @@ namespace lx
 		case BinaryOperator::Plus:
 		case BinaryOperator::Slash:
 		{
+			if ((lhs.ref().can_cast_implicit(DataType::String()) || lhs.ref().can_cast_implicit(DataType::StringView()))
+				&& (rhs.ref().can_cast_implicit(DataType::String()) || rhs.ref().can_cast_implicit(DataType::StringView())))
+			{
+				std::string sum;
+
+				if (lhs.ref().can_cast_implicit(DataType::String()))
+					sum += std::move(lhs).consume_as<String>(env).steal();
+				else
+					sum += std::move(lhs).consume_as<StringView>(env).consume_value(env);
+
+				if (rhs.ref().can_cast_implicit(DataType::String()))
+					sum += std::move(rhs).consume_as<String>(env).steal();
+				else
+					sum += std::move(rhs).consume_as<StringView>(env).consume_value(env);
+
+				return env.runtime.unbound_variable(String(std::move(sum)));
+			}
+
 			bool lint = lhs.ref().can_cast_implicit(DataType::Int());
 			bool rint = rhs.ref().can_cast_implicit(DataType::Int());
 			if (lint && rint)

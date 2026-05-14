@@ -299,8 +299,9 @@ namespace lx
 
 				if (_token.type == TokenType::EndOfFile && _c == '!')
 				{
-					_token.type = TokenType::CapId;
+					start_token(TokenType::CapId);
 					_ptr.move_right();
+					continue;
 				}
 
 				bool tokenized_char =

@@ -155,15 +155,21 @@ namespace lx
 		case BinaryOperator::Asterisk:
 		case BinaryOperator::Minus:
 		case BinaryOperator::Mod:
-		case BinaryOperator::Plus:
 		case BinaryOperator::Slash:
-			if (lhs.can_cast_implicit(DataType::Int()) && rhs.can_cast_implicit(DataType::Int()))
-				return DataType::Int();
-			else if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
+			if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
 					&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
 				return DataType::Float();
 			break;
-		
+
+		case BinaryOperator::Plus:
+			if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
+				&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
+				return DataType::Float();
+			else if ((lhs.can_cast_implicit(DataType::String()) || lhs.can_cast_implicit(DataType::StringView()))
+				&& (rhs.can_cast_implicit(DataType::String()) || rhs.can_cast_implicit(DataType::StringView())))
+				return DataType::String();
+			break;
+
 		case BinaryOperator::EqualTo:
 		case BinaryOperator::NotEqualTo:
 			if (lhs.can_cast_implicit(rhs) || rhs.can_cast_implicit(lhs))

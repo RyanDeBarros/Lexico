@@ -16,6 +16,7 @@ namespace lx
 		constexpr const char* EXPECTED_EXPRESSION = "expected expression";
 		constexpr const char* EXPECTED_PATTERN_EXPRESSION = "expected pattern expression";
 		constexpr const char* EXPECTED_IDENTIFIER = "expected identifier";
+		constexpr const char* EXPECTED_CAPID = "expected capture identifier";
 		constexpr const char* EXPECTED_SYMBOL = "expected $ symbol";
 		constexpr const char* EXPECTED_PREDICATE = "expected predicate";
 		constexpr const char* EXPECTED_DATATYPE = "expected data type";
@@ -1021,7 +1022,7 @@ namespace lx
 			{
 				auto& capture_token = ref(0);
 				offset.add(1);
-				auto& identifier = parse_token(0, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+				auto& identifier = parse_token(0, TokenType::CapId, errors::EXPECTED_CAPID);
 				offset.add(1);
 				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset)));
 			}

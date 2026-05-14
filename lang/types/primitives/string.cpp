@@ -149,4 +149,9 @@ namespace lx
 	{
 		return _value;
 	}
+
+	std::string String::steal() &&
+	{
+		return std::move(_value);
+	}
 }

@@ -58,7 +58,7 @@ namespace lx
 
 	std::string_view ScriptSegment::first_line() const
 	{
-		return script_lines[start_line - 1];
+		return start_line >= 1 ? script_lines[start_line - 1] : (script_lines.empty() ? "" : script_lines.back());
 	}
 
 	std::string ScriptSegment::line_number_prefix() const
