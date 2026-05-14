@@ -405,30 +405,14 @@ namespace lx
 
 	Variable ListExpression::evaluate(Runtime& runtime) const
 	{
-		std::vector<LxError> errors;
-		List list(EvalContext{ .runtime = runtime, .segment = &segment() }, *_underlying);
-
-		// TODO accumulate data points first, then construct from full list of data points
+		std::vector<Variable> elements;
 		for (const Expression* expr : _elements)
-		{
-			DataPoint element = expr->evaluate(runtime).consume();
-			try
-			{
-				list.push(expr->eval_context(runtime), runtime.unbound_variable(std::move(element)));
-			}
-			catch (LxError& e)
-			{
-				if (e.type() != ErrorType::Internal)
-					errors.push_back(std::move(e));
-				else
-					throw;
-			}
-		}
+			elements.push_back(runtime.unbound_variable(expr->evaluate(runtime).consume()));
 
-		if (errors.empty())
-			return runtime.unbound_variable(std::move(list));
+		if (!elements.empty())
+			return runtime.unbound_variable(List(eval_context(runtime), std::move(elements)));
 		else
-			throw errors;
+			return runtime.unbound_variable(List(eval_context(runtime), _underlying.value()));
 	}
 
 	DataType ListExpression::impl_evaltype(SemanticContext& ctx) const
