@@ -86,13 +86,17 @@ namespace lx
 		return {
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = DataType::String(), .arg_types = { DataType::Int() } },
-				{.return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+			}) },
+			{ constants::MEMBER_INSERT, MemberSignature::make_method(constants::MEMBER_INSERT, {
+				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::String() } },
+				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::StringView() }},
 			}) },
 		};
 	}
 
-	Variable String::data_member(VarContext& ctx, const std::string_view member) const
+	Variable String::data_member(VarContext& ctx, const std::string_view member)
 	{
 		if (member == constants::MEMBER_LEN)
 			return ctx.variable(Int(_value.size()));
@@ -114,6 +118,24 @@ namespace lx
 					return substring_by_index(ctx, std::move(args[0]));
 				else if (args[0].ref().can_cast_implicit(DataType::IRange()))
 					return substring_by_range(ctx, std::move(args[0]));
+			}
+		}
+		else if (method == constants::MEMBER_INSERT)
+		{
+			if (args.size() == 2 && args[0].ref().data_type() == DataType::Int())
+			{
+				if (args[1].ref().data_type() == DataType::String())
+				{
+					insert(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env),
+						std::move(args[1]).consume_as<String>(ctx.env));
+					return ctx.variable(Void());
+				}
+				else if (args[1].ref().data_type() == DataType::StringView())
+				{
+					insert(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env),
+						std::move(args[1]).consume_as<StringView>(ctx.env));
+					return ctx.variable(Void());
+				}
 			}
 		}
 
@@ -153,5 +175,34 @@ namespace lx
 	std::string String::steal() &&
 	{
 		return std::move(_value);
+	}
+
+	void String::insert(const EvalContext& env, Int&& index, String&& s)
+	{
+		const int i = index.value();
+
+		if (i < 0 || i > _value.size())
+		{
+			std::stringstream ss;
+			ss << "cannot insert: index " << index.value() << " out of range for " << DataType::String() << " of length " << _value.size();
+			throw env.runtime_error(ss.str());
+		}
+
+		_value.insert(_value.begin() + i, s._value.begin(), s._value.end());
+	}
+
+	void String::insert(const EvalContext& env, Int&& index, StringView&& s)
+	{
+		const int i = index.value();
+
+		if (i < 0 || i > _value.size())
+		{
+			std::stringstream ss;
+			ss << "cannot insert: index " << index.value() << " out of range for " << DataType::String() << " of length " << _value.size();
+			throw env.runtime_error(ss.str());
+		}
+
+		auto it = _value.begin() + i;
+		s.visit(env, [this, &it](char c) { it = _value.insert(it, c) + 1; });
 	}
 }

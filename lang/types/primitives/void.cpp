@@ -29,7 +29,7 @@ namespace lx
 		ss << "";
 	}
 
-	Variable Void::data_member(VarContext& ctx, const std::string_view member) const
+	Variable Void::data_member(VarContext& ctx, const std::string_view member)
 	{
 		ctx.throw_no_data_member(member);
 	}

@@ -17,7 +17,7 @@ namespace lx
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		static StringMap<MemberSignature> members();
-		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable data_member(VarContext& ctx, const std::string_view member);
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, Matches&& o);
 		bool equals(const EvalContext& env, const Matches& o) const;

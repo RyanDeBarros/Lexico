@@ -129,9 +129,9 @@ namespace lx
 			throw env.internal_error("page_content(): " + data_type().repr() + " is not pageable");
 	}
 
-	Variable DataPoint::data_member(VarContext& ctx, const std::string_view member) const
+	Variable DataPoint::data_member(VarContext& ctx, const std::string_view member)
 	{
-		return std::visit([&ctx, member](const auto& v) -> Variable { return remove_cow(v).data_member(ctx, member); }, _storage);
+		return std::visit([&ctx, member](auto& v) -> Variable { return remove_cow(v).data_member(ctx, member); }, _storage);
 	}
 
 	Variable DataPoint::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)

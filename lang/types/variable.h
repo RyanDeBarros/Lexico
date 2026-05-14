@@ -48,7 +48,7 @@ namespace lx
 		size_t hash() const;
 		bool operator==(const Variable&) const = default;
 
-		Variable data_member(const EvalContext& env, const std::string_view member) const;
+		Variable data_member(const EvalContext& env, const std::string_view member);
 		Variable invoke_method(const EvalContext& env, const std::string_view method, std::vector<Variable>&& args);
 	};
 }

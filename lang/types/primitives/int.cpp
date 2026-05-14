@@ -66,7 +66,7 @@ namespace lx
 		ss << _value;
 	}
 
-	Variable Int::data_member(VarContext& ctx, const std::string_view member) const
+	Variable Int::data_member(VarContext& ctx, const std::string_view member)
 	{
 		ctx.throw_no_data_member(member);
 	}

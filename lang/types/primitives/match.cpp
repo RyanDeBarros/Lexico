@@ -55,7 +55,7 @@ namespace lx
 		};
 	}
 
-	Variable Match::data_member(VarContext& ctx, const std::string_view member) const
+	Variable Match::data_member(VarContext& ctx, const std::string_view member)
 	{
 		if (member == constants::MEMBER_START)
 			return ctx.variable(Int(_snippet.absolute(_start)));

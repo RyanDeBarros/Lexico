@@ -111,19 +111,29 @@ namespace lx
 	{
 		return {
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{.return_type = DataType::String(), .arg_types = { DataType::Int() } },
-				{.return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
+			}) },
+			{ constants::MEMBER_INSERT, MemberSignature::make_method(constants::MEMBER_INSERT, {
+				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::String() } },
+				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::StringView() }},
 			}) },
 		};
 	}
 
-	Variable StringView::data_member(VarContext& ctx, const std::string_view member) const
+	Variable StringView::data_member(VarContext& ctx, const std::string_view member)
 	{
 		if (member == constants::MEMBER_LEN)
 		{
 			assert_valid(ctx.env);
-			return ctx.variable(Int(max_index() - min_index() + 1));
+			return ctx.variable(Int(size()));
+		}
+		else if (member == constants::MEMBER_STR)
+		{
+			assert_valid(ctx.env);
+			return ctx.variable(String(std::move(*this).consume_value(ctx.env)));
 		}
 
 		ctx.throw_no_data_member(member);
@@ -143,6 +153,24 @@ namespace lx
 					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env)));
 				else if (args[0].ref().can_cast_implicit(DataType::IRange()))
 					return ctx.variable(substring(ctx.env, std::move(args[0]).consume_as<IRange>(ctx.env)));
+			}
+		}
+		else if (method == constants::MEMBER_INSERT)
+		{
+			if (args.size() == 2 && args[0].ref().data_type() == DataType::Int())
+			{
+				if (args[1].ref().data_type() == DataType::String())
+				{
+					insert(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env),
+						std::move(args[1]).consume_as<String>(ctx.env));
+					return ctx.variable(Void());
+				}
+				else if (args[1].ref().data_type() == DataType::StringView())
+				{
+					insert(ctx.env, std::move(args[0]).consume_as<Int>(ctx.env),
+						std::move(args[1]).consume_as<StringView>(ctx.env));
+					return ctx.variable(Void());
+				}
 			}
 		}
 
@@ -202,7 +230,7 @@ namespace lx
 	size_t StringView::iterlen(const EvalContext& env) const
 	{
 		assert_valid(env);
-		return static_cast<size_t>(std::abs(max_index() - min_index()) + 1);
+		return size();
 	}
 
 	DataPoint StringView::iterget(const EvalContext& env, size_t i) const
@@ -365,7 +393,11 @@ namespace lx
 		if (_string)
 			return _string->_value;
 		else
-			throw LxError(ErrorType::Internal, "StringView base string is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": base string is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	char StringView::chr(int i, int min, int max) const
@@ -376,5 +408,51 @@ namespace lx
 	int StringView::idx(int i, int min, int max) const
 	{
 		return min + (min <= max ? i : -i);
+	}
+
+	void StringView::insert(const EvalContext& env, Int&& index, String&& s)
+	{
+		if (!_string)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": base string is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+
+		const int min = min_index();
+		const int max = max_index();
+		assert_in_range(env, index, min, max);
+		_string->insert(env, Int(idx(index.value(), min, max)), std::move(s));
+	}
+
+	void StringView::insert(const EvalContext& env, Int&& index, StringView&& s)
+	{
+		if (!_string)
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": base string is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+
+		const int min = min_index();
+		const int max = max_index();
+		assert_in_range(env, index, min, max);
+		_string->insert(env, Int(idx(index.value(), min, max)), std::move(s));
+	}
+
+	size_t StringView::size() const
+	{
+		return static_cast<size_t>(std::abs(max_index() - min_index()) + 1);
+	}
+
+	void StringView::visit(const EvalContext& env, std::function<void(char)> visitor) const
+	{
+		assert_valid(env);
+
+		const int min = min_index();
+		const int max = max_index();
+		
+		for (int i = 0; i < size(); ++i)
+			visitor(chr(i, min, max));
 	}
 }

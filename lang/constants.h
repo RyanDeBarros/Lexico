@@ -13,5 +13,6 @@ namespace lx
 		constexpr const char* MEMBER_SUB = "sub";
 		constexpr const char* MEMBER_PUSH = "push";
 		constexpr const char* MEMBER_POP = "pop";
+		constexpr const char* MEMBER_INSERT = "insert";
 	}
 }

@@ -17,7 +17,7 @@ namespace lx
 		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
-		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable data_member(VarContext& ctx, const std::string_view member);
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, CapId&& o);
 		bool equals(const EvalContext& env, const CapId& o) const;

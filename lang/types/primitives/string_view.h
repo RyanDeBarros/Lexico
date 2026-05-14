@@ -7,6 +7,8 @@
 #include "irange.h"
 #include "util.h"
 
+#include <functional>
+
 namespace lx
 {
 	class StringView
@@ -33,7 +35,7 @@ namespace lx
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		static StringMap<MemberSignature> members();
-		Variable data_member(VarContext& ctx, const std::string_view member) const;
+		Variable data_member(VarContext& ctx, const std::string_view member);
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, StringView&& o);
 		bool equals(const EvalContext& env, const StringView& o) const;
@@ -58,5 +60,12 @@ namespace lx
 		std::string_view string() const;
 		char chr(int i, int min, int max) const;
 		int idx(int i, int min, int max) const;
+
+	public:
+		void insert(const EvalContext& env, Int&& index, String&& s);
+		void insert(const EvalContext& env, Int&& index, StringView&& s);
+
+		size_t size() const;
+		void visit(const EvalContext& env, std::function<void(char)> visitor) const;
 	};
 }

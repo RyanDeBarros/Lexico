@@ -135,7 +135,7 @@ namespace lx
 		return std::hash<unsigned int>{}(_id);
 	}
 
-	Variable Variable::data_member(const EvalContext& env, const std::string_view member) const
+	Variable Variable::data_member(const EvalContext& env, const std::string_view member)
 	{
 		VarContext ctx(env, *this);
 		return ref().data_member(ctx, member);
