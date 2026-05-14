@@ -113,7 +113,17 @@ namespace lx
 		return _min;
 	}
 
+	std::optional<int>& IRange::min()
+	{
+		return _min;
+	}
+
 	std::optional<int> IRange::max() const
+	{
+		return _max;
+	}
+
+	std::optional<int>& IRange::max()
 	{
 		return _max;
 	}

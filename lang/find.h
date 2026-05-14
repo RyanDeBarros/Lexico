@@ -35,7 +35,6 @@ namespace lx
 
 	struct CaptureList
 	{
-		unsigned int capid;
 		std::vector<CaptureFrame> frames;
 
 		std::vector<Cap> materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&;
@@ -90,6 +89,7 @@ namespace lx
 		virtual bool equals(const SubpatternNode* o) const = 0;
 
 		virtual bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const = 0;
+		virtual IRange matching_range() const = 0;
 	};
 
 	class SubpatternArray : public SubpatternNode
@@ -120,6 +120,7 @@ namespace lx
 		char chr() const;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternString : public SubpatternNode
@@ -135,6 +136,7 @@ namespace lx
 		std::string_view string() const;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	enum class PatternMark
@@ -155,6 +157,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternCatenation : public SubpatternArray
@@ -162,6 +165,7 @@ namespace lx
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 
 		bool match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const;
 	};
@@ -171,6 +175,7 @@ namespace lx
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternException : public SubpatternNode
@@ -185,6 +190,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternRepetition : public SubpatternNode
@@ -200,6 +206,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 
 		bool match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const;
 	};
@@ -226,6 +233,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternOptional : public SubpatternNode
@@ -239,6 +247,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternCapture : public SubpatternNode
@@ -253,6 +262,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternBackRef : public SubpatternNode
@@ -266,6 +276,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternLazy : public SubpatternNode
@@ -279,6 +290,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternGreedy : public SubpatternNode
@@ -292,6 +304,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	class SubpatternSRange : public SubpatternNode
@@ -305,6 +318,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 
 	enum class BuiltinSubpattern
@@ -326,5 +340,6 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 
 		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		IRange matching_range() const override;
 	};
 }

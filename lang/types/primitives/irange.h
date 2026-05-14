@@ -26,7 +26,9 @@ namespace lx
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
 		std::optional<int> min() const;
+		std::optional<int>& min();
 		std::optional<int> max() const;
+		std::optional<int>& max();
 
 		bool operator==(const IRange&) const = default;
 	};

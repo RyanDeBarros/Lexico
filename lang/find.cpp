@@ -14,11 +14,12 @@ namespace lx
 	Match SearchState::materialize(const EvalContext& env, const Snippet& snippet, const SearchContext& context) &&
 	{
 		Match match(snippet, start, pos - start);
-		for (auto& list : *caps)
+		for (unsigned int i = 0; i < caps->size(); ++i)
 		{
+			std::optional<CaptureList>& list = (*caps)[i];
 			if (list)
 				for (Cap& capture : std::move(*list).materialize(env, snippet, context))
-					match.add_capture(env, context.from_local(list->capid), std::move(capture));
+					match.add_capture(env, context.from_local(i), std::move(capture));
 		}
 		return match;
 	}
@@ -176,6 +177,12 @@ namespace lx
 		return yield(std::move(out));
 	}
 
+	IRange SubpatternChar::matching_range() const
+	{
+		// TODO cache range in SubpatternNode?
+		return IRange(1, 1);
+	}
+
 	SubpatternString::SubpatternString(const std::string& string)
 		: _string(string)
 	{
@@ -220,6 +227,12 @@ namespace lx
 		SearchState out = in;
 		out.pos += _string.size();
 		return yield(std::move(out));
+	}
+
+	IRange SubpatternString::matching_range() const
+	{
+		int sz = static_cast<int>(_string.size());
+		return IRange(sz, sz);
 	}
 
 	SubpatternMarker::SubpatternMarker(PatternMark marker)
@@ -270,6 +283,21 @@ namespace lx
 		return false;
 	}
 
+	IRange SubpatternMarker::matching_range() const
+	{
+		switch (_marker)
+		{
+		case PatternMark::Any:
+			return IRange(1, 1);
+		case PatternMark::Start:
+			return IRange(0, 0);
+		case PatternMark::End:
+			return IRange(0, 0);
+		default:
+			return IRange(0, 0);
+		}
+	}
+
 	SubpatternNode& SubpatternCatenation::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
 		auto& node = clone_base<SubpatternCatenation>(this, conv, arena);
@@ -280,6 +308,27 @@ namespace lx
 	bool SubpatternCatenation::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		return match_from(0, context, in, yield);
+	}
+
+	IRange SubpatternCatenation::matching_range() const
+	{
+		int total_min = 0;
+		std::optional<int> total_max = 0;
+
+		for (const SubpatternNode* subnode : _array)
+		{
+			IRange range = subnode->matching_range();
+			if (range.min())
+				total_min += *range.min();
+			if (range.max())
+			{
+				if (total_max)
+					*total_max += *range.max();
+			}
+			else
+				total_max = std::nullopt;
+		}
+		return IRange(total_min, total_max);
 	}
 
 	struct SubsequentYield : public MatchYield
@@ -333,6 +382,32 @@ namespace lx
 		return false;
 	}
 
+	IRange SubpatternDisjunction::matching_range() const
+	{
+		std::optional<int> min = std::nullopt;
+		std::optional<int> max = 0;
+
+		for (const SubpatternNode* subnode : _array)
+		{
+			IRange range = subnode->matching_range();
+			if (range.min())
+			{
+				if (min)
+					*min = std::min(*min, *range.min());
+				else
+					min = *range.min();
+			}
+			if (range.max())
+			{
+				if (max)
+					*max = std::max(*max, *range.max());
+			}
+			else
+				max = std::nullopt;
+		}
+		return IRange(min ? *min : 0, max);
+	}
+
 	SubpatternException::SubpatternException(SubpatternNode& subject, SubpatternNode& exception)
 		: _subject(&subject), _exception(&exception)
 	{
@@ -368,58 +443,14 @@ namespace lx
 			return false;
 	}
 
+	IRange SubpatternException::matching_range() const
+	{
+		return _subject->matching_range();
+	}
+
 	SubpatternRepetition::SubpatternRepetition(SubpatternNode& subject, const IRange& range)
 		: _subject(&subject), _range(range)
 	{
-	}
-
-	bool SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
-	{
-		const int min = _range.min() ? *_range.min() : 0;
-		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
-		if (min > max)
-			return false;
-
-		if (context.greedy)
-		{
-			for (int reps = max; reps >= min; --reps)
-				if (match_next(context, in, yield, reps))
-					return true;
-		}
-		else
-		{
-			for (int reps = min; reps <= max; ++reps)
-				if (match_next(context, in, yield, reps))
-					return true;
-		}
-		return false;
-	}
-
-	struct RepeatYield : public MatchYield
-	{
-		const SubpatternRepetition& node;
-		const SearchContext& context;
-		int reps_left;
-		MatchYield& downstream;
-
-		RepeatYield(const SubpatternRepetition& node, const SearchContext& context, int reps_left, MatchYield& downstream)
-			: node(node), context(context), reps_left(reps_left), downstream(downstream)
-		{
-		}
-
-		bool operator()(SearchState state) override
-		{
-			return node.match_next(context, state, downstream, reps_left - 1);
-		}
-	};
-
-	bool SubpatternRepetition::match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const
-	{
-		if (reps_left <= 0)
-			return yield(in);
-
-		RepeatYield repeat(*this, context, reps_left, yield);
-		return _subject->match(context, in, repeat);
 	}
 
 	static IRange simple_repeat_range(PatternSimpleRepeatOperator op)
@@ -455,6 +486,78 @@ namespace lx
 			return _range == ptr->_range && _subject->equals(ptr->_subject);
 		else
 			return false;
+	}
+
+	// TODO protected against infinite loops like with this pattern: (a*)*
+
+	bool SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	{
+		// TODO use matching_range() to further restrict min/max
+		const int min = _range.min() ? *_range.min() : 0;
+		const int max = _range.max() ? *_range.max() : context.text.size() - in.pos;
+		if (min > max)
+			return false;
+
+		if (context.greedy)
+		{
+			for (int reps = max; reps >= min; --reps)
+				if (match_next(context, in, yield, reps))
+					return true;
+		}
+		else
+		{
+			for (int reps = min; reps <= max; ++reps)
+				if (match_next(context, in, yield, reps))
+					return true;
+		}
+		return false;
+	}
+
+	IRange SubpatternRepetition::matching_range() const
+	{
+		IRange range = _subject->matching_range();
+		if (range.min())
+		{
+			if (_range.min())
+				*range.min() *= *_range.min();
+			else
+				*range.min() = 0;
+		}
+		if (range.max())
+		{
+			if (_range.max())
+				*range.max() *= *_range.max();
+			else
+				range.max() = std::nullopt;
+		}
+		return range;
+	}
+
+	struct RepeatYield : public MatchYield
+	{
+		const SubpatternRepetition& node;
+		const SearchContext& context;
+		int reps_left;
+		MatchYield& downstream;
+
+		RepeatYield(const SubpatternRepetition& node, const SearchContext& context, int reps_left, MatchYield& downstream)
+			: node(node), context(context), reps_left(reps_left), downstream(downstream)
+		{
+		}
+
+		bool operator()(SearchState state) override
+		{
+			return node.match_next(context, state, downstream, reps_left - 1);
+		}
+	};
+
+	bool SubpatternRepetition::match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const
+	{
+		if (reps_left <= 0)
+			return yield(in);
+
+		RepeatYield repeat(*this, context, reps_left, yield);
+		return _subject->match(context, in, repeat);
 	}
 
 	LookaroundMode lookaround_mode(PrefixOperator op)
@@ -534,10 +637,11 @@ namespace lx
 		case LookaroundMode::Behind:
 		{
 			// TODO virtual max_range() function that calculate the lower bound of where iteration index should end, instead of always going to 0
+			SearchContext subcontext = context.up_to(in.pos);
 			for (int i = in.pos; i >= 0; --i)
 			{
 				BackSearchYield back_search(i);
-				_subject->match(context.up_to(i), SearchState(i), back_search);
+				_subject->match(subcontext, SearchState(i), back_search);
 				if (back_search.exact)
 				{
 					yield(in);
@@ -549,10 +653,11 @@ namespace lx
 		case LookaroundMode::NotBehind:
 		{
 			bool pass = true;
+			SearchContext subcontext = context.up_to(in.pos);
 			for (int i = in.pos; i >= 0; --i)
 			{
 				BackSearchYield back_search(i);
-				_subject->match(context.up_to(i), SearchState(i), back_search);
+				_subject->match(subcontext, SearchState(i), back_search);
 				if (back_search.exact)
 				{
 					pass = false;
@@ -567,6 +672,14 @@ namespace lx
 		return false;
 	}
 
+	IRange SubpatternLookaround::matching_range() const
+	{
+		if (_mode == LookaroundMode::Ahead)
+			return _subject->matching_range();
+		else
+			return IRange(0, 0);
+	}
+
 	SubpatternOptional::SubpatternOptional(SubpatternNode& optional)
 		: _optional(&optional)
 	{
@@ -578,6 +691,11 @@ namespace lx
 			return _optional->match(context, in, yield) || yield(in);
 		else
 			return yield(in) || _optional->match(context, in, yield);
+	}
+
+	IRange SubpatternOptional::matching_range() const
+	{
+		return IRange(0, _optional->matching_range().max());
 	}
 
 	SubpatternNode& SubpatternOptional::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
@@ -624,19 +742,20 @@ namespace lx
 
 		bool operator()(SearchState state) override
 		{
-			if (capid >= state.caps->size() || !(*state.caps)[capid].has_value())
-			{
-				SearchState substate = state;
-				substate.start = start;
+			SearchState substate = state;
+			substate.start = start;
 
-				if (capid >= state.caps->size())
-					state.caps->resize(static_cast<size_t>(capid + 1));
+			if (capid >= state.caps->size())
+				state.caps->resize(static_cast<size_t>(capid + 1));
 
-				(*state.caps)[capid] = CaptureList{ .capid = capid, .frames = { CaptureFrame(substate) } };
-				return downstream(std::move(state));
-			}
+			std::optional<CaptureList>& list = (*state.caps)[capid];
+
+			if (list)
+				list->frames.push_back(CaptureFrame(substate));
 			else
-				return false;
+				list = CaptureList{ .frames = { CaptureFrame(substate) } };
+
+			return downstream(std::move(state));
 		}
 	};
 
@@ -644,6 +763,11 @@ namespace lx
 	{
 		CaptureYield upstream(context, _capid, in.pos, yield);
 		return _captured->match(context, in, upstream);
+	}
+
+	IRange SubpatternCapture::matching_range() const
+	{
+		return _captured->matching_range();
 	}
 
 	SubpatternBackRef::SubpatternBackRef(CapId capid)
@@ -675,20 +799,24 @@ namespace lx
 
 		SearchState out = in;
 		CaptureList& caplist = (*out.caps)[capid].value();
-		// TODO v0.2 if caplist is recursive -> recompute instead of matching initial frame exactly
-		const CaptureFrame& initial_frame = caplist.frames[0];
-		std::string_view sv = context.text.substr(initial_frame.start, initial_frame.length);
+		const CaptureFrame& last_frame = caplist.frames.back();
+		std::string_view sv = context.text.substr(last_frame.start, last_frame.length);
 		if (in.pos + sv.size() > context.text.size())
 			return false;
 
 		if (context.text.substr(in.pos, sv.size()) != sv)
 			return false;
 
-		SearchState substate = initial_frame.substate;
+		SearchState substate = last_frame.substate;
 		substate.start = in.pos;
 		substate.pos = in.pos + sv.size();
 		caplist.frames.push_back(CaptureFrame(substate));
 		return yield(std::move(out));
+	}
+
+	IRange SubpatternBackRef::matching_range() const
+	{
+		return IRange(0, std::nullopt);
 	}
 
 	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
@@ -716,6 +844,11 @@ namespace lx
 		return _lazy->match(ctx, in, yield);
 	}
 
+	IRange SubpatternLazy::matching_range() const
+	{
+		return IRange(0, 0);
+	}
+
 	SubpatternGreedy::SubpatternGreedy(SubpatternNode& greedy)
 		: _greedy(&greedy)
 	{
@@ -739,6 +872,11 @@ namespace lx
 		SearchContext ctx = context;
 		ctx.greedy = true;
 		return _greedy->match(ctx, in, yield);
+	}
+
+	IRange SubpatternGreedy::matching_range() const
+	{
+		return IRange(0, 0);
 	}
 
 	SubpatternSRange::SubpatternSRange(SRange range)
@@ -773,6 +911,14 @@ namespace lx
 			return yield(std::move(out));
 		}
 		return false;
+	}
+
+	IRange SubpatternSRange::matching_range() const
+	{
+		if (_range.empty())
+			return IRange(0, 0);
+		else
+			return IRange(1, 1);
 	}
 
 	SubpatternBuiltin::SubpatternBuiltin(BuiltinSubpattern type)
@@ -851,5 +997,22 @@ namespace lx
 		}
 		else
 			return false;
+	}
+
+	IRange SubpatternBuiltin::matching_range() const
+	{
+		switch (_type)
+		{
+		case BuiltinSubpattern::Newline:
+			return IRange(1, 2);
+		case BuiltinSubpattern::Space:
+			return IRange(1, 1);
+		case BuiltinSubpattern::Varname:
+			return IRange(1, 1);
+		case BuiltinSubpattern::Whitespace:
+			return IRange(1, 2);
+		default:
+			return IRange(0, 0);
+		}
 	}
 }
