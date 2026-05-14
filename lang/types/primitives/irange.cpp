@@ -15,14 +15,36 @@ namespace lx
 		return DataType::IRange();
 	}
 
-	// TODO cast to list
-
 	TypeVariant IRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::IRange)
 			return *this;
 		else if (type.simple() == SimpleType::Void)
 			return Void();
+		else if (type == DataType::List(DataType::Int()))
+		{
+			if (!_min || !_max)
+			{
+				std::stringstream ss;
+				ss << "cannot cast ";
+				print(ctx.env, ss);
+				ss << " to " << type;
+				throw ctx.env.runtime_error(ss.str());
+			}
+			
+			std::vector<Variable> elements;
+			if (*_min <= *_max)
+				for (int i = *_min; i <= *_max; ++i)
+					elements.push_back(ctx.variable(Int(i)));
+			else
+				for (int i = *_min; i >= *_max; --i)
+					elements.push_back(ctx.variable(Int(i)));
+
+			if (!elements.empty())
+				return List(ctx.env, std::move(elements));
+			else
+				return List(ctx.env, DataType::Int());
+		}
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}

@@ -262,6 +262,9 @@ namespace lx
 		case SimpleType::StringView:
 			return to.simple() == SimpleType::Int || to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool;
 
+		case SimpleType::IRange:
+			return to == DataType::List(DataType::Int());
+
 		case SimpleType::SRange:
 			return to.simple() == SimpleType::String;
 

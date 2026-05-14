@@ -282,10 +282,10 @@ namespace lx
 				parse_page_statement() ||
 				parse_function_definition() ||
 				parse_variable_declaration() ||
-				parse_function_call() ||
-				parse_control_statement() ||
 				parse_log_statement() ||
+				parse_control_statement() ||
 				parse_highlight_statement() ||
+				parse_function_call() ||
 				parse_direct_expression_statement();
 
 			if (!parsed)
