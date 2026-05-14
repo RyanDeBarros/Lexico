@@ -97,11 +97,11 @@ namespace lx
 
 			List lhs_list = std::move(std::move(lhs).consume().get<List>());
 			for (size_t i = 0; i < lhs_list.size(); ++i)
-				sum.push(std::move(lhs_list[i]));
+				sum.push(env, std::move(lhs_list[i]));
 
 			List rhs_list = std::move(std::move(rhs).consume().get<List>());
 			for (size_t i = 0; i < rhs_list.size(); ++i)
-				sum.push(std::move(rhs_list[i]));
+				sum.push(env, std::move(rhs_list[i]));
 
 			return env.runtime.unbound_variable(std::move(sum));
 		}

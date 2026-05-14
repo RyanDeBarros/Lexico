@@ -160,7 +160,7 @@ namespace lx
 
 		List& list = it->second.ref().get<List>();
 		size_t idx = list.size();
-		list.push(env.runtime.unbound_variable(std::move(cap)));
+		list.push(env, env.runtime.unbound_variable(std::move(cap)));
 		_ordering.push_back(std::make_pair(std::move(id), idx));
 	}
 

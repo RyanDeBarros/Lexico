@@ -88,7 +88,6 @@ namespace lx
 	}
 
 	// TODO members to push, pop, insert, remove
-	// TODO '+' operator to combine lists
 
 	StringMap<MemberSignature> List::members()
 	{
@@ -109,7 +108,7 @@ namespace lx
 	Variable List::data_member(VarContext& ctx, const std::string_view member) const
 	{
 		if (member == constants::MEMBER_LEN)
-			return ctx.variable(Int(_elements.size()));
+			return ctx.variable(Int(size()));
 
 		ctx.throw_no_data_member(member);
 	}
@@ -155,15 +154,65 @@ namespace lx
 		return _elements[i].ref();
 	}
 
-	bool List::push(Variable element)
+	void List::push(const EvalContext& env, Variable element)
+	{
+		if (element.ref().data_type() == _underlying)
+			_elements.push_back(std::move(element));
+		else
+		{
+			std::stringstream ss;
+			ss << "cannot push: list underlying type is " << _underlying << ", but element resolved to " << element.ref().data_type();
+			throw env.runtime_error(ss.str());
+		}
+	}
+
+	void List::insert(const EvalContext& env, size_t i, Variable element)
 	{
 		if (element.ref().data_type() == _underlying)
 		{
-			_elements.push_back(std::move(element));
-			return true;
+			if (i <= _elements.size())
+				_elements.insert(_elements.begin() + i, std::move(element));
+			else
+			{
+				std::stringstream ss;
+				ss << "cannot insert: index " << i << " out of range for list of size " << _elements.size();
+				throw env.runtime_error(ss.str());
+			}
 		}
 		else
-			return false;
+		{
+			std::stringstream ss;
+			ss << "cannot insert: list underlying type is " << _underlying << ", but element resolved to " << element.ref().data_type();
+			throw env.runtime_error(ss.str());
+		}
+	}
+
+	Variable List::pop(const EvalContext& env)
+	{
+		if (!_elements.empty())
+		{
+			Variable back = std::move(_elements.back());
+			_elements.pop_back();
+			return back;
+		}
+		else
+			throw env.runtime_error("cannot pop: list is empty");
+	}
+
+	Variable List::remove(const EvalContext& env, size_t i)
+	{
+		if (i < _elements.size())
+		{
+			Variable removed = std::move(_elements[i]);
+			_elements.erase(_elements.begin() + i);
+			return removed;
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << "cannot remove: index " << i << " out of range for list of size " << _elements.size();
+			throw env.runtime_error(ss.str());
+		}
 	}
 
 	size_t List::size() const

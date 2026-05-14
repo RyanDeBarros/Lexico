@@ -408,14 +408,20 @@ namespace lx
 		std::vector<LxError> errors;
 		List list(EvalContext{ .runtime = runtime, .segment = &segment() }, *_underlying);
 
+		// TODO accumulate data points first, then construct from full list of data points
 		for (const Expression* expr : _elements)
 		{
-			TypeVariant v = std::move(expr->evaluate(runtime).consume().variant());
-			if (!list.push(runtime.unbound_variable(std::move(v))))
+			DataPoint element = expr->evaluate(runtime).consume();
+			try
 			{
-				std::stringstream ss;
-				ss << "list underlying type is " << *_underlying << ", but element resolved to " << expr->evaltype();
-				errors.push_back(LxError::segment_error(expr->segment(), ErrorType::Runtime, ss.str()));
+				list.push(expr->eval_context(runtime), runtime.unbound_variable(std::move(element)));
+			}
+			catch (LxError& e)
+			{
+				if (e.type() != ErrorType::Internal)
+					errors.push_back(std::move(e));
+				else
+					throw;
 			}
 		}
 

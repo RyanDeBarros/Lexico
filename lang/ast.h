@@ -93,6 +93,8 @@ namespace lx
 		virtual void impl_analyse(SemanticContext& ctx, AnalysisPass pass) = 0;
 		virtual UpflowInfo impl_upflow(SemanticContext& ctx);
 		virtual ScriptSegment impl_segment() const = 0;
+
+	public:
 		EvalContext eval_context(Runtime& runtime) const;
 	};
 

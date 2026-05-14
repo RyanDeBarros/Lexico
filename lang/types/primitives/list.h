@@ -31,7 +31,10 @@ namespace lx
 		size_t iterlen(const EvalContext& env) const;
 		DataPoint iterget(const EvalContext& env, size_t i) const;
 
-		bool push(Variable element);
+		void push(const EvalContext& env, Variable element);
+		void insert(const EvalContext& env, size_t i, Variable element);
+		Variable pop(const EvalContext& env);
+		Variable remove(const EvalContext& env, size_t i);
 		size_t size() const;
 		const Variable& operator[](size_t i) const;
 		Variable& operator[](size_t i);
