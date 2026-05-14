@@ -654,9 +654,9 @@ namespace lx
 		}
 		case LookaroundMode::Behind:
 		{
-			// TODO virtual max_range() function that calculate the lower bound of where iteration index should end, instead of always going to 0
 			SearchContext subcontext = context.up_to(in.pos);
-			for (int i = in.pos; i >= 0; --i)
+			const IRange bounds = _subject->matching_range();
+			for (int i = in.pos - (bounds.min() ? *bounds.min() : 0); i >= in.pos - (bounds.max() ? *bounds.max() : in.pos); --i)
 			{
 				BackSearchYield back_search(i);
 				_subject->match(subcontext, SearchState(i), back_search);
@@ -672,7 +672,8 @@ namespace lx
 		{
 			bool pass = true;
 			SearchContext subcontext = context.up_to(in.pos);
-			for (int i = in.pos; i >= 0; --i)
+			const IRange bounds = _subject->matching_range();
+			for (int i = in.pos - (bounds.min() ? *bounds.min() : 0); i >= in.pos - (bounds.max() ? *bounds.max() : in.pos); --i)
 			{
 				BackSearchYield back_search(i);
 				_subject->match(subcontext, SearchState(i), back_search);
