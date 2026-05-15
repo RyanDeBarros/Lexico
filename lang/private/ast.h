@@ -374,13 +374,13 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternSymbolExpression : public Expression
+	class SymbolExpression : public Expression
 	{
 		Token _symbol_token;
 		BuiltinSymbol _builtin_symbol;
 
 	public:
-		PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
+		SymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 
 		Variable evaluate(Runtime& runtime) const override;
 

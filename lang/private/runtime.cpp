@@ -193,31 +193,26 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	void Runtime::find_all(const ScriptSegment& segment)
+	void Runtime::find_all(const Pattern& pattern, const ScriptSegment& segment)
 	{
-		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.find_all(env, snippet)); });
+		do_find(pattern, segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.find_all(env, snippet)); });
 	}
 
-	void Runtime::search(const ScriptSegment& segment)
+	void Runtime::search(const Pattern& pattern, const ScriptSegment& segment)
 	{
-		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.search(env, snippet)); });
+		do_find(pattern, segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.search(env, snippet)); });
 	}
 
-	void Runtime::do_find(const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&))
+	void Runtime::do_find(const Pattern& pattern, const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&))
 	{
-		if (Pattern* pattern = focused_pattern(segment).ref().as<Pattern>())
-		{
-			const Page& page = focused_page();
-			const Scope& scope = search_scope();
-			const auto snippets = page.snippets(scope.lines());
-			global_matches() = Matches();
-			EvalContext env{ .runtime = *this, .segment = &segment };
-			for (const Snippet& snippet : snippets)
-				func(env, global_matches(), *pattern, snippet);
-			global_matches().remove_duplicates();
-		}
-		else
-			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
+		const Page& page = focused_page();
+		const Scope& scope = search_scope();
+		const auto snippets = page.snippets(scope.lines());
+		global_matches() = Matches();
+		EvalContext env{ .runtime = *this, .segment = &segment };
+		for (const Snippet& snippet : snippets)
+			func(env, global_matches(), pattern, snippet);
+		global_matches().remove_duplicates();
 	}
 
 	void Runtime::add_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment)
@@ -310,6 +305,11 @@ namespace lx
 	Page& Runtime::focused_page()
 	{
 		return _page_stack.empty() ? *_root_page : _page_stack.top();
+	}
+
+	void Runtime::print_output()
+	{
+		focused_page().text().ref().print(EvalContext{ .runtime = *this }, _output);
 	}
 
 	const Matches& Runtime::global_matches() const

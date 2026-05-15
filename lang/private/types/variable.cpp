@@ -58,7 +58,11 @@ namespace lx
 			return Variable(*_heap, _id);
 		}
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 	
 	void Variable::increment() const
@@ -78,7 +82,11 @@ namespace lx
 		if (_heap)
 			return _heap->get(_id);
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	DataPoint& Variable::ref()
@@ -86,7 +94,11 @@ namespace lx
 		if (_heap)
 			return _heap->get(_id);
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	DataPoint Variable::consume() &&
@@ -98,7 +110,11 @@ namespace lx
 			return dp;
 		}
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	bool Variable::unbound() const
@@ -106,17 +122,23 @@ namespace lx
 		if (_heap)
 			return _heap->unbound(_id);
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	bool Variable::temporary() const
 	{
 		if (_heap)
-		{
 			return _heap->unbound(_id) && !_heap->get(_id).data_type().is_view();
-		}
 		else
-			throw LxError(ErrorType::Internal, "heap reference is null");
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
 	}
 
 	bool Variable::is(Variable other) const
@@ -124,15 +146,74 @@ namespace lx
 		return _heap == other._heap && _id == other._id;
 	}
 
-	DataPoint Variable::cast(const EvalContext& env, const DataType& to) &&
+	const DataPoint& Variable::cast(const EvalContext& env, const DataType& to) const
 	{
-		VarContext ctx(env, std::move(*this));
+		if (_heap)
+		{
+			if (ref().data_type() == to)
+				return ref();
+			else
+			{
+				VarContext ctx(env, *this);
+				return cast_variable(ctx, to).ref();
+			}
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	DataPoint& Variable::cast(const EvalContext& env, const DataType& to)
+	{
+		if (_heap)
+		{
+			if (ref().data_type() == to)
+				return ref();
+			else
+			{
+				VarContext ctx(env, std::move(*this));
+				return cast_variable(ctx, to).ref();
+			}
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	Variable Variable::cast_variable(const EvalContext& env, const DataType& to) const
+	{
+		if (_heap)
+		{
+			if (ref().data_type() == to)
+				return *this;
+			else
+			{
+				VarContext ctx(env, *this);
+				return cast_variable(ctx, to);
+			}
+		}
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	Variable Variable::cast_variable(VarContext& ctx, const DataType& to) const
+	{
 		DataPoint& me = ctx.self.ref();
 
 		if (ctx.self.unbound())
-			return std::move(me).cast_move(std::move(ctx), to);
+			return _heap->add(std::move(me).cast_move(std::move(ctx), to));
 		else
-			return me.cast_copy(ctx, to);
+			return _heap->add(me.cast_copy(ctx, to));
 	}
 
 	size_t Variable::hash() const

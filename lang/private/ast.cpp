@@ -631,7 +631,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& runtime) const
 	{
-		return runtime.unbound_variable(_expr.evaluate(runtime).cast(eval_context(runtime), _type.type()));
+		return _expr.evaluate(runtime).cast_variable(eval_context(runtime), _type.type());
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -798,12 +798,12 @@ namespace lx
 		return _symbol_token.segment;
 	}
 
-	PatternSymbolExpression::PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
+	SymbolExpression::SymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
 		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
 	{
 	}
 
-	void PatternSymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	void SymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		if (pass == AnalysisPass::Validation)
 		{
@@ -812,17 +812,23 @@ namespace lx
 		}
 	}
 
-	Variable PatternSymbolExpression::evaluate(Runtime& runtime) const
+	Variable SymbolExpression::evaluate(Runtime& runtime) const
 	{
-		return runtime.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
+		if (_builtin_symbol == BuiltinSymbol::Page)
+		{
+			Variable og = runtime.focused_page().text();
+			return runtime.unbound_variable(DataPoint(og.ref()));
+		}
+		else
+			return runtime.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
 	}
 
-	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
+	DataType SymbolExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return DataType::Pattern();
 	}
 
-	ScriptSegment PatternSymbolExpression::impl_segment() const
+	ScriptSegment SymbolExpression::impl_segment() const
 	{
 		return _symbol_token.segment;
 	}
@@ -1928,10 +1934,11 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& runtime) const
 	{
+		// TODO consume_as, move_as, etc.: this method requires a const Pattern&, not a new object. Use .cast() more often when needing a reference to a data point and not a new object.
 		if (_findall)
-			runtime.find_all(segment());
+			runtime.find_all(_pattern.evaluate(runtime).cast_as<Pattern>(eval_context(runtime)), segment());
 		else
-			runtime.search(segment());
+			runtime.search(_pattern.evaluate(runtime).cast_as<Pattern>(eval_context(runtime)), segment());
 		return {};
 	}
 
@@ -2054,7 +2061,7 @@ namespace lx
 
 	ExecutionFlow ApplyStatement::execute(Runtime& runtime) const
 	{
-		// TODO
+		// TODO calculate replacement strings for all the matches first, then do a batch replacement and clear the global matches, to avoid adjusting indexes for each replacement. Don't invoke on submatches. If a match is completely contained in another, don't invoke on it. If two matches overlap, insert their replacements adjacent to each other in the correct order. v0.3 configuration setting for this behaviour?
 		return {};
 	}
 

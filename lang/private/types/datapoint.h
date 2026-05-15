@@ -107,4 +107,16 @@ namespace lx
 		VarContext ctx(env, std::move(*this));
 		return std::move(ctx.self).consume().move_as<T>(std::move(ctx));
 	}
+
+	template<typename T>
+	T& Variable::cast_as(const EvalContext& env)
+	{
+		return cast(env, T::data_type()).get<T>();
+	}
+
+	template<typename T>
+	const T& Variable::cast_as(const EvalContext& env) const
+	{
+		return cast(env, T::data_type()).get<T>();
+	}
 }

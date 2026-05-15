@@ -13,7 +13,7 @@ namespace lx
 	struct EvalContext
 	{
 		Runtime& runtime;
-		const ScriptSegment* segment;
+		const ScriptSegment* segment = nullptr;
 
 		LxError runtime_error(const std::string_view message) const;
 		LxError internal_error(const std::string_view message) const;
