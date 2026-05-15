@@ -257,15 +257,15 @@ namespace lx
 
 	Matches Pattern::search(const EvalContext& env, const Snippet& snippet) const
 	{
-		return find(env, snippet, true);
+		return find(env, snippet, false);
 	}
 
 	Matches Pattern::find_all(const EvalContext& env, const Snippet& snippet) const
 	{
-		return find(env, snippet, false);
+		return find(env, snippet, true);
 	}
 
-	Matches Pattern::find(const EvalContext& env, const Snippet& snippet, bool find_first) const
+	Matches Pattern::find(const EvalContext& env, const Snippet& snippet, bool find_all) const
 	{
 		Matches matches;
 		if (_root)
@@ -274,7 +274,7 @@ namespace lx
 			for (size_t i = 0; i <= text.size(); ++i)
 			{
 				SearchContext context(env, text);
-				SearchYield yield(find_first);
+				SearchYield yield(find_all ? SearchExit::Continue : SearchExit::Terminate);
 				_root->match(context, SearchState(i), yield);
 				for (SearchState& state : yield.final_states)
 					matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet, context)));

@@ -57,20 +57,26 @@ namespace lx
 		CapId from_local(unsigned int capid) const;
 	};
 
+	enum class SearchExit
+	{
+		Terminate,
+		Continue
+	};
+
 	struct MatchYield
 	{
 		virtual ~MatchYield() = default;
-		virtual bool operator()(SearchState state) = 0;
+		virtual SearchExit operator()(SearchState state) = 0;
 	};
 
 	struct SearchYield : public MatchYield
 	{
 		std::vector<SearchState> final_states;
-		bool find_first;
+		SearchExit policy;
 
-		SearchYield(bool find_first) : find_first(find_first) {}
+		SearchYield(SearchExit policy);
 
-		bool operator()(SearchState state) override;
+		SearchExit operator()(SearchState state) override;
 	};
 
 	class SubpatternNode;
@@ -90,7 +96,7 @@ namespace lx
 		SubpatternNode& refer_node(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const;
 		virtual bool equals(const SubpatternNode* o) const = 0;
 
-		virtual bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const = 0;
+		virtual SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const = 0;
 		IRange matching_range() const;
 
 	protected:
@@ -124,7 +130,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 		char chr() const;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -142,7 +148,7 @@ namespace lx
 		bool equals(const SubpatternNode* o) const override;
 		std::string_view string() const;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -165,7 +171,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -175,20 +181,20 @@ namespace lx
 	{
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
 
 	public:
-		bool match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const;
+		SearchExit match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const;
 	};
 
 	class SubpatternDisjunction : public SubpatternArray
 	{
 	public:
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -205,7 +211,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -223,13 +229,13 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
 
 	public:
-		bool match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const;
+		SearchExit match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const;
 	};
 
 	enum class LookaroundMode
@@ -253,7 +259,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -269,7 +275,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -286,7 +292,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -302,7 +308,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -318,7 +324,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -334,7 +340,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -350,7 +356,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;
@@ -374,7 +380,7 @@ namespace lx
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;
 
-		bool match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
+		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
 
 	protected:
 		IRange impl_matching_range() const override;

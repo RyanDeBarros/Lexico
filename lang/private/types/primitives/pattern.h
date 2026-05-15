@@ -84,6 +84,6 @@ namespace lx
 		Matches find_all(const EvalContext& env, const Snippet& snippet) const;
 
 	private:
-		Matches find(const EvalContext& env, const Snippet& snippet, bool find_first) const;
+		Matches find(const EvalContext& env, const Snippet& snippet, bool find_all) const;
 	};
 }
