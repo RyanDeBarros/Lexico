@@ -10,7 +10,7 @@ The main interface for the interpreter is the GUI, written with [imgui](##licens
 
 ## Licensing
 
-TODO proprietary license for `lang` module.
+See the NOTICE file for full details on Lexico's licensing, including attribution requirements and copyright. The LICENSE file itself contains a copy of the MPL-2.0.
 
 Only the `gui` module uses third-party libraries. For more information, see the `gui/licenses` folder. The third-party libraries used are:
 * [imgui](https://github.com/ocornut/imgui)
