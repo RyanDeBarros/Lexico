@@ -37,5 +37,6 @@ namespace lx
 
 		void insert(const EvalContext& env, Int&& index, String&& s);
 		void insert(const EvalContext& env, Int&& index, StringView&& s);
+		void replace(size_t index, size_t remove_length, std::string&& inserted_text);
 	};
 }

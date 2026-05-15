@@ -98,4 +98,15 @@ namespace lx
 	{
 		return _length;
 	}
+
+	void Cap::adjust_indexes(size_t index, size_t from_length, size_t to_length)
+	{
+		size_t start = _snippet.absolute(_start);
+		size_t length = _length;
+		adjust_range_resize(start, length, index, from_length, to_length);
+		_start = _snippet.relative(start);
+		_length = length;
+
+		_submatch.ref().get<Match>().adjust_indexes(index, from_length, to_length);
+	}
 }

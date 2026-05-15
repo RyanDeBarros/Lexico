@@ -31,5 +31,7 @@ namespace lx
 
 		unsigned int start() const;
 		unsigned int length() const;
+
+		void adjust_indexes(size_t index, size_t from_length, size_t to_length);
 	};
 }

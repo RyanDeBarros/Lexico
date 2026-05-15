@@ -156,4 +156,10 @@ namespace lx
 
 		_matches = std::move(unique_matches);
 	}
+
+	void Matches::adjust_indexes(size_t index, size_t from_length, size_t to_length)
+	{
+		for (size_t i = 0; i < _matches.size(); ++i)
+			_matches[i].ref().get<Match>().adjust_indexes(index, from_length, to_length);
+	}
 }

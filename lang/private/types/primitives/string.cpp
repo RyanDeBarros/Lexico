@@ -188,7 +188,7 @@ namespace lx
 			throw env.runtime_error(ss.str());
 		}
 
-		_value.insert(_value.begin() + i, s._value.begin(), s._value.end());
+		_value.insert(i, std::move(s._value));
 	}
 
 	void String::insert(const EvalContext& env, Int&& index, StringView&& s)
@@ -204,5 +204,11 @@ namespace lx
 
 		auto it = _value.begin() + i;
 		s.visit(env, [this, &it](char c) { it = _value.insert(it, c) + 1; });
+	}
+
+	void String::replace(size_t index, size_t remove_length, std::string&& inserted_text)
+	{
+		_value.erase(index, remove_length);
+		_value.insert(index, std::move(inserted_text));
 	}
 }

@@ -119,6 +119,11 @@ namespace lx
 			throw LxError(ErrorType::Internal, "heap reference is null");
 	}
 
+	bool Variable::is(Variable other) const
+	{
+		return _heap == other._heap && _id == other._id;
+	}
+
 	DataPoint Variable::cast(const EvalContext& env, const DataType& to) &&
 	{
 		VarContext ctx(env, std::move(*this));

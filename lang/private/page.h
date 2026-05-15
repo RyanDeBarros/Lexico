@@ -20,6 +20,7 @@ namespace lx
 
 		std::string_view page_content() const;
 		unsigned int absolute(unsigned int i) const;
+		unsigned int relative(unsigned int i) const;
 		std::string_view outer_page() const;
 
 		bool operator==(const Snippet&) const = default;
@@ -35,5 +36,7 @@ namespace lx
 
 		Variable text() const;
 		std::vector<Snippet> snippets(std::optional<unsigned int> lines) const;
+
+		void replace(const EvalContext& env, Variable match, Variable string);
 	};
 }

@@ -41,5 +41,6 @@ namespace lx
 
 		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
 		Highlight highlight_range() const;
+		void adjust_indexes(size_t index, size_t from_length, size_t to_length);
 	};
 }

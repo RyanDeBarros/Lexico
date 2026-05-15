@@ -31,5 +31,6 @@ namespace lx
 		size_t size() const;
 
 		void remove_duplicates();
+		void adjust_indexes(size_t index, size_t from_length, size_t to_length);
 	};
 }

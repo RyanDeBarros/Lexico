@@ -2003,13 +2003,20 @@ namespace lx
 			_string.analyse(ctx, pass);
 
 			validate_implicitly_casts(ctx, _match, DataType::Match());
-			validate_implicitly_casts(ctx, _string, DataType::String());
+
+			DataType str = _string.evaltype(ctx);
+			if (!str.can_cast_implicit(DataType::String()) && !str.can_cast_implicit(DataType::StringView()))
+			{
+				std::stringstream ss;
+				ss << errors::DOES_NOT_RESOLVE << DataType::String() << " or " << DataType::StringView();
+				ctx.add_semantic_error(_string.segment(), ss.str());
+			}
 		}
 	}
 
 	ExecutionFlow ReplaceStatement::execute(Runtime& runtime) const
 	{
-		// TODO
+		runtime.focused_page().replace(eval_context(runtime), _match.evaluate(runtime), _string.evaluate(runtime));
 		return {};
 	}
 

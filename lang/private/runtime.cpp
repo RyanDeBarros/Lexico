@@ -307,6 +307,11 @@ namespace lx
 		return _page_stack.empty() ? *_root_page : _page_stack.top();
 	}
 
+	Page& Runtime::focused_page()
+	{
+		return _page_stack.empty() ? *_root_page : _page_stack.top();
+	}
+
 	const Matches& Runtime::global_matches() const
 	{
 		return _global_matches.ref().get<Matches>();

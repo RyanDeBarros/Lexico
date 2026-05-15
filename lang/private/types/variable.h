@@ -40,6 +40,7 @@ namespace lx
 		template<typename T>
 		T consume_as(const EvalContext& env) &&;
 
+		bool is(Variable other) const;
 		DataPoint cast(const EvalContext& env, const DataType& to) &&;
 
 		bool unbound() const;

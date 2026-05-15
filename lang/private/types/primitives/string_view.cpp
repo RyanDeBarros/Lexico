@@ -455,4 +455,9 @@ namespace lx
 		for (int i = 0; i < size(); ++i)
 			visitor(chr(i, min, max));
 	}
+
+	Variable StringView::string_variable() const
+	{
+		return _ref;
+	}
 }

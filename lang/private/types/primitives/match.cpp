@@ -168,4 +168,21 @@ namespace lx
 	{
 		return { .start = _snippet.absolute(_start), .length = _length };
 	}
+
+	void Match::adjust_indexes(size_t index, size_t from_length, size_t to_length)
+	{
+		// TODO put _start, _length, and _snippet in common struct for Match and Cap to use.
+		size_t start = _snippet.absolute(_start);
+		size_t length = _length;
+		adjust_range_resize(start, length, index, from_length, to_length);
+		_start = _snippet.relative(start);
+		_length = length;
+
+		for (auto& [_, caplist] : _captures_by_id)
+		{
+			auto& list = caplist.ref().get<List>();
+			for (size_t i = 0; i < list.size(); ++i)
+				list[i].ref().get<Cap>().adjust_indexes(index, from_length, to_length);
+		}
+	}
 }

@@ -67,5 +67,6 @@ namespace lx
 
 		size_t size() const;
 		void visit(const EvalContext& env, std::function<void(char)> visitor) const;
+		Variable string_variable() const;
 	};
 }

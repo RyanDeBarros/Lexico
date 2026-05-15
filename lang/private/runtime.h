@@ -112,6 +112,7 @@ namespace lx
 		void pop_page(const ScriptSegment& segment);
 		void clear_page_stack();
 		const Page& focused_page() const;
+		Page& focused_page();
 
 		const Matches& global_matches() const;
 		Matches& global_matches();

@@ -24,6 +24,11 @@ namespace lx
 		return _start + i;
 	}
 
+	unsigned int Snippet::relative(unsigned int i) const
+	{
+		return i - _start;
+	}
+
 	bool Snippet::placement_equals(const Snippet& other, unsigned int my_start, unsigned int my_length, unsigned int other_start, unsigned int other_length) const
 	{
 		if (my_length != other_length)
@@ -87,5 +92,21 @@ namespace lx
 		}
 
 		return snippets;
+	}
+
+	void Page::replace(const EvalContext& env, Variable match_var, Variable string_var)
+	{
+		Match match = std::move(match_var).consume_as<Match>(env);
+		StringView string = std::move(string_var).consume_as<StringView>(env);
+		if (!_text.is(string.string_variable()))
+			throw env.runtime_error("match does not reference current page");
+
+		const auto range = match.highlight_range();
+		size_t index = range.start;
+		size_t from_length = range.length;
+		size_t to_length = string.size();
+
+		_text.ref().get<String>().replace(index, from_length, std::move(string).consume_value(env));
+		env.runtime.global_matches().adjust_indexes(index, from_length, to_length);
 	}
 }
