@@ -9,9 +9,7 @@ namespace lx
 {
 	class Cap
 	{
-		Snippet _snippet;
-		unsigned int _start;
-		unsigned int _length;
+		SnippetSection _section;
 		Variable _submatch;
 		
 	public:

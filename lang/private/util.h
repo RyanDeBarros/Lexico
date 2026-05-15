@@ -70,6 +70,4 @@ namespace lx
 	constexpr bool is_in_variant_v = detail::is_in_variant<T, Variant>::value;
 
 	extern size_t hash_combine(size_t hash, size_t value);
-
-	extern void adjust_range_resize(size_t& start, size_t& length, size_t index, size_t from_length, size_t to_length);
 }

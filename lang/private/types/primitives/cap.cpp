@@ -7,7 +7,7 @@
 namespace lx
 {
 	Cap::Cap(const EvalContext& env, Snippet snippet, unsigned int start, unsigned int length, Variable submatch)
-		: _snippet(std::move(snippet)), _start(start), _length(length), _submatch(std::move(submatch))
+		: _section(std::move(snippet), start, length), _submatch(std::move(submatch))
 	{
 		if (_submatch.ref().data_type() != DataType::Match())
 			throw env.internal_error("Cap() submatch does not have type " + DataType::Match().repr());
@@ -58,9 +58,9 @@ namespace lx
 	Variable Cap::data_member(VarContext& ctx, const std::string_view member)
 	{
 		if (member == constants::MEMBER_START)
-			return ctx.variable(Int(_snippet.absolute(_start)));
+			return ctx.variable(Int(_section.absolute_start()));
 		else if (member == constants::MEMBER_LEN)
-			return ctx.variable(Int(_length));
+			return ctx.variable(Int(_section.length));
 		else if (member == constants::MEMBER_STR)
 			return ctx.variable(str());
 		else if (member == constants::MEMBER_SUB)
@@ -81,32 +81,27 @@ namespace lx
 
 	bool Cap::equals(const EvalContext& env, const Cap& o) const
 	{
-		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _submatch.ref().get<Match>().equals(env, o._submatch.ref().get<Match>());
+		return _section == o._section && _submatch.ref().get<Match>().equals(env, o._submatch.ref().get<Match>());
 	}
 
 	String Cap::str() const
 	{
-		return String(std::string(_snippet.page_content().substr(_start, _length)));
+		return _section.str();
 	}
 
 	unsigned int Cap::start() const
 	{
-		return _start;
+		return _section.start;
 	}
 
 	unsigned int Cap::length() const
 	{
-		return _length;
+		return _section.length;
 	}
 
 	void Cap::adjust_indexes(size_t index, size_t from_length, size_t to_length)
 	{
-		size_t start = _snippet.absolute(_start);
-		size_t length = _length;
-		adjust_range_resize(start, length, index, from_length, to_length);
-		_start = _snippet.relative(start);
-		_length = length;
-
+		_section.adjust_indexes(index, from_length, to_length);
 		_submatch.ref().get<Match>().adjust_indexes(index, from_length, to_length);
 	}
 }

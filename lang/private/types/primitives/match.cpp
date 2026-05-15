@@ -7,7 +7,7 @@
 namespace lx
 {
 	Match::Match(Snippet snippet, unsigned int start, unsigned int length)
-		: _snippet(std::move(snippet)), _start(start), _length(length)
+		: _section(std::move(snippet), start, length)
 	{
 	}
 
@@ -58,11 +58,11 @@ namespace lx
 	Variable Match::data_member(VarContext& ctx, const std::string_view member)
 	{
 		if (member == constants::MEMBER_START)
-			return ctx.variable(Int(_snippet.absolute(_start)));
+			return ctx.variable(Int(_section.absolute_start()));
 		else if (member == constants::MEMBER_LEN)
-			return ctx.variable(Int(_length));
+			return ctx.variable(Int(_section.length));
 		else if (member == constants::MEMBER_STR)
-			return ctx.variable(String(std::string(_snippet.page_content().substr(_start, _length))));
+			return ctx.variable(_section.str());
 
 		ctx.throw_no_data_member(member);
 	}
@@ -113,9 +113,7 @@ namespace lx
 
 	size_t Match::hash() const
 	{
-		size_t h = 0;
-		h = hash_combine(h, std::hash<unsigned int>{}(_snippet.absolute(_start)));
-		h = hash_combine(h, std::hash<unsigned int>{}(_length));
+		size_t h = _section.hash();
 		for (const auto& [capid, index] : _ordering)
 		{
 			auto it = _captures_by_id.find(capid);
@@ -131,7 +129,7 @@ namespace lx
 
 	bool Match::equals(const Match& o) const
 	{
-		return _snippet.placement_equals(o._snippet, _start, _length, o._start, o._length) && _ordering == o._ordering && _captures_by_id == o._captures_by_id;
+		return _section == o._section && _ordering == o._ordering && _captures_by_id == o._captures_by_id;
 	}
 
 	size_t Match::iterlen(const EvalContext& env) const
@@ -166,18 +164,12 @@ namespace lx
 
 	Highlight Match::highlight_range() const
 	{
-		return { .start = _snippet.absolute(_start), .length = _length };
+		return { .start = _section.absolute_start(), .length = _section.length };
 	}
 
 	void Match::adjust_indexes(size_t index, size_t from_length, size_t to_length)
 	{
-		// TODO put _start, _length, and _snippet in common struct for Match and Cap to use.
-		size_t start = _snippet.absolute(_start);
-		size_t length = _length;
-		adjust_range_resize(start, length, index, from_length, to_length);
-		_start = _snippet.relative(start);
-		_length = length;
-
+		_section.adjust_indexes(index, from_length, to_length);
 		for (auto& [_, caplist] : _captures_by_id)
 		{
 			auto& list = caplist.ref().get<List>();

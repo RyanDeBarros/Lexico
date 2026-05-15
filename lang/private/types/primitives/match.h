@@ -12,10 +12,7 @@ namespace lx
 {
 	class Match
 	{
-		Snippet _snippet;
-		unsigned int _start = 0;
-		unsigned int _length = 0;
-
+		SnippetSection _section;
 		std::unordered_map<CapId, Variable> _captures_by_id;
 		std::vector<std::pair<CapId, size_t>> _ordering;
 

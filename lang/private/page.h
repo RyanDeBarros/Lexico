@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types/variable.h"
+#include "types/declarations.h"
 
 #include <optional>
 
@@ -38,5 +39,19 @@ namespace lx
 		std::vector<Snippet> snippets(std::optional<unsigned int> lines) const;
 
 		void replace(const EvalContext& env, Variable match, Variable string);
+	};
+
+	struct SnippetSection
+	{
+		Snippet snippet;
+		unsigned int start = 0;
+		unsigned int length = 0;
+
+		unsigned int absolute_start() const;
+		String str() const;
+		void adjust_indexes(size_t index, size_t from_length, size_t to_length);
+
+		size_t hash() const;
+		bool operator==(const SnippetSection& o) const;
 	};
 }
