@@ -1,4 +1,4 @@
-#include "highlights.h"
+#include "api/highlights.h"
 
 namespace lx
 {

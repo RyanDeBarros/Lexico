@@ -1,6 +1,6 @@
 #pragma once
 
-#include "highlights.h"
+#include "api/highlights.h"
 
 #include <optional>
 #include <string_view>

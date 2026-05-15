@@ -1,9 +1,9 @@
 #pragma once
 
+#include "capid.h"
 #include "types/declarations.h"
 #include "types/member.h"
 #include "page.h"
-#include "capid.h"
 #include "util.h"
 
 #include <unordered_map>

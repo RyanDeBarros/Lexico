@@ -1,6 +1,6 @@
 #pragma once
 
-#include "public.h"
+#include "api/entry_point.h"
 
 namespace lx
 {
