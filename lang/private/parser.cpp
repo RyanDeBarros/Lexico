@@ -533,12 +533,8 @@ namespace lx
 		{
 			auto offset = token_offset();
 			Expression& expr = parse_expression(offset);
-			// TODO this check should happen in expression AST semantic analysis, if anything. The error will log before even checking for variable/function validation
-			if (!expr.imperative())
-				throw LxError::segment_error(expr.segment(), ErrorType::Syntax, "expression is not imperative");
-
 			offset.submit();
-			context().append(expr);
+			append_to_context(std::make_unique<DirectExpression>(expr));
 			return true;
 		}
 

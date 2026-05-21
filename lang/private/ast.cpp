@@ -356,6 +356,37 @@ namespace lx
 		return _global;
 	}
 
+	DirectExpression::DirectExpression(Expression& expression)
+		: _expression(expression)
+	{
+	}
+
+	Variable DirectExpression::evaluate(Runtime& runtime) const
+	{
+		return _expression.evaluate(runtime);
+	}
+
+	void DirectExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	{
+		_expression.analyse(ctx, pass);
+
+		if (pass == AnalysisPass::Validation)
+		{
+			if (!_expression.imperative())
+				ctx.add_semantic_error(_expression.segment(), "expression is not imperative");
+		}
+	}
+
+	DataType DirectExpression::impl_evaltype(SemanticContext& ctx) const
+	{
+		return _expression.evaltype(ctx);
+	}
+	
+	ScriptSegment DirectExpression::impl_segment() const
+	{
+		return _expression.segment();
+	}
+
 	LiteralExpression::LiteralExpression(Token&& literal)
 		: _literal(std::move(literal))
 	{
