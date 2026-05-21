@@ -146,47 +146,7 @@ namespace lx
 		return _heap == other._heap && _id == other._id;
 	}
 
-	const DataPoint& Variable::cast(const EvalContext& env, const DataType& to) const
-	{
-		if (_heap)
-		{
-			if (ref().data_type() == to)
-				return ref();
-			else
-			{
-				VarContext ctx(env, *this);
-				return cast_variable(ctx, to).ref();
-			}
-		}
-		else
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": heap reference is null";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-	}
-
-	DataPoint& Variable::cast(const EvalContext& env, const DataType& to)
-	{
-		if (_heap)
-		{
-			if (ref().data_type() == to)
-				return ref();
-			else
-			{
-				VarContext ctx(env, std::move(*this));
-				return cast_variable(ctx, to).ref();
-			}
-		}
-		else
-		{
-			std::stringstream ss;
-			ss << __FUNCTION__ << ": heap reference is null";
-			throw LxError(ErrorType::Internal, ss.str());
-		}
-	}
-
-	Variable Variable::cast_variable(const EvalContext& env, const DataType& to) const
+	Variable Variable::cast(const EvalContext& env, const DataType& to) const
 	{
 		if (_heap)
 		{

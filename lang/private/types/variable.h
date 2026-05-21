@@ -42,20 +42,12 @@ namespace lx
 		T consume_as(const EvalContext& env) &&;
 
 		bool is(Variable other) const;
-		const DataPoint& cast(const EvalContext& env, const DataType& to) const;
-		DataPoint& cast(const EvalContext& env, const DataType& to);
-		Variable cast_variable(const EvalContext& env, const DataType& to) const;
+		Variable cast(const EvalContext& env, const DataType& to) const;
 
 	private:
 		Variable cast_variable(VarContext& ctx, const DataType& to) const;
 
 	public:
-		template<typename T>
-		T& cast_as(const EvalContext& env);
-
-		template<typename T>
-		const T& cast_as(const EvalContext& env) const;
-
 		bool unbound() const;
 		bool temporary() const;
 

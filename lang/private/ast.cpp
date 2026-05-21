@@ -631,7 +631,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& runtime) const
 	{
-		return _expr.evaluate(runtime).cast_variable(eval_context(runtime), _type.type());
+		return _expr.evaluate(runtime).cast(eval_context(runtime), _type.type());
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -1934,11 +1934,11 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& runtime) const
 	{
-		// TODO consume_as, move_as, etc.: this method requires a const Pattern&, not a new object. Use .cast() more often when needing a reference to a data point and not a new object.
+		Variable pattern = _pattern.evaluate(runtime).cast(eval_context(runtime), DataType::Pattern());
 		if (_findall)
-			runtime.find_all(_pattern.evaluate(runtime).cast_as<Pattern>(eval_context(runtime)), segment());
+			runtime.find_all(pattern.ref().get<Pattern>(), segment());
 		else
-			runtime.search(_pattern.evaluate(runtime).cast_as<Pattern>(eval_context(runtime)), segment());
+			runtime.search(pattern.ref().get<Pattern>(), segment());
 		return {};
 	}
 
