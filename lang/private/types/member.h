@@ -36,9 +36,8 @@ namespace lx
 
 		const std::string& identifier() const;
 
-		// TODO return std::pair<std::string, MemberSignature>
-		static MemberSignature make_data(std::string&& identifier, const DataType& type);
-		static MemberSignature make_method(std::string&& identifier, std::vector<Overload>&& overloads);
+		static std::pair<std::string, MemberSignature> make_data_pair(std::string&& identifier, const DataType& type);
+		static std::pair<std::string, MemberSignature> make_method_pair(std::string&& identifier, std::vector<Overload>&& overloads);
 
 		bool is_data() const;
 		bool is_method() const;

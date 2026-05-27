@@ -90,21 +90,21 @@ namespace lx
 	StringMap<MemberSignature> List::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
 		};
 	}
 
 	StringMap<MemberSignature> List::members(const DataType& underlying)
 	{
 		return {
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = underlying, .arg_types = { DataType::Int() } },
 			}) },
-			{ constants::MEMBER_PUSH, MemberSignature::make_method(constants::MEMBER_PUSH, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_PUSH, {
 				{ .return_type = DataType::Void(), .arg_types = { underlying } },
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), underlying } },
 			}) },
-			{ constants::MEMBER_POP, MemberSignature::make_method(constants::MEMBER_POP, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_POP, {
 				{ .return_type = underlying, .arg_types = {} },
 				{ .return_type = underlying, .arg_types = { DataType::Int() } },
 			}) },

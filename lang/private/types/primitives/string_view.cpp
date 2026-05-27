@@ -110,13 +110,13 @@ namespace lx
 	StringMap<MemberSignature> StringView::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_data_pair(constants::MEMBER_STR, DataType::String()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
 				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
 			}) },
-			{ constants::MEMBER_INSERT, MemberSignature::make_method(constants::MEMBER_INSERT, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_INSERT, {
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::String() } },
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::StringView() }},
 			}) },

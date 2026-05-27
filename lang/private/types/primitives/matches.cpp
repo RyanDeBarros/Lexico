@@ -44,8 +44,8 @@ namespace lx
 	StringMap<MemberSignature> Matches::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::Match(), .arg_types = { DataType::Int() }},
 			}) },
 		};

@@ -43,13 +43,13 @@ namespace lx
 	StringMap<MemberSignature> Match::members()
 	{
 		return {
-			{ constants::MEMBER_START, MemberSignature::make_data(constants::MEMBER_START, DataType::Int()) },
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_START, DataType::Int()) },
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_data_pair(constants::MEMBER_STR, DataType::String()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::List(DataType::Cap()), .arg_types = { DataType::CapId() } },
 			}) },
-			{ constants::MEMBER_TEXT, MemberSignature::make_method(constants::MEMBER_TEXT, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_TEXT, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::CapId() } },
 				{ .return_type = DataType::String(), .arg_types = { DataType::CapId(), DataType::Int() } },
 			}) },
