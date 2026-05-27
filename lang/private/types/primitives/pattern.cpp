@@ -278,6 +278,9 @@ namespace lx
 				_root->match(context, SearchState(i), yield);
 				for (SearchState& state : yield.final_states)
 					matches.push_back(env, env.runtime.unbound_variable(std::move(state).materialize(env, snippet, context)));
+				
+				if (!yield.final_states.empty() && !find_all)
+					break;
 			}
 		}
 		return matches;

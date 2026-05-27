@@ -29,7 +29,7 @@ namespace lx
 		bool equals(const EvalContext& env, const String& o) const;
 
 		size_t iterlen(const EvalContext& env) const;
-		DataPoint iterget(const EvalContext& env, size_t i) const;
+		Variable iterget(VarContext& ctx, size_t i) const;
 		std::string page_content(const EvalContext& env) const;
 
 		std::string_view value() const;

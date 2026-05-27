@@ -233,13 +233,13 @@ namespace lx
 		return size();
 	}
 
-	DataPoint StringView::iterget(const EvalContext& env, size_t i) const
+	Variable StringView::iterget(VarContext& ctx, size_t i) const
 	{
-		assert_valid(env);
+		assert_valid(ctx.env);
 
 		const int min = min_index();
 		const int max = max_index();
-		return String({ chr(i, min, max) });
+		return ctx.variable(String({ chr(i, min, max) }));
 	}
 
 	std::string StringView::page_content(const EvalContext& env) const

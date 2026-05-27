@@ -234,23 +234,23 @@ namespace lx
 			return String("");
 	}
 
-	DataPoint SRange::iterget(const EvalContext& env, size_t i) const
+	Variable SRange::iterget(VarContext& ctx, size_t i) const
 	{
 		if (!_min && !_max)
-			return String({ from_range_char(MIN_RANGE_CHAR + i) });
+			return ctx.variable(String({ from_range_char(MIN_RANGE_CHAR + i) }));
 
 		std::stringstream ss;
 
 		if (_min && !_max)
-			return to_string(*_min, i);
+			return ctx.variable(to_string(*_min, i));
 
 		if (_max && !_min)
-			return to_string(lower_bound(*_max), i);
+			return ctx.variable(to_string(lower_bound(*_max), i));
 
 		if (*_min <= *_max)
-			return to_string(*_min, i);
+			return ctx.variable(to_string(*_min, i));
 		else
-			return to_string(*_min, -i);
+			return ctx.variable(to_string(*_min, -i));
 	}
 
 	std::optional<char> SRange::min() const

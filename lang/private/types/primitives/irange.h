@@ -23,7 +23,7 @@ namespace lx
 		bool equals(const EvalContext& env, const IRange& o) const;
 
 		size_t iterlen(const EvalContext& env) const;
-		DataPoint iterget(const EvalContext& env, size_t i) const;
+		Variable iterget(VarContext& ctx, size_t i) const;
 
 		std::optional<int> min() const;
 		std::optional<int>& min();

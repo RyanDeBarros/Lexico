@@ -17,7 +17,8 @@ namespace lx
 		RuntimeSymbolTable(const RuntimeSymbolTable&) = delete;
 		RuntimeSymbolTable(RuntimeSymbolTable&&) noexcept = default;
 
-		void register_variable(const std::string_view identifier, Variable&& handle);
+		void register_variable(const std::string_view identifier, Variable handle);
+		void name_unbound_variable(const std::string_view identifier, Variable var);
 		std::optional<Variable> registered_variable(const std::string_view identifier) const;
 	};
 
@@ -82,6 +83,7 @@ namespace lx
 		};
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
+		void name_unbound_variable(const std::string_view identifier, Variable var, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable unbound_variable(DataPoint&& dp);
 

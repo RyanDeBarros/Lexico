@@ -29,7 +29,7 @@ namespace lx
 		bool equals(const EvalContext& env, const List& o) const;
 
 		size_t iterlen(const EvalContext& env) const;
-		DataPoint iterget(const EvalContext& env, size_t i) const;
+		Variable iterget(VarContext& ctx, size_t i) const;
 
 		void push(const EvalContext& env, Variable element);
 		void insert(const EvalContext& env, size_t i, Variable element);
@@ -38,5 +38,7 @@ namespace lx
 		size_t size() const;
 		const Variable& operator[](size_t i) const;
 		Variable& operator[](size_t i);
+
+		Variable& at(const EvalContext& env, int i);
 	};
 }

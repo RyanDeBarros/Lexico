@@ -157,9 +157,9 @@ namespace lx
 		return _value.size();
 	}
 
-	DataPoint String::iterget(const EvalContext& env, size_t i) const
+	Variable String::iterget(VarContext& ctx, size_t i) const
 	{
-		return String({ _value[i] });
+		return ctx.variable(StringView(ctx.env, ctx.self, Int(i)));
 	}
 
 	std::string String::page_content(const EvalContext& env) const

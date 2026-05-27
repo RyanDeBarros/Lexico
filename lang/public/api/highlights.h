@@ -24,6 +24,9 @@ namespace lx
 		size_t length;
 
 		size_t end() const;
+
+		bool contains(const Highlight& other) const;
+		bool disjoint(const Highlight& other) const;
 	};
 
 	class HighlightSet

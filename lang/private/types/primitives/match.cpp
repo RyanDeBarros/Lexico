@@ -47,10 +47,11 @@ namespace lx
 			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
 			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
 			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
-				{ .return_type = DataType::Cap(), .arg_types = { DataType::CapId() } },
+				{ .return_type = DataType::List(DataType::Cap()), .arg_types = { DataType::CapId() } },
 			}) },
-			{ constants::MEMBER_STR, MemberSignature::make_method(constants::MEMBER_STR, {
+			{ constants::MEMBER_TEXT, MemberSignature::make_method(constants::MEMBER_TEXT, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::CapId() } },
+				{ .return_type = DataType::String(), .arg_types = { DataType::CapId(), DataType::Int() } },
 			}) },
 		};
 	}
@@ -83,15 +84,24 @@ namespace lx
 				}
 			}
 		}
-		else if (method == constants::MEMBER_STR)
+		else if (method == constants::MEMBER_TEXT)
 		{
-			if (args.size() == 1)
+			if (args.size() == 1 || args.size() == 2)
 			{
-				if (args[0].ref().data_type() == DataType::CapId())
+				std::optional<int> idx = 0;
+				if (args.size() == 2)
+				{
+					if (args[1].ref().data_type() == DataType::Int())
+						idx = args[1].ref().get<Int>().value();
+					else
+						idx = std::nullopt;
+				}
+
+				if (args[0].ref().data_type() == DataType::CapId() && idx.has_value())
 				{
 					auto it = _captures_by_id.find(args[0].ref().get<CapId>());
 					if (it != _captures_by_id.end())
-						return ctx.variable(it->second.ref().get<Cap>().str());
+						return ctx.variable(it->second.ref().get<List>().at(ctx.env, *idx).ref().get<Cap>().str());
 					else
 						return ctx.variable(String(""));
 				}
@@ -137,16 +147,16 @@ namespace lx
 		return _ordering.size();
 	}
 
-	DataPoint Match::iterget(const EvalContext& env, size_t i) const
+	Variable Match::iterget(VarContext& ctx, size_t i) const
 	{
 		auto it = _captures_by_id.find(_ordering[i].first);
 		if (it != _captures_by_id.end())
-			return it->second.ref().iterget(env, _ordering[i].second);
+			return it->second.ref().iterget(ctx, _ordering[i].second);
 		else
 		{
 			std::stringstream ss;
 			ss << __FUNCTION__ << ": can't find capture by id";
-			throw env.internal_error(ss.str());
+			throw ctx.env.internal_error(ss.str());
 		}
 	}
 

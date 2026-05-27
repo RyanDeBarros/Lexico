@@ -182,9 +182,9 @@ namespace lx
 		return _elements.size();
 	}
 
-	DataPoint List::iterget(const EvalContext& env, size_t i) const
+	Variable List::iterget(VarContext& ctx, size_t i) const
 	{
-		return _elements[i].ref();
+		return _elements[i];
 	}
 
 	void List::push(const EvalContext& env, Variable element)
@@ -261,5 +261,17 @@ namespace lx
 	Variable& List::operator[](size_t i)
 	{
 		return _elements[i];
+	}
+
+	Variable& List::at(const EvalContext& env, int i)
+	{
+		if (i < 0 || i >= _elements.size())
+		{
+			std::stringstream ss;
+			ss << "index " << i << " out of range for list of length " << _elements.size();
+			throw env.runtime_error(ss.str());
+		}
+		else
+			return _elements[i];
 	}
 }

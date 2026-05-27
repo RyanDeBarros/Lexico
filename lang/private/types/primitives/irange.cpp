@@ -99,13 +99,13 @@ namespace lx
 		return static_cast<size_t>(std::abs(*_max - *_min) + 1);
 	}
 
-	DataPoint IRange::iterget(const EvalContext& env, size_t i) const
+	Variable IRange::iterget(VarContext& ctx, size_t i) const
 	{
 		if (!_min || !_max)
-			throw env.runtime_error("cannot iterate over unbounded range");
+			throw ctx.env.runtime_error("cannot iterate over unbounded range");
 
 		int dir = *_max >= *_min ? 1 : -1;
-		return Int(*_min + dir * i);
+		return ctx.variable(Int(*_min + dir * i));
 	}
 
 	std::optional<int> IRange::min() const

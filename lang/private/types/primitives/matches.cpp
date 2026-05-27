@@ -88,9 +88,9 @@ namespace lx
 		return _matches.size();
 	}
 
-	DataPoint Matches::iterget(const EvalContext& env, size_t i) const
+	Variable Matches::iterget(VarContext& ctx, size_t i) const
 	{
-		return _matches[i].ref();
+		return _matches[i];
 	}
 
 	void Matches::append(Matches&& matches)
@@ -121,6 +121,11 @@ namespace lx
 	size_t Matches::size() const
 	{
 		return _matches.size();
+	}
+
+	void Matches::clear()
+	{
+		_matches.clear();
 	}
 
 	struct MatchPtrHash

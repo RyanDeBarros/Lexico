@@ -4,6 +4,7 @@
 #include "types/iterator.h"
 #include "constants.h"
 
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 
@@ -576,7 +577,7 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << "member " << _member_name.lexeme << " does not exist for type " << _object.evaltype(ctx);
+		ss << "member \"" << _member_name.lexeme << "\" does not exist for type " << _object.evaltype(ctx);
 		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
 	}
 
@@ -1484,7 +1485,7 @@ namespace lx
 			while (!iter.done(env))
 			{
 				Runtime::LocalScope local_scope(runtime, isolated());
-				runtime.register_variable(_iterator.lexeme, iter.get(env), Namespace::Local);
+				runtime.name_unbound_variable(_iterator.lexeme, iter.get(env), Namespace::Local);
 				auto flow = execute_subnodes(runtime);
 				if (flow.type == FlowType::Break)
 					break;
@@ -2014,7 +2015,7 @@ namespace lx
 		Iterator iter(runtime.global_matches_var());
 		while (!iter.done(env))
 		{
-			Variable match = runtime.unbound_variable(iter.get(env));
+			Variable match = iter.get(env);
 			if (fn.invoke(runtime, { match }).data.consume_as<Bool>(env).value())
 				new_matches.push_back(env, std::move(match));
 			iter.next();
@@ -2092,7 +2093,48 @@ namespace lx
 
 	ExecutionFlow ApplyStatement::execute(Runtime& runtime) const
 	{
-		// TODO calculate replacement strings for all the matches first, then do a batch replacement and clear the global matches, to avoid adjusting indexes for each replacement. Don't invoke on submatches. If a match is completely contained in another, don't invoke on it. If two matches overlap, insert their replacements adjacent to each other in the correct order. v0.3 configuration setting for this behaviour?
+		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
+
+		auto env = eval_context(runtime);
+		std::vector<std::pair<Highlight, String>> replacements;
+		Iterator iter(runtime.global_matches_var());
+		while (!iter.done(env))
+		{
+			Variable match = iter.get(env);
+			Highlight section = match.ref().get<Match>().highlight_range();
+			replacements.push_back(std::make_pair(section, fn.invoke(runtime, { std::move(match) }).data.consume_as<String>(env)));
+			iter.next();
+		}
+
+		std::sort(replacements.begin(), replacements.end(), [](const std::pair<Highlight, String>& a, const std::pair<Highlight, String>& b) {
+			if (a.first.start < b.first.start)
+				return true;
+			else if (b.first.start < a.first.start)
+				return false;
+			else
+				return a.first.length <= b.first.length;
+		});
+
+		// TODO v0.3 configuration setting for overlapping match resolution strategy?
+		for (auto it = replacements.rbegin(); it != replacements.rend(); ++it)
+		{
+			// Don't replace if match is completely contained in another
+			auto prev = std::next(it);
+			if (prev != replacements.rend() && prev->first.contains(it->first))
+				continue;
+
+			// Isolated match
+			if (prev == replacements.rend() || prev->first.disjoint(it->first))
+			{
+				runtime.focused_page().replace_no_adjust(it->first.start, it->first.length, std::move(it->second).steal());
+				continue;
+			}
+
+			// Partial overlap -> replace right non-overlapping section and let prev replace rest of overlapping section so that replacements end up adjacent to one another
+			runtime.focused_page().replace_no_adjust(prev->first.end(), it->first.end() - prev->first.end(), std::move(it->second).steal());
+		}
+
+		runtime.global_matches().clear();
 		return {};
 	}
 

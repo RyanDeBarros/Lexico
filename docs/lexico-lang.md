@@ -38,7 +38,7 @@ TODO v0.3 aggregation / SQL constructs
 | `len` | `int` | length of group |
 | `str` | `string` | character subtext as a string |
 | `[capid]` | `list[cap]` | returns a capture list |
-| `str(capid)` | `string` | returns the string of characters captured by the capture id |
+| `text(capid, int)` | `string` | returns the characters captured by the capid at the optional index (default 0) |
 
 ### `irange`
 
@@ -515,7 +515,7 @@ append capture !middle ", "
 append capture !lastName $any+
 
 fn switch(match m) -> string
-  return m[!lastName].str + m[!middle].str + m[!firstName].str
+  return m.text(!lastName) + m.text(!middle) + m.text(!firstName)
 end fn
 
 search name
@@ -868,7 +868,7 @@ append ", "
 append capture !2 $alphanumeric+
 
 fn switch(match m) -> string
-  return m[!2][0].str + " " + m[!1][0].str
+  return m.text(!2) + " " + m.text(!1)
 end fn
 
 search name
@@ -896,7 +896,7 @@ append "-"
 append capture !3 $digit repeat 2
 
 fn rewrite(match m) -> string
-  return m[!3][0].str + "/" + m[!2][0].str + "/" + m[!1][0].str
+  return m.text(!3) + "/" + m.text(!2) + "/" + m.text(!1)
 end fn
 
 search date
@@ -929,7 +929,7 @@ fn balanced(match m) -> bool
     return false
   end if
   
-  page push m[!sub].str
+  page push m.text(sub)
   let pass = true
 
   let old = %

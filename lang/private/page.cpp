@@ -112,6 +112,11 @@ namespace lx
 		env.runtime.global_matches().adjust_indexes(index, from_length, to_length);
 	}
 
+	void Page::replace_no_adjust(const size_t from, const size_t length, std::string&& with)
+	{
+		_text.ref().get<String>().replace(from, length, std::move(with));
+	}
+
 	String SnippetSection::str() const
 	{
 		return String(std::string(snippet.page_content().substr(start, length)));

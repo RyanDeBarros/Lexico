@@ -39,6 +39,7 @@ namespace lx
 		std::vector<Snippet> snippets(std::optional<unsigned int> lines) const;
 
 		void replace(const EvalContext& env, Variable match, Variable string);
+		void replace_no_adjust(const size_t from, const size_t length, std::string&& with);
 	};
 
 	struct SnippetSection
