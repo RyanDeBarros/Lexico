@@ -17,7 +17,8 @@ namespace lx
 		RuntimeSymbolTable(const RuntimeSymbolTable&) = delete;
 		RuntimeSymbolTable(RuntimeSymbolTable&&) noexcept = default;
 
-		void register_variable(const std::string_view identifier, Variable&& handle);
+		void register_variable(const std::string_view identifier, Variable handle);
+		void name_unbound_variable(const std::string_view identifier, Variable var);
 		std::optional<Variable> registered_variable(const std::string_view identifier) const;
 	};
 
@@ -82,6 +83,7 @@ namespace lx
 		};
 
 		void register_variable(const std::string_view identifier, DataPoint&& dp, Namespace ns);
+		void name_unbound_variable(const std::string_view identifier, Variable var, Namespace ns);
 		Variable registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const;
 		Variable unbound_variable(DataPoint&& dp);
 
@@ -91,11 +93,11 @@ namespace lx
 		void delete_pattern(std::string_view identifier);
 		Variable focused_pattern(const ScriptSegment& segment) const;
 
-		void find_all(const ScriptSegment& segment);
-		void search(const ScriptSegment& segment);
+		void find_all(const Pattern& pattern, const ScriptSegment& segment);
+		void search(const Pattern& pattern, const ScriptSegment& segment);
 		
 	private:
-		void do_find(const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&));
+		void do_find(const Pattern& pattern, const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&));
 
 	public:
 		void add_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment);
@@ -113,6 +115,7 @@ namespace lx
 		void clear_page_stack();
 		const Page& focused_page() const;
 		Page& focused_page();
+		void print_output();
 
 		const Matches& global_matches() const;
 		Matches& global_matches();

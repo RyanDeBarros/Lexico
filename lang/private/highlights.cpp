@@ -7,6 +7,16 @@ namespace lx
 		return start + length;
 	}
 
+	bool Highlight::contains(const Highlight& other) const
+	{
+		return other.start >= start && other.end() <= end();
+	}
+
+	bool Highlight::disjoint(const Highlight& other) const
+	{
+		return end() <= other.start || other.end() <= start;
+	}
+
 	const std::vector<Highlight>& HighlightSet::list() const
 	{
 		return _list;

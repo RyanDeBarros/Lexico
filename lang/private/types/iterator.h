@@ -15,6 +15,6 @@ namespace lx
 		bool done(const EvalContext& env) const;
 		void next();
 
-		DataPoint get(const EvalContext& env) const;
+		Variable get(const EvalContext& env) const;
 	};
 }

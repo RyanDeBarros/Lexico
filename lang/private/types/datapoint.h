@@ -94,7 +94,7 @@ namespace lx
 		void print(const EvalContext& env, std::stringstream& ss) const;
 
 		size_t iterlen(const EvalContext& env) const;
-		DataPoint iterget(const EvalContext& env, size_t i) const;
+		Variable iterget(VarContext& ctx, size_t i) const;
 		std::string page_content(const EvalContext& env) const;
 
 		Variable data_member(VarContext& ctx, const std::string_view member);

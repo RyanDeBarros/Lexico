@@ -44,8 +44,8 @@ namespace lx
 	StringMap<MemberSignature> Matches::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::Match(), .arg_types = { DataType::Int() }},
 			}) },
 		};
@@ -88,9 +88,9 @@ namespace lx
 		return _matches.size();
 	}
 
-	DataPoint Matches::iterget(const EvalContext& env, size_t i) const
+	Variable Matches::iterget(VarContext& ctx, size_t i) const
 	{
-		return _matches[i].ref();
+		return _matches[i];
 	}
 
 	void Matches::append(Matches&& matches)
@@ -121,6 +121,11 @@ namespace lx
 	size_t Matches::size() const
 	{
 		return _matches.size();
+	}
+
+	void Matches::clear()
+	{
+		_matches.clear();
 	}
 
 	struct MatchPtrHash

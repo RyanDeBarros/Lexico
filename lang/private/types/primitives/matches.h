@@ -23,12 +23,13 @@ namespace lx
 		bool equals(const EvalContext& env, const Matches& o) const;
 
 		size_t iterlen(const EvalContext& env) const;
-		DataPoint iterget(const EvalContext& env, size_t i) const;
+		Variable iterget(VarContext& ctx, size_t i) const;
 
 		void append(Matches&& matches);
 		void push_back(const EvalContext& env, Variable match);
 		const Match& match(size_t i) const;
 		size_t size() const;
+		void clear();
 
 		void remove_duplicates();
 		void adjust_indexes(size_t index, size_t from_length, size_t to_length);

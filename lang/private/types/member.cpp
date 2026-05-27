@@ -12,14 +12,16 @@ namespace lx
 		return _identifier;
 	}
 
-	MemberSignature MemberSignature::make_data(std::string&& identifier, const DataType& type)
+	std::pair<std::string, MemberSignature> MemberSignature::make_data_pair(std::string&& identifier, const DataType& type)
 	{
-		return MemberSignature(std::move(identifier), DataLayout{.type = type });
+		std::string key = identifier;
+		return std::make_pair(std::move(key), MemberSignature(std::move(identifier), DataLayout{.type = type }));
 	}
 
-	MemberSignature MemberSignature::make_method(std::string&& identifier, std::vector<Overload>&& overloads)
+	std::pair<std::string, MemberSignature> MemberSignature::make_method_pair(std::string&& identifier, std::vector<Overload>&& overloads)
 	{
-		return MemberSignature(std::move(identifier), MethodLayout{.overloads = std::move(overloads) });
+		std::string key = identifier;
+		return std::make_pair(std::move(key), MemberSignature(std::move(identifier), MethodLayout{.overloads = std::move(overloads) }));
 	}
 
 	bool MemberSignature::is_data() const

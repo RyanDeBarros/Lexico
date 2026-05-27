@@ -84,12 +84,12 @@ namespace lx
 	StringMap<MemberSignature> String::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
 				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
 			}) },
-			{ constants::MEMBER_INSERT, MemberSignature::make_method(constants::MEMBER_INSERT, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_INSERT, {
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::String() } },
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::StringView() }},
 			}) },
@@ -157,9 +157,9 @@ namespace lx
 		return _value.size();
 	}
 
-	DataPoint String::iterget(const EvalContext& env, size_t i) const
+	Variable String::iterget(VarContext& ctx, size_t i) const
 	{
-		return String({ _value[i] });
+		return ctx.variable(StringView(ctx.env, ctx.self, Int(i)));
 	}
 
 	std::string String::page_content(const EvalContext& env) const

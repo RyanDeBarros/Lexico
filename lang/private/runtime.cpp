@@ -4,7 +4,7 @@
 
 namespace lx
 {
-	void RuntimeSymbolTable::register_variable(const std::string_view identifier, Variable&& dp)
+	void RuntimeSymbolTable::register_variable(const std::string_view identifier, Variable var)
 	{
 		if (_variable_table.contains(identifier))
 		{
@@ -13,7 +13,7 @@ namespace lx
 			throw LxError(ErrorType::Runtime, ss.str());
 		}
 
-		_variable_table.try_emplace(std::string(identifier), std::move(dp));
+		_variable_table.try_emplace(std::string(identifier), std::move(var));
 	}
 
 	std::optional<Variable> RuntimeSymbolTable::registered_variable(const std::string_view identifier) const
@@ -31,7 +31,7 @@ namespace lx
 	}
 
 	Runtime::Runtime(const std::string_view input, SemanticFunctionTable&& ftable)
-		: _input(input), _global_matches(_heap.add(Matches())), _search_scope(std::nullopt), _function_table(std::move(ftable))
+		: _input(input), _global_matches(_heap.add(Matches())), _search_scope(1), _function_table(std::move(ftable))
 	{
 		push_local_scope(true);
 		_root_page = std::make_unique<Page>(*this, std::string(input));
@@ -115,29 +115,57 @@ namespace lx
 		}
 	}
 
+	void Runtime::name_unbound_variable(const std::string_view identifier, Variable var, Namespace ns)
+	{
+		switch (ns)
+		{
+		case lx::Namespace::Global:
+			_global_variable_table.register_variable(identifier, std::move(var));
+			break;
+		case lx::Namespace::Local:
+			if (!_scope_stack.empty())
+				_scope_stack.back().table.register_variable(identifier, std::move(var));
+			else
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": local scope stack is empty";
+				throw LxError(ErrorType::Runtime, ss.str());
+			}
+			break;
+		default:
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": cannot register variable to unknown/isolated namespace";
+			throw LxError(ErrorType::Runtime, ss.str());
+		}
+	}
+
 	Variable Runtime::registered_variable(const std::string_view identifier, Namespace ns, const ScriptSegment& segment) const
 	{
 		if (ns == Namespace::Global)
 		{
 			if (auto dp = _global_variable_table.registered_variable(identifier))
 				return *dp;
-			else
-				throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
+		}
+		else
+		{
+			for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
+			{
+				if (auto sig = it->table.registered_variable(identifier))
+					return *sig;
+				else if (it->isolated)
+					break;
+			}
+
+			if (ns == Namespace::Unknown || _scope_stack.empty())
+			{
+				if (auto sig = _global_variable_table.registered_variable(identifier))
+					return *sig;
+			}
 		}
 
-		for (auto it = _scope_stack.rbegin(); it != _scope_stack.rend(); ++it)
-		{
-			if (auto sig = it->table.registered_variable(identifier))
-				return *sig;
-			else if (it->isolated)
-				break;
-		}
-
-		if (ns == Namespace::Unknown || _scope_stack.empty())
-		{
-			if (auto sig = _global_variable_table.registered_variable(identifier))
-				return *sig;
-		}
+		auto it = _declared_patterns.find(identifier);
+		if (it != _declared_patterns.end())
+			return it->second;
 
 		throw LxError::segment_error(segment, ErrorType::Runtime, "variable does not exist in current scope");
 	}
@@ -193,31 +221,26 @@ namespace lx
 			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
 	}
 
-	void Runtime::find_all(const ScriptSegment& segment)
+	void Runtime::find_all(const Pattern& pattern, const ScriptSegment& segment)
 	{
-		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.find_all(env, snippet)); });
+		do_find(pattern, segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.find_all(env, snippet)); });
 	}
 
-	void Runtime::search(const ScriptSegment& segment)
+	void Runtime::search(const Pattern& pattern, const ScriptSegment& segment)
 	{
-		do_find(segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.search(env, snippet)); });
+		do_find(pattern, segment, [](const EvalContext& env, Matches& matches, const Pattern& pattern, const Snippet& snippet) { matches.append(pattern.search(env, snippet)); });
 	}
 
-	void Runtime::do_find(const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&))
+	void Runtime::do_find(const Pattern& pattern, const ScriptSegment& segment, void(*func)(const EvalContext&, Matches&, const Pattern&, const Snippet&))
 	{
-		if (Pattern* pattern = focused_pattern(segment).ref().as<Pattern>())
-		{
-			const Page& page = focused_page();
-			const Scope& scope = search_scope();
-			const auto snippets = page.snippets(scope.lines());
-			global_matches() = Matches();
-			EvalContext env{ .runtime = *this, .segment = &segment };
-			for (const Snippet& snippet : snippets)
-				func(env, global_matches(), *pattern, snippet);
-			global_matches().remove_duplicates();
-		}
-		else
-			throw LxError::segment_error(segment, ErrorType::Runtime, "no pattern currently declared");
+		const Page& page = focused_page();
+		const Scope& scope = search_scope();
+		const auto snippets = page.snippets(scope.lines());
+		global_matches() = Matches();
+		EvalContext env{ .runtime = *this, .segment = &segment };
+		for (const Snippet& snippet : snippets)
+			func(env, global_matches(), pattern, snippet);
+		global_matches().remove_duplicates();
 	}
 
 	void Runtime::add_highlight(const Color& color, std::optional<Variable> format, const ScriptSegment& segment)
@@ -310,6 +333,11 @@ namespace lx
 	Page& Runtime::focused_page()
 	{
 		return _page_stack.empty() ? *_root_page : _page_stack.top();
+	}
+
+	void Runtime::print_output()
+	{
+		focused_page().text().ref().print(EvalContext{ .runtime = *this }, _output);
 	}
 
 	const Matches& Runtime::global_matches() const

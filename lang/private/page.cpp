@@ -96,8 +96,10 @@ namespace lx
 
 	void Page::replace(const EvalContext& env, Variable match_var, Variable string_var)
 	{
-		Match match = std::move(match_var).consume_as<Match>(env);
+		Variable m = match_var.cast(env, DataType::Match());
+		const Match& match = m.ref().get<Match>();
 		StringView string = std::move(string_var).consume_as<StringView>(env);
+
 		if (!_text.is(string.string_variable()))
 			throw env.runtime_error("match does not reference current page");
 
@@ -108,6 +110,11 @@ namespace lx
 
 		_text.ref().get<String>().replace(index, from_length, std::move(string).consume_value(env));
 		env.runtime.global_matches().adjust_indexes(index, from_length, to_length);
+	}
+
+	void Page::replace_no_adjust(const size_t from, const size_t length, std::string&& with)
+	{
+		_text.ref().get<String>().replace(from, length, std::move(with));
 	}
 
 	String SnippetSection::str() const

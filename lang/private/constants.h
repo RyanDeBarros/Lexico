@@ -10,6 +10,7 @@ namespace lx
 		constexpr const char* MEMBER_EXISTS = "exists";
 		constexpr const char* MEMBER_START = "start";
 		constexpr const char* MEMBER_STR = "str";
+		constexpr const char* MEMBER_TEXT = "text";
 		constexpr const char* MEMBER_SUB = "sub";
 		constexpr const char* MEMBER_PUSH = "push";
 		constexpr const char* MEMBER_POP = "pop";

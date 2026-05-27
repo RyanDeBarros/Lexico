@@ -79,10 +79,15 @@ namespace lx
 		}
 	}
 
-	bool SearchYield::operator()(SearchState state)
+	SearchYield::SearchYield(SearchExit policy)
+		: policy(policy)
+	{
+	}
+
+	SearchExit SearchYield::operator()(SearchState state)
 	{
 		final_states.push_back(std::move(state));
-		return find_first;
+		return policy;
 	}
 
 	template<std::derived_from<SubpatternNode> T, typename... Args>
@@ -171,13 +176,13 @@ namespace lx
 		return _ch;
 	}
 
-	bool SubpatternChar::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternChar::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return false;
+			return SearchExit::Continue;
 
 		if (context.text[in.pos] != _ch)
-			return false;
+			return SearchExit::Continue;
 
 		SearchState out = in;
 		++out.pos;
@@ -219,16 +224,16 @@ namespace lx
 		return _string;
 	}
 
-	bool SubpatternString::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternString::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return false;
+			return SearchExit::Continue;
 
 		if (in.pos + _string.size() > context.text.size())
-			return false;
+			return SearchExit::Continue;
 
 		if (context.text.substr(in.pos, _string.size()) != _string)
-			return false;
+			return SearchExit::Continue;
 
 		SearchState out = in;
 		out.pos += _string.size();
@@ -259,7 +264,7 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternMarker::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternMarker::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		switch (_marker)
 		{
@@ -286,7 +291,7 @@ namespace lx
 			break;
 		}
 		}
-		return false;
+		return SearchExit::Continue;
 	}
 
 	IRange SubpatternMarker::impl_matching_range() const
@@ -311,7 +316,7 @@ namespace lx
 		return node;
 	}
 	
-	bool SubpatternCatenation::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternCatenation::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		return match_from(0, context, in, yield);
 	}
@@ -349,13 +354,13 @@ namespace lx
 		{
 		}
 
-		bool operator()(SearchState state) override
+		SearchExit operator()(SearchState state) override
 		{
 			return node.match_from(index + 1, context, state, downstream);
 		}
 	};
 
-	bool SubpatternCatenation::match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternCatenation::match_from(size_t index, const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (index >= _array.size())
 			return yield(in);
@@ -371,21 +376,21 @@ namespace lx
 		return node;
 	}
 
-	bool SubpatternDisjunction::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternDisjunction::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (context.greedy)
 		{
 			for (auto it = _array.begin(); it != _array.end(); ++it)
-				if ((*it)->match(context, in, yield))
-					return true;
+				if ((*it)->match(context, in, yield) == SearchExit::Terminate)
+					return SearchExit::Terminate;
 		}
 		else
 		{
 			for (auto it = _array.rbegin(); it != _array.rend(); ++it)
-				if ((*it)->match(context, in, yield))
-					return true;
+				if ((*it)->match(context, in, yield) == SearchExit::Terminate)
+					return SearchExit::Terminate;
 		}
-		return false;
+		return SearchExit::Continue;
 	}
 
 	IRange SubpatternDisjunction::impl_matching_range() const
@@ -434,19 +439,19 @@ namespace lx
 
 	struct ProbeYield : public MatchYield
 	{
-		bool operator()(SearchState) override
+		SearchExit operator()(SearchState) override
 		{
-			return true;
+			return SearchExit::Terminate;
 		}
 	};
 
-	bool SubpatternException::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternException::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		ProbeYield probe;
-		if (!_exception->match(context, in, probe))
+		if (_exception->match(context, in, probe) == SearchExit::Continue)
 			return _subject->match(context, in, yield);
 		else
-			return false;
+			return SearchExit::Continue;
 	}
 
 	IRange SubpatternException::impl_matching_range() const
@@ -494,12 +499,12 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		const int left = context.text.size() - in.pos;
 		const IRange bounds = matching_range();
 		if (bounds.min() && *bounds.min() > left)
-			return false;
+			return SearchExit::Continue;
 
 		const IRange subbounds = _subject->matching_range();
 		const int submin = subbounds.min() ? *subbounds.min() : 0;
@@ -510,21 +515,21 @@ namespace lx
 		const int max = std::min(absmax, _range.max() ? *_range.max() : left);
 
 		if (min > max)
-			return false;
+			return SearchExit::Continue;
 
 		if (context.greedy)
 		{
 			for (int reps = max; reps >= min; --reps)
-				if (match_next(context, in, yield, reps))
-					return true;
+				if (match_next(context, in, yield, reps) == SearchExit::Terminate)
+					return SearchExit::Terminate;
 		}
 		else
 		{
 			for (int reps = min; reps <= max; ++reps)
-				if (match_next(context, in, yield, reps))
-					return true;
+				if (match_next(context, in, yield, reps) == SearchExit::Terminate)
+					return SearchExit::Terminate;
 		}
-		return false;
+		return SearchExit::Continue;
 	}
 
 	IRange SubpatternRepetition::impl_matching_range() const
@@ -560,16 +565,16 @@ namespace lx
 		{
 		}
 
-		bool operator()(SearchState state) override
+		SearchExit operator()(SearchState state) override
 		{
 			if (state.pos > previous_pos)
 				return node.match_next(context, state, downstream, reps_left - 1);
 			else
-				return false;
+				return SearchExit::Continue;
 		}
 	};
 
-	bool SubpatternRepetition::match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const
+	SearchExit SubpatternRepetition::match_next(const SearchContext& context, const SearchState& in, MatchYield& yield, const int reps_left) const
 	{
 		if (reps_left <= 0)
 			return yield(in);
@@ -624,31 +629,31 @@ namespace lx
 
 		BackSearchYield(size_t end) : end(end) {}
 
-		bool operator()(SearchState state) override
+		SearchExit operator()(SearchState state) override
 		{
 			if (state.pos < end)
-				return false;
+				return SearchExit::Continue;
 
 			exact = state.pos == end;
-			return true;
+			return SearchExit::Terminate;
 		}
 	};
 
-	bool SubpatternLookaround::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternLookaround::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		switch (_mode)
 		{
 		case LookaroundMode::Ahead:
 		{
 			ProbeYield probe;
-			if (_subject->match(context, in, probe))
+			if (_subject->match(context, in, probe) == SearchExit::Terminate)
 				return yield(in);
 			break;
 		}
 		case LookaroundMode::NotAhead:
 		{
 			ProbeYield probe;
-			if (!_subject->match(context, in, probe))
+			if (_subject->match(context, in, probe) == SearchExit::Continue)
 				return yield(in);
 			break;
 		}
@@ -688,7 +693,7 @@ namespace lx
 			break;
 		}
 		}
-		return false;
+		return SearchExit::Continue;
 	}
 
 	IRange SubpatternLookaround::impl_matching_range() const
@@ -704,12 +709,14 @@ namespace lx
 	{
 	}
 
-	bool SubpatternOptional::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternOptional::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (context.greedy)
-			return _optional->match(context, in, yield) || yield(in);
+			return (_optional->match(context, in, yield) == SearchExit::Terminate || yield(in) == SearchExit::Terminate)
+				? SearchExit::Terminate : SearchExit::Continue;
 		else
-			return yield(in) || _optional->match(context, in, yield);
+			return (yield(in) == SearchExit::Terminate || _optional->match(context, in, yield) == SearchExit::Terminate)
+				? SearchExit::Terminate : SearchExit::Continue;
 	}
 
 	IRange SubpatternOptional::impl_matching_range() const
@@ -759,7 +766,7 @@ namespace lx
 		{
 		}
 
-		bool operator()(SearchState state) override
+		SearchExit operator()(SearchState state) override
 		{
 			SearchState substate = state;
 			substate.start = start;
@@ -778,7 +785,7 @@ namespace lx
 		}
 	};
 
-	bool SubpatternCapture::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternCapture::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		CaptureYield upstream(context, _capid, in.pos, yield);
 		return _captured->match(context, in, upstream);
@@ -807,24 +814,24 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternBackRef::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternBackRef::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (!context.capid_exists(_capid))
-			return false;
+			return SearchExit::Continue;
 
 		unsigned int capid = context.local_capid(_capid);
 		if (capid >= in.caps->size() || !(*in.caps)[capid].has_value())
-			return false;
+			return SearchExit::Continue;
 
 		SearchState out = in;
 		CaptureList& caplist = (*out.caps)[capid].value();
 		const CaptureFrame& last_frame = caplist.frames.back();
 		std::string_view sv = context.text.substr(last_frame.start, last_frame.length);
 		if (in.pos + sv.size() > context.text.size())
-			return false;
+			return SearchExit::Continue;
 
 		if (context.text.substr(in.pos, sv.size()) != sv)
-			return false;
+			return SearchExit::Continue;
 
 		SearchState substate = last_frame.substate;
 		substate.start = in.pos;
@@ -856,7 +863,7 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternLazy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternLazy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = false;
@@ -886,7 +893,7 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternGreedy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternGreedy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
 		ctx.greedy = true;
@@ -916,7 +923,7 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternSRange::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternSRange::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
 		{
@@ -929,7 +936,7 @@ namespace lx
 			++out.pos;
 			return yield(std::move(out));
 		}
-		return false;
+		return SearchExit::Continue;
 	}
 
 	IRange SubpatternSRange::impl_matching_range() const
@@ -958,10 +965,10 @@ namespace lx
 			return false;
 	}
 
-	bool SubpatternBuiltin::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternBuiltin::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (in.pos >= context.text.size())
-			return false;
+			return SearchExit::Continue;
 		
 		const char c = context.text[in.pos];
 		bool matches = false;
@@ -1015,7 +1022,7 @@ namespace lx
 			return yield(std::move(out));
 		}
 		else
-			return false;
+			return SearchExit::Continue;
 	}
 
 	IRange SubpatternBuiltin::impl_matching_range() const

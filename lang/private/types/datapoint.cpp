@@ -57,15 +57,15 @@ namespace lx
 
 	void DataPoint::assign(const EvalContext& env, Variable other)
 	{
-		DataPoint casted = std::move(other).cast(env, data_type());
-		std::visit([&env, &casted](auto& v) { remove_cow(v).assign(env, std::move(casted.get<remove_cow_t<decltype(v)>>())); }, _storage);
+		Variable casted = std::move(other).cast(env, data_type());
+		std::visit([&env, &casted](auto& v) { remove_cow(v).assign(env, std::move(std::move(casted).consume().get<remove_cow_t<decltype(v)>>())); }, _storage);
 	}
 
 	bool DataPoint::equals(const EvalContext& env, Variable other) const
 	{
-		DataPoint casted = std::move(other).cast(env, data_type());
+		Variable casted = std::move(other).cast(env, data_type());
 		if (other.ref().can_cast_implicit(data_type()))
-			return std::visit([&env, &casted](const auto& v) { return remove_cow(v).equals(env, casted.get<remove_cow_t<decltype(v)>>()); }, _storage);
+			return std::visit([&env, &casted](const auto& v) { return remove_cow(v).equals(env, casted.ref().get<remove_cow_t<decltype(v)>>()); }, _storage);
 		else
 			return false;
 	}
@@ -103,17 +103,17 @@ namespace lx
 			throw env.internal_error("iterlen(): " + data_type().repr() + " is not iterable");
 	}
 
-	DataPoint DataPoint::iterget(const EvalContext& env, size_t i) const
+	Variable DataPoint::iterget(VarContext& ctx, size_t i) const
 	{
 		if (data_type().is_iterable())
-			return std::visit([&env, i](const auto& v) -> DataPoint {
-				if constexpr (requires { remove_cow(v).iterget(env, i); })
-					return remove_cow(v).iterget(env, i);
+			return std::visit([&ctx, i](const auto& v) -> Variable {
+				if constexpr (requires { remove_cow(v).iterget(ctx, i); })
+					return remove_cow(v).iterget(ctx, i);
 				else
-					throw env.internal_error(remove_cow(v).data_type().repr() + " should implement 'iterget' but it doesn't");
+					throw ctx.env.internal_error(remove_cow(v).data_type().repr() + " should implement 'iterget' but it doesn't");
 			}, _storage);
 		else
-			throw env.internal_error("iterget(): " + data_type().repr() + " is not iterable");
+			throw ctx.env.internal_error("iterget(): " + data_type().repr() + " is not iterable");
 	}
 
 	std::string DataPoint::page_content(const EvalContext& env) const

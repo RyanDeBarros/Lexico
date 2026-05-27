@@ -533,11 +533,8 @@ namespace lx
 		{
 			auto offset = token_offset();
 			Expression& expr = parse_expression(offset);
-			if (!expr.imperative())
-				throw LxError::segment_error(expr.segment(), ErrorType::Syntax, "expression is not imperative");
-
 			offset.submit();
-			context().append(expr);
+			append_to_context(std::make_unique<DirectExpression>(expr));
 			return true;
 		}
 
@@ -947,7 +944,7 @@ namespace lx
 			if (*symbol == BuiltinSymbol::Percent)
 				return _tree.add(std::make_unique<GlobalMatchesExpression>(std::move(symbol_token)));
 			else
-				return _tree.add(std::make_unique<PatternSymbolExpression>(std::move(symbol_token), *symbol));
+				return _tree.add(std::make_unique<SymbolExpression>(std::move(symbol_token), *symbol));
 		}
 
 		Expression& parse_literal_expression(TokenOffset& offset)

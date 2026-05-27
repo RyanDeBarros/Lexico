@@ -20,8 +20,9 @@ namespace lx
 		++_pos;
 	}
 
-	DataPoint Iterator::get(const EvalContext& env) const
+	Variable Iterator::get(const EvalContext& env) const
 	{
-		return _iterable.ref().iterget(env, _pos);
+		VarContext ctx(env, _iterable);
+		return _iterable.ref().iterget(ctx, _pos);
 	}
 }

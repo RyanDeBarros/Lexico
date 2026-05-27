@@ -208,6 +208,21 @@ namespace lx
 		bool is_global() const;
 	};
 
+	class DirectExpression : public Expression
+	{
+		Expression& _expression;
+
+	public:
+		DirectExpression(Expression& expression);
+
+		Variable evaluate(Runtime& runtime) const override;
+
+	protected:
+		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
+		DataType impl_evaltype(SemanticContext& ctx) const override;
+		ScriptSegment impl_segment() const override;
+	};
+
 	class LiteralExpression : public Expression
 	{
 		Token _literal;
@@ -374,13 +389,13 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternSymbolExpression : public Expression
+	class SymbolExpression : public Expression
 	{
 		Token _symbol_token;
 		BuiltinSymbol _builtin_symbol;
 
 	public:
-		PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
+		SymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol);
 
 		Variable evaluate(Runtime& runtime) const override;
 

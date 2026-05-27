@@ -4,6 +4,7 @@
 #include "types/iterator.h"
 #include "constants.h"
 
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 
@@ -356,6 +357,37 @@ namespace lx
 		return _global;
 	}
 
+	DirectExpression::DirectExpression(Expression& expression)
+		: _expression(expression)
+	{
+	}
+
+	Variable DirectExpression::evaluate(Runtime& runtime) const
+	{
+		return _expression.evaluate(runtime);
+	}
+
+	void DirectExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	{
+		_expression.analyse(ctx, pass);
+
+		if (pass == AnalysisPass::Validation)
+		{
+			if (!_expression.imperative())
+				ctx.add_semantic_error(_expression.segment(), "expression is not imperative");
+		}
+	}
+
+	DataType DirectExpression::impl_evaltype(SemanticContext& ctx) const
+	{
+		return _expression.evaltype(ctx);
+	}
+	
+	ScriptSegment DirectExpression::impl_segment() const
+	{
+		return _expression.segment();
+	}
+
 	LiteralExpression::LiteralExpression(Token&& literal)
 		: _literal(std::move(literal))
 	{
@@ -545,7 +577,7 @@ namespace lx
 		}
 
 		std::stringstream ss;
-		ss << "member " << _member_name.lexeme << " does not exist for type " << _object.evaltype(ctx);
+		ss << "member \"" << _member_name.lexeme << "\" does not exist for type " << _object.evaltype(ctx);
 		throw LxError::segment_error(_member_name.segment, ErrorType::Semantic, ss.str());
 	}
 
@@ -631,7 +663,7 @@ namespace lx
 
 	Variable AsExpression::evaluate(Runtime& runtime) const
 	{
-		return runtime.unbound_variable(_expr.evaluate(runtime).cast(eval_context(runtime), _type.type()));
+		return _expr.evaluate(runtime).cast(eval_context(runtime), _type.type());
 	}
 
 	DataType AsExpression::impl_evaltype(SemanticContext& ctx) const
@@ -798,12 +830,12 @@ namespace lx
 		return _symbol_token.segment;
 	}
 
-	PatternSymbolExpression::PatternSymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
+	SymbolExpression::SymbolExpression(Token&& symbol_token, BuiltinSymbol builtin_symbol)
 		: _symbol_token(std::move(symbol_token)), _builtin_symbol(builtin_symbol)
 	{
 	}
 
-	void PatternSymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	void SymbolExpression::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		if (pass == AnalysisPass::Validation)
 		{
@@ -812,17 +844,23 @@ namespace lx
 		}
 	}
 
-	Variable PatternSymbolExpression::evaluate(Runtime& runtime) const
+	Variable SymbolExpression::evaluate(Runtime& runtime) const
 	{
-		return runtime.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
+		if (_builtin_symbol == BuiltinSymbol::Page)
+		{
+			Variable og = runtime.focused_page().text();
+			return runtime.unbound_variable(DataPoint(og.ref()));
+		}
+		else
+			return runtime.unbound_variable(Pattern::make_from_symbol(_builtin_symbol));
 	}
 
-	DataType PatternSymbolExpression::impl_evaltype(SemanticContext& ctx) const
+	DataType SymbolExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return DataType::Pattern();
 	}
 
-	ScriptSegment PatternSymbolExpression::impl_segment() const
+	ScriptSegment SymbolExpression::impl_segment() const
 	{
 		return _symbol_token.segment;
 	}
@@ -1447,7 +1485,7 @@ namespace lx
 			while (!iter.done(env))
 			{
 				Runtime::LocalScope local_scope(runtime, isolated());
-				runtime.register_variable(_iterator.lexeme, iter.get(env), Namespace::Local);
+				runtime.name_unbound_variable(_iterator.lexeme, iter.get(env), Namespace::Local);
 				auto flow = execute_subnodes(runtime);
 				if (flow.type == FlowType::Break)
 					break;
@@ -1928,10 +1966,11 @@ namespace lx
 
 	ExecutionFlow FindStatement::execute(Runtime& runtime) const
 	{
+		Variable pattern = _pattern.evaluate(runtime).cast(eval_context(runtime), DataType::Pattern());
 		if (_findall)
-			runtime.find_all(segment());
+			runtime.find_all(pattern.ref().get<Pattern>(), segment());
 		else
-			runtime.search(segment());
+			runtime.search(pattern.ref().get<Pattern>(), segment());
 		return {};
 	}
 
@@ -1976,7 +2015,7 @@ namespace lx
 		Iterator iter(runtime.global_matches_var());
 		while (!iter.done(env))
 		{
-			Variable match = runtime.unbound_variable(iter.get(env));
+			Variable match = iter.get(env);
 			if (fn.invoke(runtime, { match }).data.consume_as<Bool>(env).value())
 				new_matches.push_back(env, std::move(match));
 			iter.next();
@@ -2054,7 +2093,48 @@ namespace lx
 
 	ExecutionFlow ApplyStatement::execute(Runtime& runtime) const
 	{
-		// TODO
+		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, { DataType::Match() }, segment());
+
+		auto env = eval_context(runtime);
+		std::vector<std::pair<Highlight, String>> replacements;
+		Iterator iter(runtime.global_matches_var());
+		while (!iter.done(env))
+		{
+			Variable match = iter.get(env);
+			Highlight section = match.ref().get<Match>().highlight_range();
+			replacements.push_back(std::make_pair(section, fn.invoke(runtime, { std::move(match) }).data.consume_as<String>(env)));
+			iter.next();
+		}
+
+		std::sort(replacements.begin(), replacements.end(), [](const std::pair<Highlight, String>& a, const std::pair<Highlight, String>& b) {
+			if (a.first.start < b.first.start)
+				return true;
+			else if (b.first.start < a.first.start)
+				return false;
+			else
+				return a.first.length <= b.first.length;
+		});
+
+		// TODO v0.3 configuration setting for overlapping match resolution strategy?
+		for (auto it = replacements.rbegin(); it != replacements.rend(); ++it)
+		{
+			// Don't replace if match is completely contained in another
+			auto prev = std::next(it);
+			if (prev != replacements.rend() && prev->first.contains(it->first))
+				continue;
+
+			// Isolated match
+			if (prev == replacements.rend() || prev->first.disjoint(it->first))
+			{
+				runtime.focused_page().replace_no_adjust(it->first.start, it->first.length, std::move(it->second).steal());
+				continue;
+			}
+
+			// Partial overlap -> replace right non-overlapping section and let prev replace rest of overlapping section so that replacements end up adjacent to one another
+			runtime.focused_page().replace_no_adjust(prev->first.end(), it->first.end() - prev->first.end(), std::move(it->second).steal());
+		}
+
+		runtime.global_matches().clear();
 		return {};
 	}
 

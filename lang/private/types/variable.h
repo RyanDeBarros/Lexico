@@ -10,6 +10,7 @@ namespace lx
 	class DataType;
 	class VirtualHeap;
 	struct EvalContext;
+	struct VarContext;
 
 	class Variable
 	{
@@ -41,8 +42,12 @@ namespace lx
 		T consume_as(const EvalContext& env) &&;
 
 		bool is(Variable other) const;
-		DataPoint cast(const EvalContext& env, const DataType& to) &&;
+		Variable cast(const EvalContext& env, const DataType& to) const;
 
+	private:
+		Variable cast_variable(VarContext& ctx, const DataType& to) const;
+
+	public:
 		bool unbound() const;
 		bool temporary() const;
 

@@ -110,13 +110,13 @@ namespace lx
 	StringMap<MemberSignature> StringView::members()
 	{
 		return {
-			{ constants::MEMBER_LEN, MemberSignature::make_data(constants::MEMBER_LEN, DataType::Int()) },
-			{ constants::MEMBER_STR, MemberSignature::make_data(constants::MEMBER_STR, DataType::String()) },
-			{ constants::SUBSCRIPT_OP, MemberSignature::make_method(constants::SUBSCRIPT_OP, {
+			{ MemberSignature::make_data_pair(constants::MEMBER_LEN, DataType::Int()) },
+			{ MemberSignature::make_data_pair(constants::MEMBER_STR, DataType::String()) },
+			{ MemberSignature::make_method_pair(constants::SUBSCRIPT_OP, {
 				{ .return_type = DataType::String(), .arg_types = { DataType::Int() } },
 				{ .return_type = DataType::String(), .arg_types = { DataType::IRange() } },
 			}) },
-			{ constants::MEMBER_INSERT, MemberSignature::make_method(constants::MEMBER_INSERT, {
+			{ MemberSignature::make_method_pair(constants::MEMBER_INSERT, {
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::String() } },
 				{ .return_type = DataType::Void(), .arg_types = { DataType::Int(), DataType::StringView() }},
 			}) },
@@ -233,13 +233,13 @@ namespace lx
 		return size();
 	}
 
-	DataPoint StringView::iterget(const EvalContext& env, size_t i) const
+	Variable StringView::iterget(VarContext& ctx, size_t i) const
 	{
-		assert_valid(env);
+		assert_valid(ctx.env);
 
 		const int min = min_index();
 		const int max = max_index();
-		return String({ chr(i, min, max) });
+		return ctx.variable(String({ chr(i, min, max) }));
 	}
 
 	std::string StringView::page_content(const EvalContext& env) const
