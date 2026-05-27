@@ -12,6 +12,11 @@ namespace lx
 		return other.start >= start && other.end() <= end();
 	}
 
+	bool Highlight::contains(size_t index) const
+	{
+		return index >= start && index < end();
+	}
+
 	bool Highlight::disjoint(const Highlight& other) const
 	{
 		return end() <= other.start || other.end() <= start;
@@ -108,5 +113,42 @@ namespace lx
 	HighlightSet& HighlightMap::operator[](HighlightColor color)
 	{
 		return array[static_cast<size_t>(color)];
+	}
+
+	void HighlightMap::visit_chars(std::function<void(const HighlightCharView&)> visitor)
+	{
+		std::array<size_t, static_cast<size_t>(HighlightColor::_Count)> highlight_indexes{};
+		std::fill(highlight_indexes.begin(), highlight_indexes.end(), 0);
+
+		size_t index = 0;
+		for (size_t row = 0; row < lines.size(); ++row)
+		{
+			for (size_t col = 0; col < lines[row].size(); ++col)
+			{
+				for (size_t i = 0; i < array.size(); ++i)
+				{
+					const HighlightSet& highlight_set = array[i];
+					size_t& highlight_idx = highlight_indexes[i];
+					while (highlight_idx < highlight_set.list().size() && index > highlight_set.list()[highlight_idx].end())
+						++highlight_idx;
+
+					if (highlight_idx < highlight_set.list().size() && highlight_set.list()[highlight_idx].contains(index))
+					{
+						HighlightCharView view{
+							.c = lines[row][col],
+							.new_match = index == highlight_set.list()[highlight_idx].start,
+							.index = index,
+							.row = row,
+							.col = col,
+							.color = static_cast<HighlightColor>(i)
+						};
+
+						visitor(view);
+					}
+				}
+
+				++index;
+			}
+		}
 	}
 }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <functional>
+#include <string_view>
 #include <vector>
 
 namespace lx
@@ -26,6 +28,7 @@ namespace lx
 		size_t end() const;
 
 		bool contains(const Highlight& other) const;
+		bool contains(size_t index) const;
 		bool disjoint(const Highlight& other) const;
 	};
 
@@ -39,12 +42,24 @@ namespace lx
 		void remove(Highlight range);
 	};
 
+	struct HighlightCharView
+	{
+		char c;
+		bool new_match;
+		size_t index;
+		size_t row;
+		size_t col;
+		HighlightColor color;
+	};
+
 	struct HighlightMap
 	{
+		std::vector<std::string_view> lines;
 		std::array<HighlightSet, static_cast<size_t>(HighlightColor::_Count)> array;
 
 		const HighlightSet& operator[](HighlightColor color) const;
 		HighlightSet& operator[](HighlightColor color);
-	};
 
+		void visit_chars(std::function<void(const HighlightCharView&)> visitor);
+	};
 }
