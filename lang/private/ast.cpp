@@ -69,7 +69,7 @@ namespace lx
 		catch (const LxError& e)
 		{
 			ctx.errors().push_back(e);
-			// TODO v0.2 for internal errors, log in optional debug log and just print "Internal error - see debug log" in regular log
+			// TODO for internal errors, log in optional debug log and just print "Internal error - see debug log" in regular log
 		}
 	}
 
@@ -1600,7 +1600,7 @@ namespace lx
 			Variable var = _args[i]->evaluate(runtime);
 			var.ref().print(eval_context(runtime), runtime.log());
 			if (i + 1 < _args.size())
-				runtime.log() << " "; // TODO v0.2 optional separator symbol argument
+				runtime.log() << " "; // TODO optional separator symbol argument
 		}
 		runtime.log() << '\n';
 		return {};

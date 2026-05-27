@@ -36,7 +36,7 @@ namespace lx
 
 	void Match::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO v0.2 string representation of match
+		// TODO string representation of match
 		ss << DataType::Match();
 	}
 

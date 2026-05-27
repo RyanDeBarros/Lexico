@@ -9,7 +9,7 @@
 
 namespace lx
 {
-	// TODO v0.2 serialize token stream + validated AST: will need to switch to ids instead of raw pointers for node relationships
+	// TODO serialize token stream + validated AST: will need to switch to ids instead of raw pointers for node relationships
 
 	template<typename T>
 	static bool log_messages(const std::vector<T>& messages, std::stringstream& log) requires (std::is_base_of_v<LxStatusMessage, T>)
@@ -34,7 +34,7 @@ namespace lx
 
 	static bool exec(const std::string_view script, const std::string_view input, std::stringstream& output, std::stringstream& log, HighlightMap& highlights)
 	{
-		// TODO v0.2 delete lexer, parser, analyser, etc. resources once done with them to save resources for executor. Need to be careful, since Token references persist in AST.
+		// TODO delete lexer, parser, analyser, etc. resources once done with them to save resources for executor. Need to be careful, since Token references persist in AST.
 
 		try
 		{

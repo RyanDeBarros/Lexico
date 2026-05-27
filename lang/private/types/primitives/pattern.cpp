@@ -76,7 +76,7 @@ namespace lx
 
 	void Pattern::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO v0.2 string representation of pattern
+		// TODO string representation of pattern
 		ss << DataType::Pattern();
 	}
 

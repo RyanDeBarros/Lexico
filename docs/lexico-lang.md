@@ -7,9 +7,9 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
-TODO v0.2 match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
+TODO match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
-TODO v0.2 more flags other than just greedy or lazy, like case-sensitive or case-insensitive? May not be necessary
+TODO more flags other than just greedy or lazy, like case-sensitive or case-insensitive? May not be necessary
 
 TODO v0.3 '&' reference operator (pass objects by reference to functions - new `Ref` generic type). Also add custom structs, `set`, `dict`, etc.
 
@@ -815,7 +815,7 @@ search line
 ```
 
 #### lexico
-TODO v0.2 standard library with built-in patterns/functions
+TODO standard library with built-in patterns/functions
 ```
 pattern userChar
 append $alphanumeric or "." or "_" or "%" or "+" or "-"
@@ -954,7 +954,7 @@ for m in %
 end for
 ```
 
-TODO v0.2 recursion, something like `self` here (PatternBuiltin):
+TODO recursion, something like `self` here (PatternBuiltin):
 ```
 pattern filler
 append $any* except ("(" or ")")

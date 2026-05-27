@@ -195,7 +195,7 @@ namespace lx
 			_focused_pattern = it->second;
 		else
 		{
-			// TODO v0.2 allow for passing initial pattern expression in pattern declaration
+			// TODO allow for passing initial pattern expression in pattern declaration
 			Variable var = _heap.add(Pattern());
 			_declared_patterns.try_emplace(std::string(identifier), var);
 			_focused_pattern = var;
@@ -266,7 +266,7 @@ namespace lx
 				const int min = range->min() ? *range->min() : 0;
 				const int max = range->max() ? *range->max() : matches.size() - 1;
 
-				// TODO v0.2 allow negative indexing
+				// TODO allow negative indexing
 				if (min < 0 || min >= matches.size() || max < 0 || max >= matches.size())
 				{
 					std::stringstream ss;

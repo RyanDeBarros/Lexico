@@ -41,7 +41,7 @@ namespace lx
 
 	void Cap::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO v0.2 string representation of cap
+		// TODO string representation of cap
 		ss << DataType::Cap();
 	}
 

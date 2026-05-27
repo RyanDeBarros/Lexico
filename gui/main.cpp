@@ -198,7 +198,7 @@ static void draw_frame()
     draw_output_window();
     draw_log_window();
 
-    // TODO v0.2 render highlights
+    // TODO render highlights
 }
 
 static void handle_shortcuts()
