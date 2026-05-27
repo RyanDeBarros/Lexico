@@ -59,6 +59,7 @@ namespace lx
 			output << executor.output().str();
 			log << executor.log().str();
 			highlights = std::move(executor.highlights());
+			highlights.lines = std::move(lexer.script_lines());
 			return true;
 		}
 		catch (const LxError& e)
