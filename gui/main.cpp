@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include <optional>
 
 static const char* DOCKSPACE_UID = "MyDockSpace";
 static const char* INPUT_WINDOW = "Input";
@@ -29,6 +30,7 @@ struct EditorState
     std::string output;
     std::string script;
     std::string log;
+    bool success;
     lx::HighlightMap highlight_map;
     std::array<std::vector<ImRect>, lx::color_count()> highlight_rects;
     std::array<bool, lx::color_count()> show_highlights;
@@ -72,7 +74,7 @@ static void run_script()
     STATE.output = res.output;
     STATE.log = res.log;
     STATE.highlight_map = std::move(res.highlights);
-    // TODO some sort of indication of failure, like a red outline, if res.success is false.
+    STATE.success = res.success;
 }
 
 static void glfw_error_callback(int error, const char* description)
@@ -166,8 +168,11 @@ static void draw_input_buffer(std::string& buffer)
     );
 }
 
-static void draw_output_buffer(std::string& buffer)
+static void draw_output_buffer(std::string& buffer, std::optional<ImU32> text_color)
 {
+    if (text_color.has_value())
+        ImGui::PushStyleColor(ImGuiCol_Text, *text_color);
+
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0, 0, 0, 0));
@@ -179,6 +184,9 @@ static void draw_output_buffer(std::string& buffer)
         ImGuiInputTextFlags_WordWrap | ImGuiInputTextFlags_ReadOnly
     );
     ImGui::PopStyleColor(3);
+
+    if (text_color.has_value())
+        ImGui::PopStyleColor();
 }
 
 static void draw_highlight_rect(ImVec2 origin, ImRect rect, ImU32 color)
@@ -371,7 +379,7 @@ static ImVec2 get_highlight_origin()
 static void draw_output_area()
 {
     draw_all_highlights(ImGui::GetContentRegionAvail().x, get_highlight_origin());
-    draw_output_buffer(STATE.output);
+    draw_output_buffer(STATE.output, std::nullopt);
 }
 
 static void draw_output_window()
@@ -423,7 +431,7 @@ static void draw_script_window()
 static void draw_log_window()
 {
     ImGui::Begin(LOG_WINDOW);
-    draw_output_buffer(STATE.log);
+    draw_output_buffer(STATE.log, STATE.success ? IM_COL32(0, 255, 0, 255) : IM_COL32(255, 0, 0, 255));
     ImGui::End();
 }
 
@@ -436,8 +444,6 @@ static void draw_frame()
 
     draw_output_window();
     draw_log_window();
-
-    // TODO render highlights
 }
 
 static void init_state()
