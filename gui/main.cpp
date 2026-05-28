@@ -39,6 +39,7 @@ static EditorState STATE{};
 struct GUIState
 {
     bool show_highlight_modal = false;
+    std::array<ImVec4, lx::color_count()> highlight_colors;
 };
 
 static GUIState GUI{};
@@ -54,31 +55,15 @@ static std::array<const char*, lx::color_count()> COLOR_NAMES = {
     "Orange",
 };
 
-// TODO GUI settings configure colors
 static ImU32 mapped_color(lx::HighlightColor c)
 {
-    const unsigned int a = 0x7F;
-    switch (c)
-    {
-        case lx::HighlightColor::Yellow:
-            return IM_COL32(0xFF, 0xFF, 0x00, a);
-        case lx::HighlightColor::Red:
-            return IM_COL32(0xFF, 0x00, 0x00, a);
-        case lx::HighlightColor::Green:
-            return IM_COL32(0x00, 0xFF, 0x00, a);
-        case lx::HighlightColor::Blue:
-            return IM_COL32(0x00, 0x00, 0xFF, a);
-        case lx::HighlightColor::Light:
-            return IM_COL32(0xAA, 0xAA, 0xAA, a);
-        case lx::HighlightColor::Dark:
-            return IM_COL32(0x55, 0x55, 0x55, a);
-        case lx::HighlightColor::Purple:
-            return IM_COL32(0xFF, 0x00, 0xFF, a);
-        case lx::HighlightColor::Orange:
-            return IM_COL32(0xFF, 0xA5, 0x00, a);
-        default:
-            return IM_COL32_BLACK_TRANS;
-    }
+    ImVec4 color = GUI.highlight_colors[static_cast<size_t>(c)];
+    return IM_COL32(
+        static_cast<unsigned int>(roundf(color.x * 255)),
+        static_cast<unsigned int>(roundf(color.y * 255)),
+        static_cast<unsigned int>(roundf(color.z * 255)),
+        static_cast<unsigned int>(roundf(color.w * 255))
+    );
 }
 
 static void run_script()
@@ -217,24 +202,31 @@ static void setup_window_channels()
 static void draw_highlight_modal()
 {
     setup_window_channels();
-    ImGui::Text("Filter");
-    ImGui::Separator();
 
     if (ImGui::Button("Select All"))
         std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
     ImGui::SameLine();
+
     if (ImGui::Button("Deselect All"))
         std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), false);
     ImGui::Separator();
 
-    for (size_t i = 0; i < lx::color_count(); ++i)
+    if (ImGui::BeginTable("##selection-table", 2, ImGuiTableFlags_SizingFixedFit))
     {
-        ImGui::Checkbox(COLOR_NAMES[i], STATE.show_highlights.data() + i);
-        ImVec2 min = ImGui::GetItemRectMin();
-        min.x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x;
+        for (size_t i = 0; i < lx::color_count(); ++i)
+        {
+            ImGui::TableNextRow();
 
-        ImVec2 max = ImGui::GetItemRectMax();
-        draw_highlight_rect(ImVec2(), ImRect(min, max), mapped_color(static_cast<lx::HighlightColor>(i)));
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Checkbox(COLOR_NAMES[i], STATE.show_highlights.data() + i);
+
+            ImGui::TableSetColumnIndex(1);
+            ImGui::PushID(i);
+            ImGui::ColorEdit4("", &GUI.highlight_colors[i].x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
+            ImGui::PopID();
+        }
+
+        ImGui::EndTable();
     }
 }
 
@@ -451,6 +443,15 @@ static void draw_frame()
 static void init_state()
 {
     std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
+
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Yellow)] = ImVec4(1.0f, 1.0f, 0.0f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Red)]    = ImVec4(1.0f, 0.0f, 0.0f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Green)]  = ImVec4(0.0f, 1.0f, 0.0f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Blue)]   = ImVec4(0.0f, 0.0f, 1.0f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Light)]  = ImVec4(0.7f, 0.7f, 0.7f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Dark)]   = ImVec4(0.3f, 0.3f, 0.3f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Purple)] = ImVec4(1.0f, 0.0f, 1.0f, 0.5f);
+    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Orange)] = ImVec4(1.0f, 0.6f, 0.0f, 0.5f);
 }
 
 static void handle_shortcuts()
