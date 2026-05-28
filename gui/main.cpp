@@ -298,30 +298,37 @@ static void compute_wrapped_highlight_rects(std::vector<ImRect>& rects, lx::High
     const float line_h = ImGui::GetTextLineHeight();
 
     const char* text_begin = STATE.output.c_str();
+    size_t wrapped_line_idx = 0;
 
     STATE.highlight_map.visit(color, [&](const lx::HighlightVisit& visit) {
-        size_t start = visit.highlight.start;
-        size_t end = visit.highlight.end();
+        const size_t start = visit.highlight.start;
+        const size_t end = visit.highlight.end();
 
-        for (const auto& line : wrapped_lines)
+        while (wrapped_line_idx < wrapped_lines.size())
         {
-            // TODO find lower bound of wrapped_lines to avoid iterating over all wrapped lines
+            const WrappedLine line = wrapped_lines[wrapped_line_idx];
             if (line.end_idx <= start)
+            {
+                ++wrapped_line_idx;
                 continue;
+            }
             else if (line.start_idx >= end)
                 break;
 
-            size_t a = std::max(line.start_idx, start);
-            size_t b = std::min(line.end_idx, end);
+            const size_t a = std::max(line.start_idx, start);
+            const size_t b = std::min(line.end_idx, end);
 
-            if (a >= b)
-                continue;
-
-            float x0 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + a).x;
-            float x1 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + b).x;
+            const float x0 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + a).x;
+            const float x1 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + b).x;
             rects.push_back(ImRect(ImVec2(x0, line.y), ImVec2(x1, line.y + line_h)));
+
+            const size_t next_line_idx = wrapped_line_idx + 1;
+            if (next_line_idx < wrapped_lines.size() && wrapped_lines[next_line_idx].start_idx < end)
+                ++wrapped_line_idx;
+            else
+                break;
         }
-        });
+    });
 }
 
 static void compute_wrapped_highlight_rects(const float wrap_width)
