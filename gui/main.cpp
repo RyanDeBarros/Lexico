@@ -16,12 +16,6 @@ static const char* OUTPUT_WINDOW = "Output";
 static const char* SCRIPT_WINDOW = "Script";
 static const char* LOG_WINDOW = "Log";
 
-struct LocalRect
-{
-    ImVec2 min;
-    ImVec2 max;
-};
-
 struct EditorState
 {
     std::string input;
@@ -29,10 +23,29 @@ struct EditorState
     std::string script;
     std::string log;
     lx::HighlightMap highlight_map;
-    std::array<std::vector<LocalRect>, lx::color_count()> highlight_rects;
+    std::array<std::vector<ImRect>, lx::color_count()> highlight_rects;
+    std::array<bool, lx::color_count()> show_highlights;
 };
 
 static EditorState STATE{};
+
+struct GUIState
+{
+    bool show_highlight_modal = false;
+};
+
+static GUIState GUI{};
+
+static std::array<const char*, lx::color_count()> COLOR_NAMES = {
+    "Yellow",
+    "Red",
+    "Green",
+    "Blue",
+    "Grey",
+    "Purple",
+    "Orange",
+    "Mono"
+};
 
 // TODO GUI settings configure colors
 static ImU32 mapped_color(lx::HighlightColor c, float alpha)
@@ -177,6 +190,38 @@ static void draw_output_buffer(std::string& buffer)
     ImGui::PopStyleColor(3);
 }
 
+static void draw_highlight_rect(ImVec2 origin, ImRect rect, ImU32 color)
+{
+    rect.Min.x += origin.x;
+    rect.Min.y += origin.y;
+    rect.Max.x += origin.x;
+    rect.Max.y += origin.y;
+    ImGui::GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, color);
+}
+
+static void draw_highlight_modal()
+{
+    ImGui::Text("Filter");
+    ImGui::Separator();
+
+    if (ImGui::Button("Select All"))
+        std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
+    ImGui::SameLine();
+    if (ImGui::Button("Deselect All"))
+        std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), false);
+    ImGui::Separator();
+
+    for (size_t i = 0; i < lx::color_count(); ++i)
+    {
+        ImGui::Checkbox(COLOR_NAMES[i], STATE.show_highlights.data() + i);
+        ImVec2 min = ImGui::GetItemRectMin();
+        min.x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x;
+
+        ImVec2 max = ImGui::GetItemRectMax();
+        draw_highlight_rect(ImVec2(), ImRect(min, max), mapped_color(static_cast<lx::HighlightColor>(i), 0.5f));
+    }
+}
+
 struct WrappedLine
 {
     size_t start_idx;
@@ -228,7 +273,7 @@ static std::vector<WrappedLine> build_wrapped_lines(const float wrap_width)
     return wrapped_lines;
 }
 
-static void compute_wrapped_highlight_rects(std::vector<LocalRect>& rects, lx::HighlightColor color, const std::vector<WrappedLine>& wrapped_lines)
+static void compute_wrapped_highlight_rects(std::vector<ImRect>& rects, lx::HighlightColor color, const std::vector<WrappedLine>& wrapped_lines)
 {
     rects.clear();
 
@@ -258,7 +303,7 @@ static void compute_wrapped_highlight_rects(std::vector<LocalRect>& rects, lx::H
 
             float x0 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + a).x;
             float x1 = font->CalcTextSizeA(font_size, FLT_MAX, 0, text_begin + line.start_idx, text_begin + b).x;
-            rects.push_back({ .min = ImVec2(x0, line.y), .max = ImVec2(x1, line.y + line_h) });
+            rects.push_back(ImRect(ImVec2(x0, line.y), ImVec2(x1, line.y + line_h)));
         }
         });
 }
@@ -270,20 +315,10 @@ static void compute_wrapped_highlight_rects(const float wrap_width)
         compute_wrapped_highlight_rects(STATE.highlight_rects[i], static_cast<lx::HighlightColor>(i), wrapped_lines);
 }
 
-static void draw_highlight_rect(ImDrawList& draw_list, ImVec2 origin, LocalRect rect, ImU32 color)
-{
-    rect.min.x += origin.x;
-    rect.min.y += origin.y;
-    rect.max.x += origin.x;
-    rect.max.y += origin.y;
-    draw_list.AddRectFilled(rect.min, rect.max, color);
-}
-
 static void draw_highlights(ImVec2 origin, lx::HighlightColor color)
 {
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    for (LocalRect rect : STATE.highlight_rects[lx::color_idx(color)])
-        draw_highlight_rect(*draw_list, origin, rect, mapped_color(color, 0.5f)); // TODO configure alpha
+    for (ImRect rect : STATE.highlight_rects[lx::color_idx(color)])
+        draw_highlight_rect(origin, rect, mapped_color(color, 0.5f)); // TODO configure alpha
 }
 
 static void draw_input_window()
@@ -302,11 +337,17 @@ static void draw_input_window()
     ImGui::End();
 }
 
-static void draw_output_window()
+static void draw_all_highlights(float wrap_width, ImVec2 origin)
 {
-    ImGui::Begin(OUTPUT_WINDOW);
+    compute_wrapped_highlight_rects(wrap_width);
 
-    const float wrap_width = ImGui::GetContentRegionAvail().x;
+    for (size_t i = 0; i < lx::color_count(); ++i)
+        if (STATE.show_highlights[i])
+            draw_highlights(origin, static_cast<lx::HighlightColor>(i));
+}
+
+static ImVec2 get_highlight_origin()
+{
     ImVec2 origin = ImGui::GetCursorScreenPos();
 
     const ImGuiStyle& style = ImGui::GetStyle();
@@ -316,12 +357,38 @@ static void draw_output_window()
     origin.x -= ImGui::GetScrollX();
     origin.y -= ImGui::GetScrollY();
 
+    return origin;
+}
+
+static void draw_output_area()
+{
+    draw_all_highlights(ImGui::GetContentRegionAvail().x, get_highlight_origin());
     draw_output_buffer(STATE.output);
+}
 
-    compute_wrapped_highlight_rects(wrap_width);
-    // TODO draw_highlights() for every color that's enabled/selected by GUI
-    draw_highlights(origin, lx::HighlightColor::Yellow);
+static void draw_output_window()
+{
+    ImGui::Begin(OUTPUT_WINDOW, nullptr, ImGuiWindowFlags_MenuBar);
 
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::Button("Highlight"))
+        {
+            GUI.show_highlight_modal = true;
+            ImGui::OpenPopup("Highlights");
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_Appearing);
+        if (ImGui::BeginPopupModal("Highlights", &GUI.show_highlight_modal))
+        {
+            draw_highlight_modal();
+            ImGui::EndPopup();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    draw_output_area();
     ImGui::End();
 }
 
@@ -364,6 +431,11 @@ static void draw_frame()
     // TODO render highlights
 }
 
+static void init_state()
+{
+    std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
+}
+
 static void handle_shortcuts()
 {
     if (ImGui::IsKeyPressed(ImGuiKey_F5))
@@ -399,6 +471,8 @@ int main()
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    init_state();
 
     while (!glfwWindowShouldClose(window))
     {
