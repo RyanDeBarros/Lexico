@@ -16,6 +16,13 @@ static const char* OUTPUT_WINDOW = "Output";
 static const char* SCRIPT_WINDOW = "Script";
 static const char* LOG_WINDOW = "Log";
 
+enum class Channel
+{
+    Highlight,
+    Main,
+    _Count
+};
+
 struct EditorState
 {
     std::string input;
@@ -41,17 +48,16 @@ static std::array<const char*, lx::color_count()> COLOR_NAMES = {
     "Red",
     "Green",
     "Blue",
-    "Grey",
+    "Light",
+    "Dark",
     "Purple",
     "Orange",
-    "Mono"
 };
 
 // TODO GUI settings configure colors
-static ImU32 mapped_color(lx::HighlightColor c, float alpha)
+static ImU32 mapped_color(lx::HighlightColor c)
 {
-    unsigned int a = static_cast<unsigned int>(roundf(alpha * 255));
-
+    const unsigned int a = 0x7F;
     switch (c)
     {
         case lx::HighlightColor::Yellow:
@@ -62,14 +68,14 @@ static ImU32 mapped_color(lx::HighlightColor c, float alpha)
             return IM_COL32(0x00, 0xFF, 0x00, a);
         case lx::HighlightColor::Blue:
             return IM_COL32(0x00, 0x00, 0xFF, a);
-        case lx::HighlightColor::Grey:
-            return IM_COL32(0x7F, 0x7F, 0x7F, a);
+        case lx::HighlightColor::Light:
+            return IM_COL32(0xAA, 0xAA, 0xAA, a);
+        case lx::HighlightColor::Dark:
+            return IM_COL32(0x55, 0x55, 0x55, a);
         case lx::HighlightColor::Purple:
             return IM_COL32(0xFF, 0x00, 0xFF, a);
         case lx::HighlightColor::Orange:
             return IM_COL32(0xFF, 0xA5, 0x00, a);
-        case lx::HighlightColor::Mono:
-            return IM_COL32(0xFF, 0xFF, 0xFF, a); // TODO white if dark mode, black if light mode
         default:
             return IM_COL32_BLACK_TRANS;
     }
@@ -196,11 +202,21 @@ static void draw_highlight_rect(ImVec2 origin, ImRect rect, ImU32 color)
     rect.Min.y += origin.y;
     rect.Max.x += origin.x;
     rect.Max.y += origin.y;
-    ImGui::GetWindowDrawList()->AddRectFilled(rect.Min, rect.Max, color);
+
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->ChannelsSetCurrent(static_cast<int>(Channel::Highlight));
+    dl->AddRectFilled(rect.Min, rect.Max, color);
+    dl->ChannelsSetCurrent(static_cast<int>(Channel::Main));
+}
+
+static void setup_window_channels()
+{
+    ImGui::GetWindowDrawList()->ChannelsSplit(static_cast<int>(Channel::_Count));
 }
 
 static void draw_highlight_modal()
 {
+    setup_window_channels();
     ImGui::Text("Filter");
     ImGui::Separator();
 
@@ -218,7 +234,7 @@ static void draw_highlight_modal()
         min.x += ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x;
 
         ImVec2 max = ImGui::GetItemRectMax();
-        draw_highlight_rect(ImVec2(), ImRect(min, max), mapped_color(static_cast<lx::HighlightColor>(i), 0.5f));
+        draw_highlight_rect(ImVec2(), ImRect(min, max), mapped_color(static_cast<lx::HighlightColor>(i)));
     }
 }
 
@@ -318,7 +334,7 @@ static void compute_wrapped_highlight_rects(const float wrap_width)
 static void draw_highlights(ImVec2 origin, lx::HighlightColor color)
 {
     for (ImRect rect : STATE.highlight_rects[lx::color_idx(color)])
-        draw_highlight_rect(origin, rect, mapped_color(color, 0.5f)); // TODO configure alpha
+        draw_highlight_rect(origin, rect, mapped_color(color));
 }
 
 static void draw_input_window()
@@ -369,6 +385,7 @@ static void draw_output_area()
 static void draw_output_window()
 {
     ImGui::Begin(OUTPUT_WINDOW, nullptr, ImGuiWindowFlags_MenuBar);
+    setup_window_channels();
 
     if (ImGui::BeginMenuBar())
     {

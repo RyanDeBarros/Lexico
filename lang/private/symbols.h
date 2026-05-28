@@ -37,10 +37,10 @@ namespace lx
 		Red,
 		Green,
 		Blue,
-		Grey,
+		Light,
+		Dark,
 		Purple,
 		Orange,
-		Mono,
 	};
 
 	extern std::optional<BuiltinSymbol> parse_builtin_symbol(const std::string_view symbol);

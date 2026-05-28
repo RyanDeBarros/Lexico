@@ -13,10 +13,10 @@ namespace lx
 		Red,
 		Green,
 		Blue,
-		Grey,
+		Light,
+		Dark,
 		Purple,
 		Orange,
-		Mono,
 		_Count
 	};
 

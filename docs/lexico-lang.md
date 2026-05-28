@@ -412,10 +412,10 @@ In version 1.0, the color operand must be a predefined color from these 8 symbol
 * `$red`
 * `$green`
 * `$blue`
-* `$grey`/`$gray`
+* `$light`
+* `$dark`
 * `$purple`
 * `$orange`
-* `$mono` (black in light mode, white in dark mode)
 
 To remove a pattern from highlighting, use:
 
@@ -1077,11 +1077,10 @@ color          ::= "$yellow"
                  | "$red"
                  | "$green"
                  | "$blue"
-                 | "$grey"
-                 | "$gray"
+                 | "$light"
+                 | "$dark"
                  | "$purple"
-                 | "$orange"
-                 | "$mono" ;
+                 | "$orange" ;
 ```
 
 ## Terminals

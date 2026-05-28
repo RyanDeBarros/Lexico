@@ -53,14 +53,14 @@ namespace lx
 			return BuiltinSymbol::Green;
 		else if (name == "blue")
 			return BuiltinSymbol::Blue;
-		else if (name == "grey" || name == "gray")
-			return BuiltinSymbol::Grey;
+		else if (name == "light")
+			return BuiltinSymbol::Light;
+		else if (name == "dark")
+			return BuiltinSymbol::Dark;
 		else if (name == "purple")
 			return BuiltinSymbol::Purple;
 		else if (name == "orange")
 			return BuiltinSymbol::Orange;
-		else if (name == "mono")
-			return BuiltinSymbol::Mono;
 		else
 			return std::nullopt;
 	}
@@ -124,14 +124,14 @@ namespace lx
 			return HighlightColor::Green;
 		case BuiltinSymbol::Blue:
 			return HighlightColor::Blue;
-		case BuiltinSymbol::Grey:
-			return HighlightColor::Grey;
+		case BuiltinSymbol::Light:
+			return HighlightColor::Light;
+		case BuiltinSymbol::Dark:
+			return HighlightColor::Dark;
 		case BuiltinSymbol::Purple:
 			return HighlightColor::Purple;
 		case BuiltinSymbol::Orange:
 			return HighlightColor::Orange;
-		case BuiltinSymbol::Mono:
-			return HighlightColor::Mono;
 		default:
 		{
 			std::stringstream ss;
@@ -159,10 +159,10 @@ namespace lx
 		case BuiltinSymbol::Red:
 		case BuiltinSymbol::Green:
 		case BuiltinSymbol::Blue:
-		case BuiltinSymbol::Grey:
+		case BuiltinSymbol::Light:
+		case BuiltinSymbol::Dark:
 		case BuiltinSymbol::Purple:
 		case BuiltinSymbol::Orange:
-		case BuiltinSymbol::Mono:
 			return true;
 		default:
 			return false;
