@@ -16,7 +16,9 @@ namespace lx
 		const TokenStream& stream() const;
 		TokenStream& stream();
 		Token start_token() const;
+		static std::vector<std::string_view> split_lines(const std::string_view sv);
 		const std::vector<std::string_view>& script_lines() const;
+		std::vector<std::string_view>& script_lines();
 		const std::vector<LxError>& errors() const;
 	};
 }

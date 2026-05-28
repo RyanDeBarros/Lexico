@@ -20,6 +20,16 @@ namespace lx
 		_Count
 	};
 
+	constexpr size_t color_count()
+	{
+		return static_cast<size_t>(HighlightColor::_Count);
+	}
+
+	constexpr size_t color_idx(HighlightColor color)
+	{
+		return static_cast<size_t>(color);
+	}
+
 	struct Highlight
 	{
 		size_t start;
@@ -42,24 +52,25 @@ namespace lx
 		void remove(Highlight range);
 	};
 
-	struct HighlightCharView
+	struct HighlightVisit
 	{
-		char c;
-		bool new_match;
-		size_t index;
-		size_t row;
-		size_t col;
 		HighlightColor color;
+		Highlight highlight;
+		std::string_view text;
+		size_t line;
+		size_t col;
 	};
 
 	struct HighlightMap
 	{
 		std::vector<std::string_view> lines;
-		std::array<HighlightSet, static_cast<size_t>(HighlightColor::_Count)> array;
+		std::vector<size_t> line_offsets;
+		std::array<HighlightSet, color_count()> array;
 
 		const HighlightSet& operator[](HighlightColor color) const;
 		HighlightSet& operator[](HighlightColor color);
 
-		void visit_chars(std::function<void(const HighlightCharView&)> visitor);
+		void calc_line_offsets();
+		void visit(HighlightColor color, std::function<void(const HighlightVisit&)> visitor) const;
 	};
 }

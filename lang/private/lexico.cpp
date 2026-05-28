@@ -32,7 +32,7 @@ namespace lx
 		return err;
 	}
 
-	static bool exec(const std::string_view script, const std::string_view input, std::stringstream& output, std::stringstream& log, HighlightMap& highlights)
+	static bool exec(const std::string_view script, const std::string_view input, std::string& output, std::stringstream& log, HighlightMap& highlights)
 	{
 		// TODO delete lexer, parser, analyser, etc. resources once done with them to save resources for executor. Need to be careful, since Token references persist in AST.
 
@@ -56,10 +56,11 @@ namespace lx
 			Executor executor(parser.tree().root());
 			executor.execute(analyser, input);
 
-			output << executor.output().str();
+			output = executor.output().str();
 			log << executor.log().str();
 			highlights = std::move(executor.highlights());
-			highlights.lines = std::move(lexer.script_lines());
+			highlights.lines = Lexer::split_lines(output);
+			highlights.calc_line_offsets();
 			return true;
 		}
 		catch (const LxError& e)
@@ -72,10 +73,10 @@ namespace lx
 	ExecResult execute(const ExecInput& input)
 	{
 		ExecResult res;
-		std::stringstream out;
+		std::string out;
 		std::stringstream lg;
 		res.success = exec(input.script, input.input, out, lg, res.highlights);
-		res.output = out.str();
+		res.output = std::move(out);
 		res.log = lg.str();
 		return res;
 	}

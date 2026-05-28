@@ -115,40 +115,35 @@ namespace lx
 		return array[static_cast<size_t>(color)];
 	}
 
-	void HighlightMap::visit_chars(std::function<void(const HighlightCharView&)> visitor)
+	void HighlightMap::calc_line_offsets()
 	{
-		std::array<size_t, static_cast<size_t>(HighlightColor::_Count)> highlight_indexes{};
-		std::fill(highlight_indexes.begin(), highlight_indexes.end(), 0);
-
-		size_t index = 0;
-		for (size_t row = 0; row < lines.size(); ++row)
+		line_offsets.clear();
+		size_t sum = 0;
+		for (const auto& line : lines)
 		{
-			for (size_t col = 0; col < lines[row].size(); ++col)
-			{
-				for (size_t i = 0; i < array.size(); ++i)
-				{
-					const HighlightSet& highlight_set = array[i];
-					size_t& highlight_idx = highlight_indexes[i];
-					while (highlight_idx < highlight_set.list().size() && index > highlight_set.list()[highlight_idx].end())
-						++highlight_idx;
+			line_offsets.push_back(sum);
+			sum += line.size() + 1; // +1 for '\n'
+		}
+	}
 
-					if (highlight_idx < highlight_set.list().size() && highlight_set.list()[highlight_idx].contains(index))
-					{
-						HighlightCharView view{
-							.c = lines[row][col],
-							.new_match = index == highlight_set.list()[highlight_idx].start,
-							.index = index,
-							.row = row,
-							.col = col,
-							.color = static_cast<HighlightColor>(i)
-						};
+	void HighlightMap::visit(HighlightColor color, std::function<void(const HighlightVisit&)> visitor) const
+	{
+		const HighlightSet& highlight_set = array[color_idx(color)];
+		size_t line_idx = 0;
+		for (const Highlight& highlight : highlight_set.list())
+		{
+			while (highlight.start > line_offsets[line_idx] + lines[line_idx].size())
+				++line_idx;
 
-						visitor(view);
-					}
-				}
-
-				++index;
-			}
+			size_t col = highlight.start - line_offsets[line_idx];
+			HighlightVisit visit{
+				.color = color,
+				.highlight = highlight,
+				.text = lines[line_idx].substr(col, highlight.length),
+				.line = line_idx,
+				.col = col,
+			};
+			visitor(visit);
 		}
 	}
 }

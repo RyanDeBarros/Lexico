@@ -37,7 +37,7 @@ namespace lx
 		Variable iterget(VarContext& ctx, size_t i) const;
 
 		void add_capture(const EvalContext& env, CapId&& id, Cap&& cap);
-		HighlightRange highlight_range() const;
+		Highlight highlight_range() const;
 		void adjust_indexes(size_t index, size_t from_length, size_t to_length);
 	};
 }

@@ -14,10 +14,10 @@ set(ROOT_SOURCES
 	find.cpp
 	symbols.cpp
 	page.cpp
-	highlights.cpp
 	util.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${ROOT_SOURCES})
 
 add_subdirectory(types)
+add_subdirectory(api)

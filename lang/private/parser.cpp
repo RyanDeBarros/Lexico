@@ -719,7 +719,7 @@ namespace lx
 			BuiltinSymbol color = BuiltinSymbol::Yellow;
 			Expression* expr = nullptr;
 
-			if (peek_token_is_not(0, Keyword::Color))
+			if (peek_token_is_not(0, Keyword::Color) && continue_statement())
 				expr = &parse_expression(offset);
 
 			if (peek_token_is(0, Keyword::Color))

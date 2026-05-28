@@ -396,25 +396,7 @@ namespace lx
 
 	void Lexer::tokenize(const std::string_view script)
 	{
-		size_t off = 0;
-		for (size_t i = 0; i < script.size(); ++i)
-		{
-			const char c = script[i];
-			if (c == '\n')
-			{
-				_script_lines.push_back(script.substr(off, i - off));
-				off = i + 1;
-			}
-			else if (c == '\r')
-			{
-				_script_lines.push_back(script.substr(off, i - off));
-				if (i + 1 < script.size() && script[i + 1] == '\n')
-					++i;
-				off = i + 1;
-			}
-		}
-		_script_lines.push_back(script.substr(off, script.size() - off));
-
+		_script_lines = split_lines(script);
 		std::vector<Token> tokens;
 		Tokenizer tokenizer(script, tokens, _script_lines, _errors);
 		_stream.load(std::move(tokens));
@@ -440,7 +422,36 @@ namespace lx
 		return token;
 	}
 
+	std::vector<std::string_view> Lexer::split_lines(const std::string_view sv)
+	{
+		std::vector<std::string_view> lines;
+		size_t off = 0;
+		for (size_t i = 0; i < sv.size(); ++i)
+		{
+			const char c = sv[i];
+			if (c == '\n')
+			{
+				lines.push_back(sv.substr(off, i - off));
+				off = i + 1;
+			}
+			else if (c == '\r')
+			{
+				lines.push_back(sv.substr(off, i - off));
+				if (i + 1 < sv.size() && sv[i + 1] == '\n')
+					++i;
+				off = i + 1;
+			}
+		}
+		lines.push_back(sv.substr(off, sv.size() - off));
+		return lines;
+	}
+
 	const std::vector<std::string_view>& Lexer::script_lines() const
+	{
+		return _script_lines;
+	}
+
+	std::vector<std::string_view>& Lexer::script_lines()
 	{
 		return _script_lines;
 	}
