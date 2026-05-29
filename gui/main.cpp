@@ -138,13 +138,7 @@ static void draw_output_buffer(std::string& buffer, std::optional<ImU32> text_co
     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0, 0, 0, 0));
-    ImGui::InputTextMultiline(
-        "##output",
-        buffer.data(),
-        buffer.size() + 1,
-        ImVec2(-FLT_MIN, -FLT_MIN),
-        ImGuiInputTextFlags_WordWrap | ImGuiInputTextFlags_ReadOnly
-    );
+    ImGui::TextUnformatted(buffer.data());
     ImGui::PopStyleColor(3);
 
     if (text_color.has_value())
@@ -224,13 +218,13 @@ static std::vector<WrappedLine> build_wrapped_lines(const float wrap_width)
     while (p < text_end)
     {
         const char* line_end = font->CalcWordWrapPosition(font_size, p, text_end, wrap_width);
-        if (line_end <= p)
-            line_end = p + 1;
+        if (line_end > p)
+        {
+            size_t start_idx = p - text_begin;
+            size_t end_idx = line_end - text_begin;
 
-        size_t start_idx = p - text_begin;
-        size_t end_idx = line_end - text_begin;
-
-        wrapped_lines.push_back({ .start_idx = start_idx, .end_idx = end_idx, .y = y });
+            wrapped_lines.push_back({ .start_idx = start_idx, .end_idx = end_idx, .y = y });
+        }
 
         y += line_h;
 
@@ -357,21 +351,23 @@ static void draw_all_highlights(float wrap_width, ImVec2 origin)
 
 static void draw_output_area()
 {
+    ImGui::BeginChild("##output", ImVec2(), ImGuiChildFlags_Borders);
+    setup_window_channels();
+
     float wrap_width = ImGui::GetContentRegionAvail().x;
-
     ImVec2 origin = ImGui::GetCursorScreenPos();
-
-    const ImGuiStyle& style = ImGui::GetStyle();
-    origin.x += style.FramePadding.x;
-    origin.y += style.FramePadding.y;
-
     draw_output_buffer(STATE.output, std::nullopt);
 
-    // TODO scroll is not working
-    origin.x -= ImGui::GetScrollX();
-    origin.y -= ImGui::GetScrollY();
-
+    ImVec2 clip_min = ImGui::GetWindowContentRegionMin();
+    ImVec2 clip_max = ImGui::GetWindowContentRegionMax();
+    clip_min.x += ImGui::GetWindowPos().x + ImGui::GetScrollX();
+    clip_min.y += ImGui::GetWindowPos().y + ImGui::GetScrollY();
+    clip_max.x += ImGui::GetWindowPos().x + ImGui::GetScrollX();
+    clip_max.y += ImGui::GetWindowPos().y + ImGui::GetScrollY();
+    ImGui::GetWindowDrawList()->PushClipRect(clip_min, clip_max);
     draw_all_highlights(wrap_width, origin);
+
+    ImGui::EndChild();
 }
 
 static void draw_output_window()
@@ -422,8 +418,10 @@ static void draw_script_window()
 
 static void draw_log_window()
 {
-    ImGui::Begin(LOG_WINDOW);
+    ImGui::Begin(LOG_WINDOW, nullptr, ImGuiWindowFlags_MenuBar);
+    ImGui::BeginChild("##output", ImVec2(), ImGuiChildFlags_Borders);
     draw_output_buffer(STATE.log, STATE.success ? IM_COL32(0, 255, 0, 255) : IM_COL32(255, 0, 0, 255));
+    ImGui::EndChild();
     ImGui::End();
 }
 
