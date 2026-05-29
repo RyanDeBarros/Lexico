@@ -193,8 +193,16 @@ namespace lx
 		if (in.pos >= context.text.size())
 			return SearchExit::Continue;
 
-		if (context.text[in.pos] != _ch)
-			return SearchExit::Continue;
+		if (context.caseless)
+		{
+			if (tolower(context.text[in.pos]) != tolower(_ch))
+				return SearchExit::Continue;
+		}
+		else
+		{
+			if (context.text[in.pos] != _ch)
+				return SearchExit::Continue;
+		}
 
 		SearchState out = in;
 		++out.pos;
@@ -249,8 +257,20 @@ namespace lx
 		if (in.pos + _string.size() > context.text.size())
 			return SearchExit::Continue;
 
-		if (context.text.substr(in.pos, _string.size()) != _string)
-			return SearchExit::Continue;
+		if (context.caseless)
+		{
+			std::string_view sv = context.text.substr(in.pos, _string.size());
+			for (size_t i = 0; i < _string.size(); ++i)
+			{
+				if (tolower(sv[i]) != tolower(_string[i]))
+					return SearchExit::Continue;
+			}
+		}
+		else
+		{
+			if (context.text.substr(in.pos, _string.size()) != _string)
+				return SearchExit::Continue;
+		}
 
 		SearchState out = in;
 		out.pos += _string.size();
@@ -936,8 +956,20 @@ namespace lx
 		if (in.pos + sv.size() > context.text.size())
 			return SearchExit::Continue;
 
-		if (context.text.substr(in.pos, sv.size()) != sv)
-			return SearchExit::Continue;
+		if (context.caseless)
+		{
+			std::string_view o = context.text.substr(in.pos, sv.size());
+			for (size_t i = 0; i < sv.size(); ++i)
+			{
+				if (tolower(o[i]) != tolower(sv[i]))
+					return SearchExit::Continue;
+			}
+		}
+		else
+		{
+			if (context.text.substr(in.pos, sv.size()) != sv)
+				return SearchExit::Continue;
+		}
 
 		SearchState substate = last_frame.substate;
 		substate.start = in.pos;
@@ -1003,10 +1035,10 @@ namespace lx
 			ctx.greedy = true;
 			break;
 		case PatternFlagType::Caseless:
-			// TODO
+			ctx.caseless = true;
 			break;
 		case PatternFlagType::NotCaseless:
-			// TODO
+			ctx.caseless = false;
 			break;
 		}
 		return _subject->match(ctx, in, yield);
@@ -1048,13 +1080,29 @@ namespace lx
 		{
 			if (_range.empty())
 				return yield(in);
+			else
+				return SearchExit::Continue;
 		}
-		else if (_range.contains(context.text[in.pos]))
+
+		if (context.caseless)
 		{
-			SearchState out = in;
-			++out.pos;
-			return yield(std::move(out));
+			if (_range.contains(tolower(context.text[in.pos])) || _range.contains(toupper(context.text[in.pos])))
+			{
+				SearchState out = in;
+				++out.pos;
+				return yield(std::move(out));
+			}
 		}
+		else
+		{
+			if (_range.contains(context.text[in.pos]))
+			{
+				SearchState out = in;
+				++out.pos;
+				return yield(std::move(out));
+			}
+		}
+
 		return SearchExit::Continue;
 	}
 

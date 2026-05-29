@@ -69,6 +69,7 @@ namespace lx
 		catch (const LxError& e)
 		{
 			ctx.errors().push_back(e);
+			// TODO remove repeated errors - and prevent errors from cascading
 			// TODO for internal errors, log in optional debug log and just print "Internal error - see debug log" in regular log
 		}
 	}

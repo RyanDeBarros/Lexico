@@ -7,6 +7,8 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
+TODO add to doc: `ref`/`@`/`~`, `caseless`/`not caseless`, methods/data members
+
 TODO v0.3 built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
 TODO v0.3 'const' references

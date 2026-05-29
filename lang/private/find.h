@@ -45,6 +45,7 @@ namespace lx
 		const EvalContext& env;
 		const std::string_view text;
 		bool greedy = true;
+		bool caseless = false;
 		std::shared_ptr<std::unordered_map<CapId, unsigned int>> local_capids;
 		std::shared_ptr<std::unordered_map<unsigned int, CapId>> reverse_lut;
 

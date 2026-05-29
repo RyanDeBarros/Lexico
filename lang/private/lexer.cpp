@@ -395,9 +395,10 @@ namespace lx
 							return false;
 					};
 
-					check_negation(Keyword::Ahead, Keyword::NotAhead) ||
-					check_negation(Keyword::Behind, Keyword::NotBehind) ||
-					check_negation(Keyword::Caseless, Keyword::NotCaseless);
+					if (check_negation(Keyword::Ahead, Keyword::NotAhead) ||
+						check_negation(Keyword::Behind, Keyword::NotBehind) ||
+						check_negation(Keyword::Caseless, Keyword::NotCaseless))
+						continue;
 				}
 
 				final_tokens.push_back(std::move(_tokens[i]));
