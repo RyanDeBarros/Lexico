@@ -6,6 +6,13 @@
 
 namespace lx
 {
+	static std::ostream& indent(std::ostream& os, unsigned int tabs)
+	{
+		for (unsigned int i = 0; i < tabs; ++i)
+			os << '\t';
+		return os;
+	}
+
 	SearchState::SearchState(size_t start)
 		: start(start), pos(start)
 	{
@@ -171,6 +178,11 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternChar::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[\'" << _ch << "\']\n";
+	}
+
 	char SubpatternChar::chr() const
 	{
 		return _ch;
@@ -219,6 +231,11 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternString::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[\"" << _string << "\"]\n";
+	}
+
 	std::string_view SubpatternString::string() const
 	{
 		return _string;
@@ -262,6 +279,24 @@ namespace lx
 			return _marker == ptr->_marker;
 		else
 			return false;
+	}
+
+	void SubpatternMarker::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[";
+		switch (_marker)
+		{
+		case PatternMark::Any:
+			os << "$any";
+			break;
+		case PatternMark::End:
+			os << "$end";
+			break;
+		case PatternMark::Start:
+			os << "$start";
+			break;
+		}
+		os << "]\n";
 	}
 
 	SearchExit SubpatternMarker::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
@@ -319,6 +354,13 @@ namespace lx
 	SearchExit SubpatternCatenation::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		return match_from(0, context, in, yield);
+	}
+
+	void SubpatternCatenation::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[,]\n";
+		for (auto el : _array)
+			el->print(env, os, tabs + 1);
 	}
 
 	IRange SubpatternCatenation::impl_matching_range() const
@@ -393,6 +435,13 @@ namespace lx
 		return SearchExit::Continue;
 	}
 
+	void SubpatternDisjunction::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[or]\n";
+		for (auto el : _array)
+			el->print(env, os, tabs + 1);
+	}
+
 	IRange SubpatternDisjunction::impl_matching_range() const
 	{
 		std::optional<int> min = std::nullopt;
@@ -435,6 +484,15 @@ namespace lx
 			return _subject->equals(ptr->_subject) && _exception->equals(ptr->_exception);
 		else
 			return false;
+	}
+
+	void SubpatternException::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[SUBPATTERN START]\n";
+		_subject->print(env, os, tabs + 1);
+		indent(os, tabs) << "[EXCEPT]\n";
+		_exception->print(env, os, tabs + 1);
+		indent(os, tabs) << "[SUBPATTERN END]\n";
 	}
 
 	struct ProbeYield : public MatchYield
@@ -497,6 +555,15 @@ namespace lx
 			return _range == ptr->_range && _subject->equals(ptr->_subject);
 		else
 			return false;
+	}
+
+	void SubpatternRepetition::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[SUBPATTERN]\n";
+		_subject->print(env, os, tabs + 1);
+		indent(os, tabs) << "[REPEAT ";
+		_range.print(env, os);
+		os << "]\n";
 	}
 
 	SearchExit SubpatternRepetition::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
@@ -621,6 +688,28 @@ namespace lx
 		else
 			return false;
 	}
+
+	void SubpatternLookaround::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs + 1) << "[LOOK ";
+		switch (_mode)
+		{
+		case LookaroundMode::Ahead:
+			os << "AHEAD";
+			break;
+		case LookaroundMode::NotAhead:
+			os << "NOT AHEAD";
+			break;
+		case LookaroundMode::Behind:
+			os << "BEHIND";
+			break;
+		case LookaroundMode::NotBehind:
+			os << "NOT BEHIND";
+			break;
+		}
+		os << "]\n";
+		_subject->print(env, os, tabs + 1);
+	}
 	
 	struct BackSearchYield : public MatchYield
 	{
@@ -737,6 +826,12 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternOptional::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[OPTIONAL]\n";
+		_optional->print(env, os, tabs + 1);
+	}
+
 	SubpatternCapture::SubpatternCapture(CapId capid, SubpatternNode& captured)
 		: _capid(capid), _captured(&captured)
 	{
@@ -753,6 +848,12 @@ namespace lx
 			return _capid == ptr->_capid && _captured->equals(ptr->_captured);
 		else
 			return false;
+	}
+
+	void SubpatternCapture::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[CAPTURE " << env.runtime.capture_name(env, _capid) << "]\n";
+		_captured->print(env, os, tabs + 1);
 	}
 
 	struct CaptureYield : public MatchYield
@@ -814,6 +915,11 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternBackRef::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[REF " << env.runtime.capture_name(env, _capid) << "]\n";
+	}
+
 	SearchExit SubpatternBackRef::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		if (!context.capid_exists(_capid))
@@ -863,6 +969,12 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternLazy::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[LAZY]\n";
+		_lazy->print(env, os, tabs + 1);
+	}
+
 	SearchExit SubpatternLazy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
@@ -893,6 +1005,12 @@ namespace lx
 			return false;
 	}
 
+	void SubpatternGreedy::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[GREEDY]\n";
+		_greedy->print(env, os, tabs + 1);
+	}
+
 	SearchExit SubpatternGreedy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
@@ -921,6 +1039,13 @@ namespace lx
 			return _range == ptr->_range;
 		else
 			return false;
+	}
+
+	void SubpatternSRange::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[";
+		_range.print(env, os);
+		os << "]\n";
 	}
 
 	SearchExit SubpatternSRange::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
@@ -963,6 +1088,27 @@ namespace lx
 			return _type == ptr->_type;
 		else
 			return false;
+	}
+
+	void SubpatternBuiltin::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	{
+		indent(os, tabs) << "[";
+		switch (_type)
+		{
+		case BuiltinSubpattern::Newline:
+			os << "$newline";
+			break;
+		case BuiltinSubpattern::Space:
+			os << "$space";
+			break;
+		case BuiltinSubpattern::Varname:
+			os << "$varname";
+			break;
+		case BuiltinSubpattern::Whitespace:
+			os << "$whitespace";
+			break;
+		}
+		os << "]\n";
 	}
 
 	SearchExit SubpatternBuiltin::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const

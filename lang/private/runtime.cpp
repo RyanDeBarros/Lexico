@@ -373,6 +373,15 @@ namespace lx
 
 		unsigned int uid = _capture_ids.size();
 		_capture_ids[std::string(id)] = uid;
+		_capture_names.push_back(std::string(id));
 		return CapId(uid);
+	}
+
+	std::string Runtime::capture_name(const EvalContext& env, const CapId id) const
+	{
+		if (id.uid() < _capture_names.size())
+			return _capture_names[id.uid()];
+		else
+			throw env.runtime_error(DataType::CapId().repr() + " not defined");
 	}
 }

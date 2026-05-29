@@ -74,10 +74,16 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
-	void Pattern::print(const EvalContext& env, std::stringstream& ss) const
+	void Pattern::print(const EvalContext& env, std::ostream& ss) const
 	{
-		// TODO string representation of pattern
-		ss << DataType::Pattern();
+		if (_root)
+		{
+			ss << "[PATTERN START]\n";
+			_root->print(env, ss, 1);
+			ss << "[PATTERN END]";
+		}
+		else
+			ss << "[NULL]";
 	}
 
 	Variable Pattern::data_member(VarContext& ctx, const std::string_view member)

@@ -39,7 +39,7 @@ namespace lx
 		}
 	}
 
-	void Cap::print(const EvalContext& env, std::stringstream& ss) const
+	void Cap::print(const EvalContext& env, std::ostream& ss) const
 	{
 		_section.str().print(env, ss);
 	}

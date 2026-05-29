@@ -19,7 +19,7 @@ namespace lx
 		DataType data_type() const;
 		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
 		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
-		void print(const EvalContext& env, std::stringstream& ss) const;
+		void print(const EvalContext& env, std::ostream& ss) const;
 
 		static StringMap<MemberSignature> members();
 		static StringMap<MemberSignature> members(const DataType& underlying);

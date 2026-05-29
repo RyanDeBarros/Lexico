@@ -54,6 +54,7 @@ namespace lx
 		std::stack<Page> _page_stack;
 
 		StringMap<unsigned int> _capture_ids;
+		std::vector<std::string> _capture_names;
 
 	public:
 		Runtime(const std::string_view input, SemanticFunctionTable&& ftable);
@@ -125,5 +126,6 @@ namespace lx
 		Scope& search_scope();
 
 		CapId capture_id(const std::string_view id);
+		std::string capture_name(const EvalContext& env, const CapId id) const;
 	};
 }

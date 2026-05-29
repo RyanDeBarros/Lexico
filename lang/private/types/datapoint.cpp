@@ -85,7 +85,7 @@ namespace lx
 		return std::visit([](const auto& v) -> DataType { return remove_cow(v).data_type(); }, _storage);
 	}
 
-	void DataPoint::print(const EvalContext& env, std::stringstream& ss) const
+	void DataPoint::print(const EvalContext& env, std::ostream& ss) const
 	{
 		std::visit([&env, &ss](const auto& v) { remove_cow(v).print(env, ss); }, _storage);
 	}

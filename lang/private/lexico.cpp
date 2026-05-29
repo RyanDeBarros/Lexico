@@ -9,6 +9,8 @@
 
 namespace lx
 {
+	// TODO v0.3 define public method `tokenize()` that will tokenize a script so that the GUI can do syntax coloring.
+
 	// TODO v1.1 serialize token stream + validated AST: will need to switch to ids instead of raw pointers for node relationships
 
 	template<typename T>

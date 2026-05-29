@@ -160,7 +160,7 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
-	void SRange::print(const EvalContext& env, std::stringstream& ss) const
+	void SRange::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << '<';
 		if (_min)

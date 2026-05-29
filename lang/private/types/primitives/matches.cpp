@@ -35,7 +35,7 @@ namespace lx
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	void Matches::print(const EvalContext& env, std::stringstream& ss) const
+	void Matches::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << "[";
 		for (size_t i = 0; i < _matches.size(); ++i)

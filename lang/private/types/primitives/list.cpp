@@ -75,7 +75,7 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
-	void List::print(const EvalContext& env, std::stringstream& ss) const
+	void List::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << "[";
 		for (size_t i = 0; i < _elements.size(); ++i)

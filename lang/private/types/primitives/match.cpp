@@ -34,7 +34,7 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
-	void Match::print(const EvalContext& env, std::stringstream& ss) const
+	void Match::print(const EvalContext& env, std::ostream& ss) const
 	{
 		_section.str().print(env, ss);
 	}

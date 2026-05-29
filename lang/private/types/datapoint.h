@@ -91,7 +91,7 @@ namespace lx
 
 		DataType data_type() const;
 
-		void print(const EvalContext& env, std::stringstream& ss) const;
+		void print(const EvalContext& env, std::ostream& ss) const;
 
 		size_t iterlen(const EvalContext& env) const;
 		Variable iterget(VarContext& ctx, size_t i) const;

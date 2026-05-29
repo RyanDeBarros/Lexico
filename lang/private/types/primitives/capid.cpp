@@ -36,7 +36,7 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
-	void CapId::print(const EvalContext& env, std::stringstream& ss) const
+	void CapId::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << DataType::CapId();
 	}
@@ -59,6 +59,11 @@ namespace lx
 	bool CapId::equals(const EvalContext& env, const CapId& o) const
 	{
 		return _uid == o._uid;
+	}
+
+	unsigned int CapId::uid() const
+	{
+		return _uid;
 	}
 	
 	size_t CapId::hash() const
