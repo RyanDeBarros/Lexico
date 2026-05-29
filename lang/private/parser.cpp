@@ -308,7 +308,20 @@ namespace lx
 
 		bool parse_pattern_declaration()
 		{
-			return parse_declaration<PatternDeclaration>(Keyword::PatternType);
+			if (!peek_token_is(0, Keyword::PatternType))
+				return false;
+
+			auto& kw_token = ref(0);
+			auto& identifier = parse_token(1, TokenType::Identifier, errors::EXPECTED_IDENTIFIER);
+			auto offset = token_offset(2);
+
+			Expression* expr = nullptr;
+			if (continue_statement())
+				expr = &parse_expression(offset);
+
+			offset.submit();
+			append_to_context(std::make_unique<PatternDeclaration>(std::move(kw_token), std::move(identifier), expr));
+			return true;
 		}
 
 		bool parse_delete_pattern()

@@ -1684,8 +1684,8 @@ namespace lx
 		return _delete_token.segment.combined_right(_identifier.segment);
 	}
 
-	PatternDeclaration::PatternDeclaration(Token&& pattern_token, Token&& identifier)
-		: _pattern_token(std::move(pattern_token)), _identifier(std::move(identifier))
+	PatternDeclaration::PatternDeclaration(Token&& pattern_token, Token&& identifier, Expression* initialization)
+		: _pattern_token(std::move(pattern_token)), _identifier(std::move(identifier)), _initialization(initialization)
 	{
 	}
 
@@ -1701,17 +1701,32 @@ namespace lx
 			else
 				ctx.register_variable(_identifier.lexeme, DataType::Pattern(), _identifier.segment.start_line, Namespace::Global);
 		}
+			
+		if (_initialization)
+			_initialization->analyse(ctx, pass);
+
+		if (pass == AnalysisPass::Validation)
+		{
+			if (_initialization)
+				assert_implicitly_casts(ctx, *_initialization, DataType::Pattern());
+		}
 	}
 
 	ExecutionFlow PatternDeclaration::execute(Runtime& runtime) const
 	{
-		runtime.declare_pattern(_identifier.lexeme);
+		std::optional<Pattern> initial = std::nullopt;
+		if (_initialization)
+			initial = _initialization->evaluate(runtime).consume_as<Pattern>(eval_context(runtime));
+		runtime.declare_pattern(_identifier.lexeme, std::move(initial));
 		return {};
 	}
 
 	ScriptSegment PatternDeclaration::impl_segment() const
 	{
-		return _pattern_token.segment.combined_right(_identifier.segment);
+		ScriptSegment segment = _pattern_token.segment.combined_right(_identifier.segment);
+		if (_initialization)
+			segment = segment.combined_right(_initialization->segment());
+		return segment;
 	}
 
 	RepeatOperation::RepeatOperation(Expression& expression, Expression& range)

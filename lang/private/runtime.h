@@ -18,7 +18,6 @@ namespace lx
 		RuntimeSymbolTable(RuntimeSymbolTable&&) noexcept = default;
 
 		void register_variable(const std::string_view identifier, Variable handle);
-		void name_unbound_variable(const std::string_view identifier, Variable var);
 		std::optional<Variable> registered_variable(const std::string_view identifier) const;
 	};
 
@@ -90,7 +89,7 @@ namespace lx
 
 		const FunctionDefinition& registered_function(const std::string_view identifier, const std::vector<DataType>& arg_types, const ScriptSegment& segment) const;
 
-		void declare_pattern(std::string_view identifier);
+		void declare_pattern(std::string_view identifier, std::optional<Pattern>&& initialization);
 		void delete_pattern(std::string_view identifier);
 		Variable focused_pattern(const ScriptSegment& segment) const;
 

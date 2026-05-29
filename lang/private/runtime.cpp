@@ -188,15 +188,14 @@ namespace lx
 		}
 	}
 
-	void Runtime::declare_pattern(std::string_view identifier)
+	void Runtime::declare_pattern(std::string_view identifier, std::optional<Pattern>&& initialization)
 	{
 		auto it = _declared_patterns.find(identifier);
 		if (it != _declared_patterns.end())
 			_focused_pattern = it->second;
 		else
 		{
-			// TODO allow for passing initial pattern expression in pattern declaration
-			Variable var = _heap.add(Pattern());
+			Variable var = _heap.add(initialization ? *initialization : Pattern());
 			_declared_patterns.try_emplace(std::string(identifier), var);
 			_focused_pattern = var;
 		}

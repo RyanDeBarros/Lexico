@@ -710,9 +710,10 @@ namespace lx
 	{
 		Token _pattern_token;
 		Token _identifier;
+		Expression* _initialization;
 
 	public:
-		PatternDeclaration(Token&& pattern_token, Token&& identifier);
+		PatternDeclaration(Token&& pattern_token, Token&& identifier, Expression* initialization);
 
 		ExecutionFlow execute(Runtime& runtime) const override;
 
