@@ -144,7 +144,7 @@ namespace lx
 		}
 	}
 
-	// TODO compound assignment operators
+	// TODO v0.3 compound assignment operators
 
 	std::optional<DataType> evaltype(BinaryOperator op, const DataType& lhs, const DataType& rhs)
 	{

@@ -37,8 +37,14 @@ namespace lx
 
 	void Matches::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO string representation of matches
-		ss << DataType::Matches();
+		ss << "[";
+		for (size_t i = 0; i < _matches.size(); ++i)
+		{
+			_matches[i].ref().print(env, ss);
+			if (i + 1 < _matches.size())
+				ss << ", ";
+		}
+		ss << "]";
 	}
 
 	StringMap<MemberSignature> Matches::members()

@@ -11,7 +11,7 @@ namespace lx
 	{
 		std::string_view script;
 		std::string_view input;
-		// TODO config variables
+		// TODO v0.3 config variables
 	};
 
 	struct ExecResult

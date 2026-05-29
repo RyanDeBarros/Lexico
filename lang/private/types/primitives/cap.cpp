@@ -41,8 +41,7 @@ namespace lx
 
 	void Cap::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO string representation of cap
-		ss << DataType::Cap();
+		_section.str().print(env, ss);
 	}
 
 	StringMap<MemberSignature> Cap::members()

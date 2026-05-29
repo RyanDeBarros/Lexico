@@ -921,7 +921,7 @@ namespace lx
 		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, arg_types(), segment());
 		std::vector<Variable> arguments;
 		for (const Expression* arg : _args)
-			arguments.push_back(arg->evaluate(runtime));
+			arguments.push_back(arg->evaluate(runtime)); // TODO pass by value
 		return fn.invoke(runtime, std::move(arguments)).data;
 	}
 
@@ -1600,7 +1600,7 @@ namespace lx
 			Variable var = _args[i]->evaluate(runtime);
 			var.ref().print(eval_context(runtime), runtime.log());
 			if (i + 1 < _args.size())
-				runtime.log() << " "; // TODO optional separator symbol argument
+				runtime.log() << " "; // TODO v0.3 optional separator symbol argument
 		}
 		runtime.log() << '\n';
 		return {};
@@ -2115,7 +2115,7 @@ namespace lx
 				return a.first.length <= b.first.length;
 		});
 
-		// TODO v0.3 configuration setting for overlapping match resolution strategy?
+		// TODO v1.1 configuration setting for overlapping match resolution strategy?
 		for (auto it = replacements.rbegin(); it != replacements.rend(); ++it)
 		{
 			// Don't replace if match is completely contained in another

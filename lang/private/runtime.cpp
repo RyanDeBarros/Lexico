@@ -266,7 +266,7 @@ namespace lx
 				const int min = range->min() ? *range->min() : 0;
 				const int max = range->max() ? *range->max() : matches.size() - 1;
 
-				// TODO allow negative indexing
+				// TODO v0.3 allow negative indexing
 				if (min < 0 || min >= matches.size() || max < 0 || max >= matches.size())
 				{
 					std::stringstream ss;

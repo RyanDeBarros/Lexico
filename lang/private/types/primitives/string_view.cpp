@@ -59,7 +59,7 @@ namespace lx
 
 	TypeVariant StringView::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
-		// TODO v0.3 more efficient conversions over iterators without using temporaries
+		// TODO v0.3 more efficient `make_from_literal` conversions over iterators without using temporaries
 		switch (type.simple())
 		{
 		case SimpleType::Int:

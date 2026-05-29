@@ -36,8 +36,7 @@ namespace lx
 
 	void Match::print(const EvalContext& env, std::stringstream& ss) const
 	{
-		// TODO string representation of match
-		ss << DataType::Match();
+		_section.str().print(env, ss);
 	}
 
 	StringMap<MemberSignature> Match::members()
