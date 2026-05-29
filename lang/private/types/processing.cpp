@@ -111,7 +111,7 @@ namespace lx
 		return std::nullopt;
 	}
 
-	Variable operate(const EvalContext& env, BinaryOperator op, Variable&& lhs, Variable&& rhs)
+	Variable operate(const EvalContext& env, BinaryOperator op, Variable lhs, Variable rhs)
 	{
 		switch (op)
 		{
@@ -264,10 +264,13 @@ namespace lx
 		throw env.runtime_error(ss.str());
 	}
 
-	Variable operate(const EvalContext& env, PrefixOperator op, Variable&& var)
+	Variable operate(const EvalContext& env, PrefixOperator op, Variable var)
 	{
 		switch (op)
 		{
+		case PrefixOperator::Address:
+			return env.runtime.unbound_variable(Ref(std::move(var)));
+
 		case PrefixOperator::Ahead:
 			if (var.ref().can_cast_implicit(DataType::Pattern()))
 			{
@@ -362,7 +365,7 @@ namespace lx
 		throw env.runtime_error("operator not supported for type " + var.ref().data_type().repr());
 	}
 
-	Variable operate(const EvalContext& env, PatternSimpleRepeatOperator op, Variable&& var)
+	Variable operate(const EvalContext& env, PatternSimpleRepeatOperator op, Variable var)
 	{
 		if (!var.ref().can_cast_implicit(DataType::Pattern()))
 		{

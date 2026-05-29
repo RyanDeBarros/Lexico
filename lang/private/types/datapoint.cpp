@@ -62,20 +62,11 @@ namespace lx
 
 	void DataPoint::assign(const EvalContext& env, Variable other)
 	{
-		// TODO remove
-		//Variable casted = std::move(other).cast(env, data_type());
-		//std::visit([&env, &casted](auto& v) { remove_cow(v).assign(env, std::move(std::move(casted).consume().get<remove_cow_t<decltype(v)>>())); }, _storage);
 		std::visit([&env, &other](auto& v) { remove_cow(v).assign(env, std::move(other)); }, _storage);
 	}
 
 	bool DataPoint::equals(const EvalContext& env, Variable other) const
 	{
-		// TODO remove
-		//Variable casted = std::move(other).cast(env, data_type());
-		//if (other.ref().can_cast_implicit(data_type()))
-			//return std::visit([&env, &casted](const auto& v) { return remove_cow(v).equals(env, casted.ref().get<remove_cow_t<decltype(v)>>()); }, _storage);
-		//else
-			//return false;
 		return std::visit([&env, &other](const auto& v) { return remove_cow(v).equals(env, std::move(other)); }, _storage);
 	}
 
@@ -129,10 +120,10 @@ namespace lx
 	{
 		if (data_type().is_pageable())
 			return std::visit([&env](const auto& v) -> std::string {
-			if constexpr (requires { remove_cow(v).page_content(env); })
-				return remove_cow(v).page_content(env);
-			else
-				throw env.internal_error(remove_cow(v).data_type().repr() + " should implement 'page_content' but it doesn't");
+				if constexpr (requires { remove_cow(v).page_content(env); })
+					return remove_cow(v).page_content(env);
+				else
+					throw env.internal_error(remove_cow(v).data_type().repr() + " should implement 'page_content' but it doesn't");
 			}, _storage);
 		else
 			throw env.runtime_error(data_type().repr() + " is not pageable");
@@ -146,5 +137,25 @@ namespace lx
 	Variable DataPoint::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
 		return std::visit([&ctx, method, &args](auto& v) -> Variable { return remove_cow(v).invoke_method(ctx, method, std::move(args)); }, _storage);
+	}
+
+	const DataPoint& DataPoint::root() const
+	{
+		return std::visit([this](const auto& v) -> const DataPoint& {
+			if constexpr (requires { remove_cow(v).root(); })
+				return remove_cow(v).root();
+			else
+				return *this;
+		}, _storage);
+	}
+
+	DataPoint& DataPoint::root()
+	{
+		return std::visit([this](auto& v) -> DataPoint& {
+			if constexpr (requires { remove_cow(v).root(); })
+				return remove_cow(v).root();
+			else
+				return *this;
+		}, _storage);
 	}
 }

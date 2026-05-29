@@ -388,6 +388,9 @@ namespace lx
 
 	bool DataType::member(const std::string_view name, MemberSignature& signature) const
 	{
+		if (_simple == SimpleType::Ref)
+			return _underlying->member(name, signature);
+
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>> common_members = {
 			{ SimpleType::String, String::members() },
 			{ SimpleType::StringView, StringView::members() },
@@ -395,7 +398,6 @@ namespace lx
 			{ SimpleType::Matches, Matches::members() },
 			{ SimpleType::Cap, Cap::members() },
 			{ SimpleType::List, List::members() },
-			{ SimpleType::Ref, Ref::members() },
 		};
 
 		auto it = common_members.find(_simple);
@@ -411,12 +413,10 @@ namespace lx
 
 		static std::unordered_map<SimpleType, std::unordered_map<DataType, StringMap<MemberSignature>>> generic_members = {
 			{ SimpleType::List, {} },
-			{ SimpleType::Ref, {} },
 		};
 
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>(*)(const DataType&)> generic_generators = {
 			{ SimpleType::List, &List::members },
-			{ SimpleType::Ref, &Ref::members },
 		};
 		
 		if (_underlying)

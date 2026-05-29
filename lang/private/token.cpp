@@ -212,7 +212,9 @@ namespace lx
 
 	std::optional<Keyword> Token::impl_keyword() const
 	{
-		if (type != TokenType::Identifier)
+		if (type == TokenType::Address)
+			return Keyword::Address;
+		else if (type != TokenType::Identifier)
 			return std::nullopt;
 
 		if (lexeme == "int")
@@ -421,6 +423,7 @@ namespace lx
 
 		switch (keyword())
 		{
+		case Keyword::Address:
 		case Keyword::Ahead:
 		case Keyword::Behind:
 		case Keyword::Max:
@@ -456,6 +459,9 @@ namespace lx
 	{
 		switch (type)
 		{
+		case TokenType::Address:
+			return Precedence::Address;
+
 		case TokenType::Asterisk:
 		case TokenType::Slash:
 			return Precedence::Mult;

@@ -20,8 +20,6 @@ namespace lx
 		Variable pass_arg(VarContext ctx);
 		void print(const EvalContext& env, std::ostream& ss) const;
 
-		static StringMap<MemberSignature> members();
-		static StringMap<MemberSignature> members(const DataType& underlying);
 		Variable data_member(VarContext& ctx, const std::string_view member);
 		Variable invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args);
 		void assign(const EvalContext& env, Variable o);

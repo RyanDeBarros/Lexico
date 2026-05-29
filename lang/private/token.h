@@ -20,6 +20,7 @@ namespace lx
 		Arrow,
 		Assign,
 		Dot,
+		Address,
 
 		// Literals
 		Integer,
@@ -67,6 +68,7 @@ namespace lx
 		RefType,
 
 		// Keywords
+		Address,
 		Ahead,
 		And,
 		Append,
@@ -132,6 +134,7 @@ namespace lx
 		Prefix,
 		Repeat,
 		To,
+		Address,
 		Dot,
 	};
 

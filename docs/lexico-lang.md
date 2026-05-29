@@ -11,7 +11,9 @@ TODO v0.3 match word, match case, built-in functions for changing case, etc. Bui
 
 TODO more flags other than just greedy or lazy, like case-sensitive or case-insensitive? May not be necessary
 
-TODO '&' reference operator (pass objects by reference to functions - new `Ref` generic type). Also add custom structs, `set`, `dict`, etc.
+TODO v0.3 'const' references
+
+TODO v1.1 add custom structs, `set`, `dict`, etc.
 
 TODO v1.1 aggregation / SQL constructs
 

@@ -16,6 +16,8 @@ namespace lx
 	{
 		return DataType::Ref(_subobject.ref().data_type());
 	}
+
+	// TODO cast to underlying to copy by value
 	
 	TypeVariant Ref::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
@@ -41,29 +43,15 @@ namespace lx
 		ss << '@';
 		_subobject.ref().print(env, ss);
 	}
-
-	StringMap<MemberSignature> Ref::members()
-	{
-		// TODO
-		return {};
-	}
-	
-	StringMap<MemberSignature> Ref::members(const DataType& underlying)
-	{
-		// TODO
-		return {};
-	}
 	
 	Variable Ref::data_member(VarContext& ctx, const std::string_view member)
 	{
-		// TODO
-		ctx.throw_no_data_member(member);
+		return root().data_member(ctx, member);
 	}
 	
 	Variable Ref::invoke_method(VarContext& ctx, const std::string_view method, std::vector<Variable>&& args)
 	{
-		// TODO
-		ctx.throw_no_method(method, args);
+		return root().invoke_method(ctx, method, std::move(args));
 	}
 	
 	void Ref::assign(const EvalContext& env, Variable o)

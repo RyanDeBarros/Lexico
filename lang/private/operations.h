@@ -37,6 +37,7 @@ namespace lx
 
 	enum class PrefixOperator
 	{
+		Address,
 		Ahead,
 		Behind,
 		Max,

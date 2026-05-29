@@ -249,6 +249,8 @@ namespace lx
 
 		switch (token.keyword())
 		{
+		case Keyword::Address:
+			return PrefixOperator::Address;
 		case Keyword::Ahead:
 			return PrefixOperator::Ahead;
 		case Keyword::Behind:
@@ -286,6 +288,9 @@ namespace lx
 	{
 		switch (op)
 		{
+		case PrefixOperator::Address:
+			return DataType::Ref(type);
+
 		case PrefixOperator::Ahead:
 		case PrefixOperator::Behind:
 		case PrefixOperator::NotAhead:

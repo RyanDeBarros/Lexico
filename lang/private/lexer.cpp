@@ -173,6 +173,7 @@ namespace lx
 				}
 
 				bool tokenized_char =
+					tokenize_char('@', TokenType::Address) ||
 					tokenize_char(',', TokenType::Comma) ||
 					tokenize_char('\\', TokenType::Runoff) ||
 					tokenize_char('%', TokenType::Percent) ||
