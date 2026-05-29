@@ -91,6 +91,11 @@ namespace lx
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);
 	}
+
+	Variable StringView::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(StringView(*this));
+	}
 	
 	void StringView::print(const EvalContext& env, std::ostream& ss) const
 	{

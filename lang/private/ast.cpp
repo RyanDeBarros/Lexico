@@ -378,6 +378,11 @@ namespace lx
 		}
 	}
 
+	bool DirectExpression::imperative() const
+	{
+		return _expression.imperative();
+	}
+
 	DataType DirectExpression::impl_evaltype(SemanticContext& ctx) const
 	{
 		return _expression.evaltype(ctx);
@@ -921,7 +926,7 @@ namespace lx
 		const FunctionDefinition& fn = runtime.registered_function(_identifier.lexeme, arg_types(), segment());
 		std::vector<Variable> arguments;
 		for (const Expression* arg : _args)
-			arguments.push_back(arg->evaluate(runtime)); // TODO pass by value
+			arguments.push_back(arg->evaluate(runtime).pass_arg(eval_context(runtime)));
 		return fn.invoke(runtime, std::move(arguments)).data;
 	}
 
@@ -997,7 +1002,7 @@ namespace lx
 		{
 			std::vector<Variable> args;
 			for (const Expression* expr : _args)
-				args.push_back(expr->evaluate(runtime));
+				args.push_back(expr->evaluate(runtime).pass_arg(eval_context(runtime)));
 
 			return _member.object().evaluate(runtime).invoke_method(eval_context(runtime), m.identifier(), std::move(args));
 		}
@@ -1093,6 +1098,12 @@ namespace lx
 			auto argtypes = arg_types();
 			for (size_t i = 0; i < _arglist.size(); ++i)
 				ctx.register_variable(_arglist[i].second.lexeme, std::move(argtypes[i]), _arglist[i].second.segment.start_line, Namespace::Local);
+		}
+
+		if (pass == AnalysisPass::VarConsistencyExec)
+		{
+			for (size_t i = 0; i < _arglist.size(); ++i)
+				ctx.var_consistency_test().declare_local(_arglist[i].second.lexeme);
 		}
 
 		IsolationBlock::analyse_subnodes(ctx, pass);

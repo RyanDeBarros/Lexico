@@ -160,6 +160,11 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
+	Variable SRange::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(SRange(*this));
+	}
+
 	void SRange::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << '<';

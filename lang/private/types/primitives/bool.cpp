@@ -54,6 +54,11 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
+	Variable Bool::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(Bool(_value));
+	}
+
 	void Bool::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << (_value ? "true" : "false");

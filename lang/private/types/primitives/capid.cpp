@@ -36,6 +36,11 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
+	Variable CapId::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(CapId(_uid));
+	}
+
 	void CapId::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << DataType::CapId();

@@ -219,6 +219,7 @@ namespace lx
 
 	protected:
 		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
+		bool imperative() const override;
 		DataType impl_evaltype(SemanticContext& ctx) const override;
 		ScriptSegment impl_segment() const override;
 	};

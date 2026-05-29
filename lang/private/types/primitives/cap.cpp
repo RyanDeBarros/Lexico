@@ -39,6 +39,12 @@ namespace lx
 		}
 	}
 
+	Variable Cap::pass_arg(VarContext ctx)
+	{
+		Cap c(ctx.env, _section.snippet, _section.start, _section.length, _submatch.pass_arg(ctx.env));
+		return ctx.self.heap().add(std::move(c));
+	}
+
 	void Cap::print(const EvalContext& env, std::ostream& ss) const
 	{
 		_section.str().print(env, ss);

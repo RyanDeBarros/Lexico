@@ -75,6 +75,15 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
+	Variable List::pass_arg(VarContext ctx)
+	{
+		List list(ctx.env, _underlying);
+		list._elements.reserve(_elements.size());
+		for (Variable var : _elements)
+			list._elements.push_back(var.pass_arg(ctx.env));
+		return ctx.self.heap().add(std::move(list));
+	}
+
 	void List::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << "[";

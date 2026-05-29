@@ -34,6 +34,15 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
+	Variable Match::pass_arg(VarContext ctx)
+	{
+		Match m(_section.snippet, _section.start, _section.length);
+		m._ordering = _ordering;
+		for (auto& [capid, var] : _captures_by_id)
+			m._captures_by_id.try_emplace(capid, var.pass_arg(ctx.env));
+		return ctx.self.heap().add(std::move(m));
+	}
+
 	void Match::print(const EvalContext& env, std::ostream& ss) const
 	{
 		_section.str().print(env, ss);

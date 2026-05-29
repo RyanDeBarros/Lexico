@@ -74,6 +74,11 @@ namespace lx
 			return cast_copy(ctx, type);
 	}
 
+	Variable Pattern::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(Pattern(*this));
+	}
+
 	void Pattern::print(const EvalContext& env, std::ostream& ss) const
 	{
 		if (_root)

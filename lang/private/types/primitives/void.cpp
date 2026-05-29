@@ -24,6 +24,11 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
+	Variable Void::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(Void());
+	}
+
 	void Void::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << "";

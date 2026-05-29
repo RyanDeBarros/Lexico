@@ -50,12 +50,29 @@ namespace lx
 		return *this;
 	}
 
-	Variable Variable::root() const
+	VirtualHeap& Variable::heap()
+	{
+		if (_heap)
+			return *_heap;
+		else
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": heap reference is null";
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+	}
+
+	Variable Variable::pass_arg(const EvalContext& env)
 	{
 		if (_heap)
 		{
-			increment();
-			return Variable(*_heap, _id);
+			if (_heap->unbound(_id))
+				return std::move(*this);
+			else
+			{
+				VarContext ctx(env, *this);
+				return _heap->get(_id).pass_arg(std::move(ctx));
+			}
 		}
 		else
 		{
@@ -64,7 +81,7 @@ namespace lx
 			throw LxError(ErrorType::Internal, ss.str());
 		}
 	}
-	
+
 	void Variable::increment() const
 	{
 		if (_heap)

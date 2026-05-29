@@ -61,6 +61,11 @@ namespace lx
 		return cast_copy(ctx, type);
 	}
 
+	Variable Int::pass_arg(VarContext ctx)
+	{
+		return ctx.self.heap().add(Int(_value));
+	}
+
 	void Int::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << _value;

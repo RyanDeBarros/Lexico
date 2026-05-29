@@ -82,6 +82,7 @@ namespace lx
 
 		DataPoint cast_copy(const VarContext& ctx, const DataType& type) const;
 		DataPoint cast_move(VarContext&& ctx, const DataType& type) &&;
+		Variable pass_arg(VarContext ctx);
 
 		void assign(const EvalContext& env, Variable other);
 		bool equals(const EvalContext& env, Variable other) const;

@@ -55,6 +55,11 @@ namespace lx
 		return std::visit([&ctx, &type](auto&& v) { return DataPoint(remove_cow(std::move(v)).cast_move(std::move(ctx), type)); }, std::move(_storage));
 	}
 
+	Variable DataPoint::pass_arg(VarContext ctx)
+	{
+		return std::visit([&ctx](auto&& v) { return remove_cow(v).pass_arg(std::move(ctx)); }, _storage);
+	}
+
 	void DataPoint::assign(const EvalContext& env, Variable other)
 	{
 		Variable casted = std::move(other).cast(env, data_type());

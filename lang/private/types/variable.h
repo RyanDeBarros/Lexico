@@ -27,7 +27,8 @@ namespace lx
 		Variable& operator=(const Variable&);
 		Variable& operator=(Variable&&) noexcept;
 
-		Variable root() const;
+		VirtualHeap& heap();
+		Variable pass_arg(const EvalContext& env);
 
 	private:
 		void increment() const;

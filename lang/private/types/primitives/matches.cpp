@@ -35,6 +35,14 @@ namespace lx
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
+	Variable Matches::pass_arg(VarContext ctx)
+	{
+		Matches m;
+		for (Variable match : _matches)
+			m.push_back(ctx.env, match.pass_arg(ctx.env));
+		return ctx.self.heap().add(std::move(m));
+	}
+
 	void Matches::print(const EvalContext& env, std::ostream& ss) const
 	{
 		ss << "[";
