@@ -42,6 +42,18 @@ target_include_directories(imgui PUBLIC
 )
 
 # -------------------------
+# ImGui-FileBrowser
+# -------------------------
+FetchContent_Declare(
+    imgui_filebrowser
+    GIT_REPOSITORY https://github.com/AirGuanZ/imgui-filebrowser.git
+    GIT_TAG        master
+    SOURCE_DIR     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui-filebrowser
+)
+
+FetchContent_Populate(imgui_filebrowser)
+
+# -------------------------
 # ImGui backends (GLFW + OpenGL3)
 # -------------------------
 add_library(imgui_backend STATIC
@@ -52,6 +64,7 @@ add_library(imgui_backend STATIC
 target_include_directories(imgui_backend PUBLIC
 	${imgui_SOURCE_DIR}
 	${imgui_SOURCE_DIR}/backends
+    ${imgui_filebrowser_SOURCE_DIR}
 )
 
 # OpenGL

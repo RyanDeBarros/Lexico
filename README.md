@@ -14,4 +14,5 @@ See the NOTICE file for full details on Lexico's licensing, including attributio
 
 Only the `gui` module uses third-party libraries. For more information, see the `gui/licenses` folder. The third-party libraries used are:
 * [imgui](https://github.com/ocornut/imgui)
+* [imgui-filebrowser](https://github.com/AirGuanZ/imgui-filebrowser)
 * [glfw](https://github.com/glfw/glfw)

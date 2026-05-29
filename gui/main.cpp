@@ -1,12 +1,5 @@
-#include <lexico.h>
-
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
-#include <imgui_internal.h>
-
-#include <GLFW/glfw3.h>
+#include "state.h"
+#include "actions.h"
 
 #include <iostream>
 #include <optional>
@@ -23,28 +16,6 @@ enum class Channel
     Main,
     _Count
 };
-
-struct EditorState
-{
-    std::string input;
-    std::string output;
-    std::string script;
-    std::string log;
-    bool success;
-    lx::HighlightMap highlight_map;
-    std::array<std::vector<ImRect>, lx::color_count()> highlight_rects;
-    std::array<bool, lx::color_count()> show_highlights;
-};
-
-static EditorState STATE{};
-
-struct GUIState
-{
-    bool show_highlight_modal = false;
-    std::array<ImVec4, lx::color_count()> highlight_colors;
-};
-
-static GUIState GUI{};
 
 static std::array<const char*, lx::color_count()> COLOR_NAMES = {
     "Yellow",
@@ -66,15 +37,6 @@ static ImU32 mapped_color(lx::HighlightColor c)
         static_cast<unsigned int>(roundf(color.z * 255)),
         static_cast<unsigned int>(roundf(color.w * 255))
     );
-}
-
-static void run_script()
-{
-    auto res = lx::execute({ .script = STATE.script, .input = STATE.input });
-    STATE.output = res.output;
-    STATE.log = res.log;
-    STATE.highlight_map = std::move(res.highlights);
-    STATE.success = res.success;
 }
 
 static void glfw_error_callback(int error, const char* description)
@@ -346,7 +308,7 @@ static void draw_highlights(ImVec2 origin, lx::HighlightColor color)
 
 static void draw_input_window()
 {
-    ImGui::Begin(INPUT_WINDOW);
+    ImGui::Begin(INPUT_WINDOW, nullptr, ImGuiWindowFlags_MenuBar);
 
     static int focus_frames = 2;
     if (focus_frames > 0)
@@ -354,6 +316,30 @@ static void draw_input_window()
         --focus_frames;
         ImGui::SetWindowFocus();
         ImGui::SetKeyboardFocusHere();
+    }
+
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Open"))
+                dialogs::INPUT_FILE.Open();
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Open Input File (Ctrl+O)");
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
+    {
+        for (std::string& path : DROPPED_PATHS)
+            open_input_file(std::move(path));
+
+        DROPPED_PATHS.clear();
     }
 
     draw_input_buffer(STATE.input);
@@ -369,24 +355,23 @@ static void draw_all_highlights(float wrap_width, ImVec2 origin)
             draw_highlights(origin, static_cast<lx::HighlightColor>(i));
 }
 
-static ImVec2 get_highlight_origin()
+static void draw_output_area()
 {
+    float wrap_width = ImGui::GetContentRegionAvail().x;
+
     ImVec2 origin = ImGui::GetCursorScreenPos();
 
     const ImGuiStyle& style = ImGui::GetStyle();
     origin.x += style.FramePadding.x;
     origin.y += style.FramePadding.y;
 
+    draw_output_buffer(STATE.output, std::nullopt);
+
+    // TODO scroll is not working
     origin.x -= ImGui::GetScrollX();
     origin.y -= ImGui::GetScrollY();
 
-    return origin;
-}
-
-static void draw_output_area()
-{
-    draw_all_highlights(ImGui::GetContentRegionAvail().x, get_highlight_origin());
-    draw_output_buffer(STATE.output, std::nullopt);
+    draw_all_highlights(wrap_width, origin);
 }
 
 static void draw_output_window()
@@ -453,24 +438,22 @@ static void draw_frame()
     draw_log_window();
 }
 
-static void init_state()
-{
-    std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
-
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Yellow)] = ImVec4(1.0f, 1.0f, 0.0f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Red)]    = ImVec4(1.0f, 0.0f, 0.0f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Green)]  = ImVec4(0.0f, 1.0f, 0.0f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Blue)]   = ImVec4(0.0f, 0.0f, 1.0f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Light)]  = ImVec4(0.7f, 0.7f, 0.7f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Dark)]   = ImVec4(0.3f, 0.3f, 0.3f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Purple)] = ImVec4(1.0f, 0.0f, 1.0f, 0.5f);
-    GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Orange)] = ImVec4(1.0f, 0.6f, 0.0f, 0.5f);
-}
-
 static void handle_shortcuts()
 {
-    if (ImGui::IsKeyPressed(ImGuiKey_F5))
+    if (ImGui::Shortcut(ImGuiKey_F5, ImGuiInputFlags_RouteGlobal))
         run_script();
+
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+        dialogs::INPUT_FILE.Open();
+
+    if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
+        close_file_dialogs();
+}
+
+static void glfw_drop_callback(GLFWwindow* window, int count, const char** paths)
+{
+    for (int i = 0; i < count; i++)
+        DROPPED_PATHS.emplace_back(paths[i]);
 }
 
 int main()
@@ -489,6 +472,7 @@ int main()
     GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "Lexico Desktop", nullptr, nullptr);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
+    glfwSetDropCallback(window, glfw_drop_callback);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -515,6 +499,7 @@ int main()
 
         handle_shortcuts();
         draw_frame();
+        process_file_dialogs();
 
         ImGui::Render();
         glClear(GL_COLOR_BUFFER_BIT);
