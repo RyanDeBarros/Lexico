@@ -772,29 +772,13 @@ namespace lx
 		ScriptSegment impl_segment() const override;
 	};
 
-	class PatternLazy : public Expression
+	class PatternFlag : public Expression
 	{
-		Token _lazy_token;
+		Token _token;
 		Expression& _expression;
 
 	public:
-		PatternLazy(Token&& lazy_token, Expression& expression);
-
-		Variable evaluate(Runtime& runtime) const override;
-
-	protected:
-		void impl_analyse(SemanticContext& ctx, AnalysisPass pass) override;
-		DataType impl_evaltype(SemanticContext& ctx) const override;
-		ScriptSegment impl_segment() const override;
-	};
-
-	class PatternGreedy : public Expression
-	{
-		Token _greedy_token;
-		Expression& _expression;
-
-	public:
-		PatternGreedy(Token&& greedy_token, Expression& expression);
+		PatternFlag(Token&& token, Expression& expression);
 
 		Variable evaluate(Runtime& runtime) const override;
 

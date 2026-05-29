@@ -1821,12 +1821,12 @@ namespace lx
 		return _ref_token.segment.combined_right(_identifier.segment);
 	}
 
-	PatternLazy::PatternLazy(Token&& lazy_token, Expression& expression)
-		: _lazy_token(std::move(lazy_token)), _expression(expression)
+	PatternFlag::PatternFlag(Token&& token, Expression& expression)
+		: _token(std::move(token)), _expression(expression)
 	{
 	}
 
-	void PatternLazy::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
+	void PatternFlag::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
 	{
 		if (pass == AnalysisPass::Validation)
 		{
@@ -1844,57 +1844,19 @@ namespace lx
 		}
 	}
 
-	Variable PatternLazy::evaluate(Runtime& runtime) const
+	Variable PatternFlag::evaluate(Runtime& runtime) const
 	{
-		return runtime.unbound_variable(Pattern::make_lazy(_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime))));
+		return runtime.unbound_variable(Pattern::make_flag(_token.keyword(), _expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime))));
 	}
 
-	DataType PatternLazy::impl_evaltype(SemanticContext& ctx) const
+	DataType PatternFlag::impl_evaltype(SemanticContext& ctx) const
 	{
 		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
 	}
 
-	ScriptSegment PatternLazy::impl_segment() const
+	ScriptSegment PatternFlag::impl_segment() const
 	{
-		return _lazy_token.segment.combined_right(_expression.segment());
-	}
-
-	PatternGreedy::PatternGreedy(Token&& greedy_token, Expression& expression)
-		: _greedy_token(std::move(greedy_token)), _expression(expression)
-	{
-	}
-
-	void PatternGreedy::impl_analyse(SemanticContext& ctx, AnalysisPass pass)
-	{
-		if (pass == AnalysisPass::Validation)
-		{
-			_validated = true;
-			_expression.analyse(ctx, pass);
-
-			try
-			{
-				evaltype(ctx);
-			}
-			catch (const LxError& e)
-			{
-				ctx.add_semantic_error(_expression.segment(), e.message());
-			}
-		}
-	}
-
-	Variable PatternGreedy::evaluate(Runtime& runtime) const
-	{
-		return runtime.unbound_variable(Pattern::make_greedy(_expression.evaluate(runtime).consume_as<Pattern>(eval_context(runtime))));
-	}
-
-	DataType PatternGreedy::impl_evaltype(SemanticContext& ctx) const
-	{
-		return assert_implicitly_casts(ctx, _expression, DataType::Pattern());
-	}
-
-	ScriptSegment PatternGreedy::impl_segment() const
-	{
-		return _greedy_token.segment.combined_right(_expression.segment());
+		return _token.segment.combined_right(_expression.segment());
 	}
 
 	PatternCapture::PatternCapture(Token&& capture_token, Token&& identifier, Expression& expression)

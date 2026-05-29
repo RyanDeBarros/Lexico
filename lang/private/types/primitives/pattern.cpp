@@ -200,19 +200,34 @@ namespace lx
 		return ptn;
 	}
 
-	Pattern Pattern::make_lazy(Pattern&& pattern)
+	Pattern Pattern::make_flag(Keyword kw, Pattern&& pattern)
 	{
-		Pattern ptn;
-		SubpatternNode& subptn = ptn.take(std::move(pattern));
-		ptn.make_root<SubpatternLazy>(subptn);
-		return ptn;
-	}
+		PatternFlagType flag;
+		switch (kw)
+		{
+		case Keyword::Lazy:
+			flag = PatternFlagType::Lazy;
+			break;
+		case Keyword::Greedy:
+			flag = PatternFlagType::Greedy;
+			break;
+		case Keyword::Caseless:
+			flag = PatternFlagType::Caseless;
+			break;
+		case Keyword::NotCaseless:
+			flag = PatternFlagType::NotCaseless;
+			break;
+		default:
+		{
+			std::stringstream ss;
+			ss << __FUNCTION__ << ": unrecognized pattern flag " << static_cast<int>(kw);
+			throw LxError(ErrorType::Internal, ss.str());
+		}
+		}
 
-	Pattern Pattern::make_greedy(Pattern&& pattern)
-	{
 		Pattern ptn;
 		SubpatternNode& subptn = ptn.take(std::move(pattern));
-		ptn.make_root<SubpatternGreedy>(subptn);
+		ptn.make_root<SubpatternFlag>(subptn, flag);
 		return ptn;
 	}
 

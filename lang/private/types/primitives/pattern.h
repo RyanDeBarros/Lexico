@@ -34,8 +34,7 @@ namespace lx
 		static Pattern make_from_symbol(BuiltinSymbol symbol);
 		static Pattern make_repeat(Pattern&& pattern, const IRange& range);
 		static Pattern make_backref(const CapId& capid);
-		static Pattern make_lazy(Pattern&& pattern);
-		static Pattern make_greedy(Pattern&& pattern);
+		static Pattern make_flag(Keyword kw, Pattern&& pattern);
 		static Pattern make_capture(Pattern&& pattern, const CapId& capid);
 		
 	private:

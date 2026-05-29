@@ -7,9 +7,7 @@
 * All names (variables, functions, etc.) may use any alphanumeric/underscore characters, but may not start with a digit.
 * Comments are supported, and begin with a `#` character.
 
-TODO v0.3 match word, match case, built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
-
-TODO more flags other than just greedy or lazy, like case-sensitive or case-insensitive? May not be necessary
+TODO v0.3 built-in functions for changing case, etc. Builtin utilities should be PascalCase to avoid clashing with keywords.
 
 TODO v0.3 'const' references
 
@@ -648,6 +646,7 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 | `cap` |
 | `capid` |
 | `capture` |
+| `caseless` |
 | `color` |
 | `continue` |
 | `delete` |

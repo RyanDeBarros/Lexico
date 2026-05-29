@@ -327,29 +327,22 @@ namespace lx
 		IRange impl_matching_range() const override;
 	};
 
-	class SubpatternLazy : public SubpatternNode
+	// TODO v0.3 match word?
+	enum class PatternFlagType
 	{
-		SubpatternNode* _lazy;
-
-	public:
-		SubpatternLazy(SubpatternNode& lazy);
-
-		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
-		bool equals(const SubpatternNode* o) const override;
-		void print(const EvalContext& env, std::ostream& os, unsigned int tabs) const override;
-
-		SearchExit match(const SearchContext& context, const SearchState& in, MatchYield& yield) const override;
-
-	protected:
-		IRange impl_matching_range() const override;
+		Lazy,
+		Greedy,
+		Caseless,
+		NotCaseless,
 	};
 
-	class SubpatternGreedy : public SubpatternNode
+	class SubpatternFlag : public SubpatternNode
 	{
-		SubpatternNode* _greedy;
+		SubpatternNode* _subject;
+		PatternFlagType _type;
 
 	public:
-		SubpatternGreedy(SubpatternNode& greedy);
+		SubpatternFlag(SubpatternNode& subject, PatternFlagType type);
 
 		SubpatternNode& clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const override;
 		bool equals(const SubpatternNode* o) const override;

@@ -951,74 +951,68 @@ namespace lx
 		return IRange(0, std::nullopt);
 	}
 
-	SubpatternLazy::SubpatternLazy(SubpatternNode& lazy)
-		: _lazy(&lazy)
+	SubpatternFlag::SubpatternFlag(SubpatternNode& subject, PatternFlagType type)
+		: _subject(&subject), _type(type)
 	{
 	}
 
-	SubpatternNode& SubpatternLazy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
+	SubpatternNode& SubpatternFlag::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
 	{
-		return clone_base<SubpatternLazy>(this, conv, arena, _lazy->refer_node(conv, arena));
+		return clone_base<SubpatternFlag>(this, conv, arena, _subject->refer_node(conv, arena), _type);
 	}
 
-	bool SubpatternLazy::equals(const SubpatternNode* o) const
+	bool SubpatternFlag::equals(const SubpatternNode* o) const
 	{
-		if (auto ptr = dynamic_cast<const SubpatternLazy*>(o))
-			return _lazy->equals(ptr->_lazy);
+		if (auto ptr = dynamic_cast<const SubpatternFlag*>(o))
+			return _type == ptr->_type && _subject->equals(ptr->_subject);
 		else
 			return false;
 	}
 
-	void SubpatternLazy::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
+	void SubpatternFlag::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
 	{
-		indent(os, tabs) << "[LAZY]\n";
-		_lazy->print(env, os, tabs + 1);
+		indent(os, tabs) << "[";
+		switch (_type)
+		{
+		case PatternFlagType::Lazy:
+			os << "LAZY";
+			break;
+		case PatternFlagType::Greedy:
+			os << "GREEDY";
+			break;
+		case PatternFlagType::Caseless:
+			os << "CASELESS";
+			break;
+		case PatternFlagType::NotCaseless:
+			os << "NOT CASELESS";
+			break;
+		}
+		os << "]\n";
+		_subject->print(env, os, tabs + 1);
 	}
 
-	SearchExit SubpatternLazy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
-	{
-		SearchContext ctx = context;
-		ctx.greedy = false;
-		return _lazy->match(ctx, in, yield);
-	}
-
-	IRange SubpatternLazy::impl_matching_range() const
-	{
-		return IRange(0, 0);
-	}
-
-	SubpatternGreedy::SubpatternGreedy(SubpatternNode& greedy)
-		: _greedy(&greedy)
-	{
-	}
-
-	SubpatternNode& SubpatternGreedy::clone(NodeConvertMap& conv, std::vector<std::unique_ptr<SubpatternNode>>& arena) const
-	{
-		return clone_base<SubpatternGreedy>(this, conv, arena, _greedy->refer_node(conv, arena));
-	}
-
-	bool SubpatternGreedy::equals(const SubpatternNode* o) const
-	{
-		if (auto ptr = dynamic_cast<const SubpatternGreedy*>(o))
-			return _greedy->equals(ptr->_greedy);
-		else
-			return false;
-	}
-
-	void SubpatternGreedy::print(const EvalContext& env, std::ostream& os, unsigned int tabs) const
-	{
-		indent(os, tabs) << "[GREEDY]\n";
-		_greedy->print(env, os, tabs + 1);
-	}
-
-	SearchExit SubpatternGreedy::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
+	SearchExit SubpatternFlag::match(const SearchContext& context, const SearchState& in, MatchYield& yield) const
 	{
 		SearchContext ctx = context;
-		ctx.greedy = true;
-		return _greedy->match(ctx, in, yield);
+		switch (_type)
+		{
+		case PatternFlagType::Lazy:
+			ctx.greedy = false;
+			break;
+		case PatternFlagType::Greedy:
+			ctx.greedy = true;
+			break;
+		case PatternFlagType::Caseless:
+			// TODO
+			break;
+		case PatternFlagType::NotCaseless:
+			// TODO
+			break;
+		}
+		return _subject->match(ctx, in, yield);
 	}
 
-	IRange SubpatternGreedy::impl_matching_range() const
+	IRange SubpatternFlag::impl_matching_range() const
 	{
 		return IRange(0, 0);
 	}

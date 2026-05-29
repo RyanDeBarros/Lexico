@@ -315,6 +315,8 @@ namespace lx
 			return Keyword::Behind;
 		else if (lexeme == "capture")
 			return Keyword::Capture;
+		else if (lexeme == "caseless")
+			return Keyword::Caseless;
 		else if (lexeme == "except")
 			return Keyword::Except;
 		else if (lexeme == "lazy")

@@ -380,27 +380,24 @@ namespace lx
 
 				if (_tokens[i].keyword() == Keyword::Not)
 				{
-					if (i + 1 < _tokens.size() && _tokens[i + 1].keyword() == Keyword::Ahead)
-					{
-						_token = std::move(_tokens[i]);
-						_token.segment.end_column = _tokens[i + 1].segment.end_column;
-						_token.segment.end_line = _tokens[i + 1].segment.end_line;
-						_token.set_keyword(Keyword::NotAhead);
-						final_tokens.push_back(std::move(_token));
-						++i;
-						continue;
-					}
+					static const auto check_negation = [&](Keyword positive, Keyword negative) {
+						if (i + 1 < _tokens.size() && _tokens[i + 1].keyword() == positive)
+						{
+							_token = std::move(_tokens[i]);
+							_token.segment.end_column = _tokens[i + 1].segment.end_column;
+							_token.segment.end_line = _tokens[i + 1].segment.end_line;
+							_token.set_keyword(negative);
+							final_tokens.push_back(std::move(_token));
+							++i;
+							return true;
+						}
+						else
+							return false;
+					};
 
-					if (i + 1 < _tokens.size() && _tokens[i + 1].keyword() == Keyword::Behind)
-					{
-						_token = std::move(_tokens[i]);
-						_token.segment.end_column = _tokens[i + 1].segment.end_column;
-						_token.segment.end_line = _tokens[i + 1].segment.end_line;
-						_token.set_keyword(Keyword::NotBehind);
-						final_tokens.push_back(std::move(_token));
-						++i;
-						continue;
-					}
+					check_negation(Keyword::Ahead, Keyword::NotAhead) ||
+					check_negation(Keyword::Behind, Keyword::NotBehind) ||
+					check_negation(Keyword::Caseless, Keyword::NotCaseless);
 				}
 
 				final_tokens.push_back(std::move(_tokens[i]));

@@ -1044,17 +1044,11 @@ namespace lx
 				offset.add(1);
 				return &_tree.add(std::make_unique<PatternCapture>(std::move(capture_token), std::move(identifier), parse_expression(offset)));
 			}
-			else if (peek_token_is(0, Keyword::Lazy))
+			else if (peek_token_is(0, Keyword::Lazy) || peek_token_is(0, Keyword::Greedy) || peek_token_is(0, Keyword::Caseless) || peek_token_is(0, Keyword::NotCaseless))
 			{
-				auto& lazy_token = ref(0);
+				auto& token = ref(0);
 				offset.add(1);
-				return &_tree.add(std::make_unique<PatternLazy>(std::move(lazy_token), parse_expression(offset)));
-			}
-			else if (peek_token_is(0, Keyword::Greedy))
-			{
-				auto& greedy_token = ref(0);
-				offset.add(1);
-				return &_tree.add(std::make_unique<PatternGreedy>(std::move(greedy_token), parse_expression(offset)));
+				return &_tree.add(std::make_unique<PatternFlag>(std::move(token), parse_expression(offset)));
 			}
 			else
 				return nullptr;
