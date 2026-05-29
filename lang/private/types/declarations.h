@@ -29,6 +29,7 @@ namespace lx
 	class IRange;
 	class SRange;
 	class List;
+	class Ref;
 
 	using TypeVariant = std::variant<
 		Int,
@@ -44,7 +45,8 @@ namespace lx
 		CowPtr<Cap>,
 		IRange,
 		SRange,
-		CowPtr<List>
+		CowPtr<List>,
+		Ref
 	>;
 
 	template<typename T>
@@ -62,5 +64,6 @@ namespace lx
 		std::is_same_v<T, Cap> ||
 		std::is_same_v<T, IRange> ||
 		std::is_same_v<T, SRange> ||
-		std::is_same_v<T, List>;
+		std::is_same_v<T, List> ||
+		std::is_same_v<T, Ref>;
 }

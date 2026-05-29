@@ -120,6 +120,16 @@ namespace lx
 		return DataType(SimpleType::List, std::move(underlying));
 	}
 
+	DataType DataType::Ref(const DataType& underlying)
+	{
+		return DataType(SimpleType::Ref, underlying);
+	}
+
+	DataType DataType::Ref(DataType&& underlying)
+	{
+		return DataType(SimpleType::Ref, std::move(underlying));
+	}
+
 	std::string DataType::repr(bool delimit) const
 	{
 		std::string repr;
@@ -165,6 +175,9 @@ namespace lx
 			break;
 		case SimpleType::List:
 			repr += "list[" + _underlying->repr(false) + "]";
+			break;
+		case SimpleType::Ref:
+			repr += "ref[" + _underlying->repr(false) + "]";
 			break;
 		}
 		if (delimit)
@@ -281,6 +294,7 @@ namespace lx
 		switch (_simple)
 		{
 		case SimpleType::StringView:
+		case SimpleType::Ref:
 			return true;
 
 		default:
@@ -299,6 +313,9 @@ namespace lx
 		case SimpleType::SRange:
 		case SimpleType::List:
 			return true;
+
+		case SimpleType::Ref:
+			return _underlying->is_iterable();
 
 		default:
 			return false;
@@ -327,6 +344,9 @@ namespace lx
 		case SimpleType::List:
 			return *_underlying;
 
+		case SimpleType::Ref:
+			return _underlying->itertype();
+
 		default:
 			return std::nullopt;
 		}
@@ -342,6 +362,9 @@ namespace lx
 		case SimpleType::IRange:
 			return true;
 
+		case SimpleType::Ref:
+			return _underlying->is_highlightable();
+
 		default:
 			return false;
 		}
@@ -354,6 +377,9 @@ namespace lx
 		case SimpleType::String:
 		case SimpleType::StringView:
 			return true;
+
+		case SimpleType::Ref:
+			return _underlying->is_pageable();
 
 		default:
 			return false;
@@ -369,6 +395,7 @@ namespace lx
 			{ SimpleType::Matches, Matches::members() },
 			{ SimpleType::Cap, Cap::members() },
 			{ SimpleType::List, List::members() },
+			{ SimpleType::Ref, Ref::members() },
 		};
 
 		auto it = common_members.find(_simple);
@@ -383,11 +410,13 @@ namespace lx
 		}
 
 		static std::unordered_map<SimpleType, std::unordered_map<DataType, StringMap<MemberSignature>>> generic_members = {
-			{ SimpleType::List, {} }
+			{ SimpleType::List, {} },
+			{ SimpleType::Ref, {} },
 		};
 
 		static const std::unordered_map<SimpleType, StringMap<MemberSignature>(*)(const DataType&)> generic_generators = {
-			{ SimpleType::List, &List::members }
+			{ SimpleType::List, &List::members },
+			{ SimpleType::Ref, &Ref::members },
 		};
 		
 		if (_underlying)

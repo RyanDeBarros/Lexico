@@ -147,14 +147,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void String::assign(const EvalContext& env, String&& o)
+	void String::assign(const EvalContext& env, Variable o)
 	{
-		_value = std::move(o._value);
+		_value = std::move(std::move(o).consume_as<String>(env)._value);
 	}
 
-	bool String::equals(const EvalContext& env, const String& o) const
+	bool String::equals(const EvalContext& env, Variable o) const
 	{
-		return _value == o._value;
+		return _value == std::move(o).cast(env, data_type()).ref().get<String>()._value;
 	}
 
 	size_t String::iterlen(const EvalContext& env) const

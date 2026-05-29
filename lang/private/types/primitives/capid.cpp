@@ -56,14 +56,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void CapId::assign(const EvalContext& env, CapId&& o)
+	void CapId::assign(const EvalContext& env, Variable o)
 	{
-		_uid = o._uid;
+		_uid = std::move(o).consume_as<CapId>(env)._uid;
 	}
 
-	bool CapId::equals(const EvalContext& env, const CapId& o) const
+	bool CapId::equals(const EvalContext& env, Variable o) const
 	{
-		return _uid == o._uid;
+		return _uid == std::move(o).cast(env, data_type()).ref().get<CapId>()._uid;
 	}
 
 	unsigned int CapId::uid() const

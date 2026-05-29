@@ -62,17 +62,21 @@ namespace lx
 
 	void DataPoint::assign(const EvalContext& env, Variable other)
 	{
-		Variable casted = std::move(other).cast(env, data_type());
-		std::visit([&env, &casted](auto& v) { remove_cow(v).assign(env, std::move(std::move(casted).consume().get<remove_cow_t<decltype(v)>>())); }, _storage);
+		// TODO remove
+		//Variable casted = std::move(other).cast(env, data_type());
+		//std::visit([&env, &casted](auto& v) { remove_cow(v).assign(env, std::move(std::move(casted).consume().get<remove_cow_t<decltype(v)>>())); }, _storage);
+		std::visit([&env, &other](auto& v) { remove_cow(v).assign(env, std::move(other)); }, _storage);
 	}
 
 	bool DataPoint::equals(const EvalContext& env, Variable other) const
 	{
-		Variable casted = std::move(other).cast(env, data_type());
-		if (other.ref().can_cast_implicit(data_type()))
-			return std::visit([&env, &casted](const auto& v) { return remove_cow(v).equals(env, casted.ref().get<remove_cow_t<decltype(v)>>()); }, _storage);
-		else
-			return false;
+		// TODO remove
+		//Variable casted = std::move(other).cast(env, data_type());
+		//if (other.ref().can_cast_implicit(data_type()))
+			//return std::visit([&env, &casted](const auto& v) { return remove_cow(v).equals(env, casted.ref().get<remove_cow_t<decltype(v)>>()); }, _storage);
+		//else
+			//return false;
+		return std::visit([&env, &other](const auto& v) { return remove_cow(v).equals(env, std::move(other)); }, _storage);
 	}
 
 	bool DataPoint::can_cast_implicit(const DataType& to) const
@@ -105,7 +109,7 @@ namespace lx
 					throw env.internal_error(remove_cow(v).data_type().repr() + " should implement 'iterlen' but it doesn't");
 			}, _storage);
 		else
-			throw env.internal_error("iterlen(): " + data_type().repr() + " is not iterable");
+			throw env.runtime_error(data_type().repr() + " is not iterable");
 	}
 
 	Variable DataPoint::iterget(VarContext& ctx, size_t i) const
@@ -118,7 +122,7 @@ namespace lx
 					throw ctx.env.internal_error(remove_cow(v).data_type().repr() + " should implement 'iterget' but it doesn't");
 			}, _storage);
 		else
-			throw ctx.env.internal_error("iterget(): " + data_type().repr() + " is not iterable");
+			throw ctx.env.runtime_error(data_type().repr() + " is not iterable");
 	}
 
 	std::string DataPoint::page_content(const EvalContext& env) const
@@ -131,7 +135,7 @@ namespace lx
 				throw env.internal_error(remove_cow(v).data_type().repr() + " should implement 'page_content' but it doesn't");
 			}, _storage);
 		else
-			throw env.internal_error("page_content(): " + data_type().repr() + " is not pageable");
+			throw env.runtime_error(data_type().repr() + " is not pageable");
 	}
 
 	Variable DataPoint::data_member(VarContext& ctx, const std::string_view member)

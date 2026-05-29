@@ -614,6 +614,7 @@ end for
 * `string`: iterate over characters
 * `irange`: iterate over inclusive integer range
 * `srange`: iterate over inclusive character range
+* `ref`: iterate over subobject
 
 Both loops support standard `break` and `continue` statements.
 
@@ -1096,7 +1097,8 @@ type_name     ::= "int"
                 | "cap"
                 | "irange"
                 | "srange"
-                | "list" ;
+                | "list"
+                | "ref" ;
 
 literal       ::= int_leteral | float_literal | bool_literal | string_literal | capid_literal ;
 bool_literal  ::= "true" | "false" ;

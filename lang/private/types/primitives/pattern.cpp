@@ -101,17 +101,19 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Pattern::assign(const EvalContext& env, Pattern&& o)
+	void Pattern::assign(const EvalContext& env, Variable o)
 	{
-		*this = std::move(o);
+		*this = std::move(o).consume_as<Pattern>(env);
 	}
 
-	bool Pattern::equals(const EvalContext& env, const Pattern& o) const
+	bool Pattern::equals(const EvalContext& env, Variable o) const
 	{
+		Variable casted = std::move(o).cast(env, data_type());
+		const Pattern& other = casted.ref().get<Pattern>();
 		if (_root)
-			return o._root && _root->equals(o._root);
+			return other._root && _root->equals(other._root);
 		else
-			return !o._root;
+			return !other._root;
 	}
 
 	Pattern Pattern::make_from_symbol(BuiltinSymbol symbol)

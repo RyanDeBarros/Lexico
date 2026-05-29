@@ -192,15 +192,18 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void SRange::assign(const EvalContext& env, SRange&& o)
+	void SRange::assign(const EvalContext& env, Variable o)
 	{
-		_min = std::move(o._min);
-		_max = std::move(o._max);
+		SRange other = std::move(o).consume_as<SRange>(env);
+		_min = std::move(other._min);
+		_max = std::move(other._max);
 	}
 
-	bool SRange::equals(const EvalContext& env, const SRange& o) const
+	bool SRange::equals(const EvalContext& env, Variable o) const
 	{
-		return _min == o._min && _max == o._max;
+		Variable casted = std::move(o).cast(env, data_type());
+		const SRange& other = casted.ref().get<SRange>();
+		return _min == other._min && _max == other._max;
 	}
 	
 	static size_t range_iterlen(char min, char max)

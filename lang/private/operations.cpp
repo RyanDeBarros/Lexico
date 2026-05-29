@@ -6,6 +6,8 @@
 #include <sstream>
 #include <unordered_map>
 
+// TODO handle 'ref' operations
+
 namespace lx
 {
 	DataType data_type(Keyword simple_type, const std::vector<Keyword>& underlying_types)
@@ -43,13 +45,26 @@ namespace lx
 			if (underlying_types.empty())
 			{
 				std::stringstream ss;
-				ss << __FUNCTION__ << ": cannot list token without underlying types";
+				ss << __FUNCTION__ << ": 'list' type keyword is missing underlying types";
 				throw LxError(ErrorType::Internal, ss.str());
 			}
 			std::vector<Keyword> rest;
 			for (size_t i = 1; i < underlying_types.size(); ++i)
 				rest.push_back(underlying_types[i]);
 			return DataType::List(data_type(underlying_types[0], rest));
+		}
+		case Keyword::RefType:
+		{
+			if (underlying_types.empty())
+			{
+				std::stringstream ss;
+				ss << __FUNCTION__ << ": 'ref' type keyword is missing underlying types";
+				throw LxError(ErrorType::Internal, ss.str());
+			}
+			std::vector<Keyword> rest;
+			for (size_t i = 1; i < underlying_types.size(); ++i)
+				rest.push_back(underlying_types[i]);
+			return DataType::Ref(data_type(underlying_types[0], rest));
 		}
 		default:
 		{

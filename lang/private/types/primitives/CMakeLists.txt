@@ -13,6 +13,7 @@ set(TYPES_PRIMITIVES_SOURCES
 	irange.cpp
 	srange.cpp
 	list.cpp
+	ref.cpp
 )
 
 target_sources(lexico-lang PRIVATE ${TYPES_PRIMITIVES_SOURCES})

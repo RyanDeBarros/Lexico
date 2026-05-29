@@ -44,12 +44,12 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Void::assign(const EvalContext& env, Void&& o)
+	void Void::assign(const EvalContext& env, Variable o)
 	{
 		// NOP
 	}
 
-	bool Void::equals(const EvalContext& env, const Void& o) const
+	bool Void::equals(const EvalContext& env, Variable o) const
 	{
 		return true;
 	}

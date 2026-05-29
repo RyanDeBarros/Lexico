@@ -3,6 +3,8 @@
 #include "evalcontext.h"
 #include "find.h"
 
+// TODO handle 'ref' operations
+
 namespace lx
 {
 	static std::optional<Variable> arithmetic_operate(const EvalContext& env, BinaryOperator op, Variable& lhs, Variable& rhs)

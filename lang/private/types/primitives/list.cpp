@@ -169,18 +169,21 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void List::assign(const EvalContext& env, List&& o)
+	void List::assign(const EvalContext& env, Variable o)
 	{
-		_elements = std::move(o._elements);
+		_elements = std::move(std::move(o).cast(env, data_type()).consume().get<List>()._elements);
 	}
 
-	bool List::equals(const EvalContext& env, const List& o) const
+	bool List::equals(const EvalContext& env, Variable o) const
 	{
-		if (_elements.size() != o._elements.size())
+		Variable casted = std::move(o).cast(env, data_type());
+		const List& other = casted.ref().get<List>();
+
+		if (_elements.size() != other._elements.size())
 			return false;
 		
 		for (size_t i = 0; i < _elements.size(); ++i)
-			if (!_elements[i].ref().equals(env, o._elements[i]))
+			if (!_elements[i].ref().equals(env, other._elements[i]))
 				return false;
 
 		return true;

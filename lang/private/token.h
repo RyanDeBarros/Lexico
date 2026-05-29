@@ -64,6 +64,7 @@ namespace lx
 		IRangeType,
 		SRangeType,
 		ListType,
+		RefType,
 
 		// Keywords
 		Ahead,

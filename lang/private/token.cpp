@@ -243,6 +243,8 @@ namespace lx
 			return Keyword::SRangeType;
 		else if (lexeme == "list")
 			return Keyword::ListType;
+		else if (lexeme == "ref")
+			return Keyword::RefType;
 		else if (lexeme == "and")
 			return Keyword::And;
 		else if (lexeme == "apply")
@@ -355,6 +357,7 @@ namespace lx
 		case Keyword::IRangeType:
 		case Keyword::SRangeType:
 		case Keyword::ListType:
+		case Keyword::RefType:
 			return true;
 
 		default:

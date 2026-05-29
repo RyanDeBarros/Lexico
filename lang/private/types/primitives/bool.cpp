@@ -74,14 +74,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Bool::assign(const EvalContext& env, Bool&& o)
+	void Bool::assign(const EvalContext& env, Variable o)
 	{
-		_value = o._value;
+		_value = std::move(o).consume_as<Bool>(env)._value;
 	}
 
-	bool Bool::equals(const EvalContext& env, const Bool& o) const
+	bool Bool::equals(const EvalContext& env, Variable o) const
 	{
-		return _value == o._value;
+		return _value == std::move(o).cast(env, data_type()).ref().get<Bool>()._value;
 	}
 
 	bool Bool::value() const

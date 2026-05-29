@@ -81,14 +81,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Int::assign(const EvalContext& env, Int&& o)
+	void Int::assign(const EvalContext& env, Variable o)
 	{
-		_value = o._value;
+		_value = std::move(o).consume_as<Int>(env)._value;
 	}
 
-	bool Int::equals(const EvalContext& env, const Int& o) const
+	bool Int::equals(const EvalContext& env, Variable o) const
 	{
-		return _value == o._value;
+		return _value == std::move(o).cast(env, data_type()).ref().get<Int>()._value;
 	}
 
 	int Int::value() const

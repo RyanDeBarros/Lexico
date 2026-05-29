@@ -79,14 +79,16 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Cap::assign(const EvalContext& env, Cap&& o)
+	void Cap::assign(const EvalContext& env, Variable o)
 	{
-		*this = std::move(o);
+		*this = std::move(o).consume_as<Cap>(env);
 	}
 
-	bool Cap::equals(const EvalContext& env, const Cap& o) const
+	bool Cap::equals(const EvalContext& env, Variable o) const
 	{
-		return _section == o._section && _submatch.ref().get<Match>().equals(env, o._submatch.ref().get<Match>());
+		Variable casted = std::move(o).cast(env, data_type());
+		const Cap& other = casted.ref().get<Cap>();
+		return _section == other._section && _submatch.ref().get<Match>().equals(env, other._submatch);
 	}
 
 	String Cap::str() const

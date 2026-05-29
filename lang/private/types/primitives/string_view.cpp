@@ -182,18 +182,20 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void StringView::assign(const EvalContext& env, StringView&& o)
+	void StringView::assign(const EvalContext& env, Variable o)
 	{
+		StringView other = std::move(o).consume_as<StringView>(env);
+
 		if (const IRange* range = std::get_if<IRange>(&_indexer))
 		{
 			assert_valid(env);
-			o.assert_valid(env);
+			other.assert_valid(env);
 
 			const int min = min_index();
 			const int max = max_index();
 
 			_string->_value.erase(std::min(min, max), static_cast<size_t>(std::abs(max - min) + 1));
-			std::string s = std::move(o).consume_value(env);
+			std::string s = std::move(other).consume_value(env);
 			if (min > max)
 				std::reverse(s.begin(), s.end());
 			_string->_value.insert(std::min(min, max), s);
@@ -203,30 +205,33 @@ namespace lx
 			const Int& index = std::get<Int>(_indexer);
 
 			assert_valid(env);
-			o.assert_valid(env);
-			if (o.string().size() == 1)
-				_string->_value[index.value()] = o.string()[0];
+			other.assert_valid(env);
+			if (other.string().size() == 1)
+				_string->_value[index.value()] = other.string()[0];
 			else
 				throw env.runtime_error("cannot set character to multi-character string");
 		}
 	}
 
-	bool StringView::equals(const EvalContext& env, const StringView& o) const
+	bool StringView::equals(const EvalContext& env, Variable o) const
 	{
+		Variable casted = std::move(o).cast(env, data_type());
+		const StringView& other = casted.ref().get<StringView>();
+
 		assert_valid(env);
-		o.assert_valid(env);
+		other.assert_valid(env);
 
 		const int min1 = min_index();
 		const int max1 = max_index();
-		const int min2 = o.min_index();
-		const int max2 = o.max_index();
+		const int min2 = other.min_index();
+		const int max2 = other.max_index();
 
 		if (std::abs(max1 - min1) != std::abs(max2 - min2))
 			return false;
 
 		const int len = std::abs(max1 - min1) + 1;
 		for (size_t i = 0; i < len; ++i)
-			if (chr(i, min1, max1) != o.chr(i, min2, max2))
+			if (chr(i, min1, max1) != other.chr(i, min2, max2))
 				return false;
 
 		return true;

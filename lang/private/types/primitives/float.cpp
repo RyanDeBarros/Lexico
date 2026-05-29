@@ -79,14 +79,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Float::assign(const EvalContext& env, Float&& o)
+	void Float::assign(const EvalContext& env, Variable o)
 	{
-		_value = o._value;
+		_value = std::move(o).consume_as<Float>(env)._value;
 	}
 
-	bool Float::equals(const EvalContext& env, const Float& o) const
+	bool Float::equals(const EvalContext& env, Variable o) const
 	{
-		return _value == o._value;
+		return _value == std::move(o).cast(env, data_type()).ref().get<Float>()._value;
 	}
 
 	float Float::value() const

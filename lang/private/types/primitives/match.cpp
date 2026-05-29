@@ -119,14 +119,14 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void Match::assign(const EvalContext& env, Match&& o)
+	void Match::assign(const EvalContext& env, Variable o)
 	{
-		*this = std::move(o);
+		*this = std::move(o).consume_as<Match>(env);
 	}
 
-	bool Match::equals(const EvalContext& env, const Match& o) const
+	bool Match::equals(const EvalContext& env, Variable o) const
 	{
-		return equals(o);
+		return equals(std::move(o).cast(env, data_type()).ref().get<Match>());
 	}
 
 	size_t Match::hash() const

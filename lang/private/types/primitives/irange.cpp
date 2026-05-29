@@ -85,15 +85,18 @@ namespace lx
 		ctx.throw_no_method(method, args);
 	}
 
-	void IRange::assign(const EvalContext& env, IRange&& o)
+	void IRange::assign(const EvalContext& env, Variable o)
 	{
-		_min = std::move(o._min);
-		_max = std::move(o._max);
+		IRange other = std::move(o).consume_as<IRange>(env);
+		_min = std::move(other._min);
+		_max = std::move(other._max);
 	}
 
-	bool IRange::equals(const EvalContext& env, const IRange& o) const
+	bool IRange::equals(const EvalContext& env, Variable o) const
 	{
-		return _min == o._min && _max == o._max;
+		Variable casted = std::move(o).cast(env, data_type());
+		const IRange& other = casted.ref().get<IRange>();
+		return _min == other._min && _max == other._max;
 	}
 
 	size_t IRange::iterlen(const EvalContext& env) const

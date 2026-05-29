@@ -24,6 +24,7 @@ namespace lx
 		IRange,
 		SRange,
 		List,
+		Ref,
 	};
 
 	class MemberSignature;
@@ -59,6 +60,8 @@ namespace lx
 		static DataType SRange();
 		static DataType List(const DataType& underlying);
 		static DataType List(DataType&& underlying);
+		static DataType Ref(const DataType& underlying);
+		static DataType Ref(DataType&& underlying);
 
 		std::string repr(bool delimit = true) const;
 		SimpleType simple() const;
