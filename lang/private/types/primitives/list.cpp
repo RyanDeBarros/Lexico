@@ -57,17 +57,17 @@ namespace lx
 		return DataType::List(_underlying);
 	}
 
-	TypeVariant List::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint List::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type == DataType::List(_underlying))
-			return *this;
+			return List(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant List::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint List::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type == DataType::List(_underlying))
 			return std::move(*this);

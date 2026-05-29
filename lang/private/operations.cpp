@@ -6,8 +6,6 @@
 #include <sstream>
 #include <unordered_map>
 
-// TODO handle 'ref' operations
-
 namespace lx
 {
 	DataType data_type(Keyword simple_type, const std::vector<Keyword>& underlying_types)
@@ -168,6 +166,7 @@ namespace lx
 		case BinaryOperator::And:
 			if (lhs.can_cast_implicit(DataType::Bool()) && rhs.can_cast_implicit(DataType::Bool()))
 				return DataType::Bool();
+			break;
 
 		case BinaryOperator::Or:
 			if (lhs.can_cast_implicit(DataType::Bool()) && rhs.can_cast_implicit(DataType::Bool()))
@@ -185,21 +184,31 @@ namespace lx
 		case BinaryOperator::Minus:
 		case BinaryOperator::Mod:
 		case BinaryOperator::Slash:
-			if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
-					&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
+		{
+			bool lint = lhs.can_cast_implicit(DataType::Int());
+			bool rint = rhs.can_cast_implicit(DataType::Int());
+			if (lint && rint)
+				return DataType::Int();
+			else if ((lint || lhs.can_cast_implicit(DataType::Float())) && (rint || rhs.can_cast_implicit(DataType::Float())))
 				return DataType::Float();
 			break;
+		}
 
 		case BinaryOperator::Plus:
-			if ((lhs.can_cast_implicit(DataType::Int()) || lhs.can_cast_implicit(DataType::Float()))
-				&& (rhs.can_cast_implicit(DataType::Int()) || rhs.can_cast_implicit(DataType::Float())))
+		{
+			bool lint = lhs.can_cast_implicit(DataType::Int());
+			bool rint = rhs.can_cast_implicit(DataType::Int());
+			if (lint && rint)
+				return DataType::Int();
+			else if ((lint || lhs.can_cast_implicit(DataType::Float())) && (rint || rhs.can_cast_implicit(DataType::Float())))
 				return DataType::Float();
 			else if ((lhs.can_cast_implicit(DataType::String()) || lhs.can_cast_implicit(DataType::StringView()))
-				&& (rhs.can_cast_implicit(DataType::String()) || rhs.can_cast_implicit(DataType::StringView())))
+					&& (rhs.can_cast_implicit(DataType::String()) || rhs.can_cast_implicit(DataType::StringView())))
 				return DataType::String();
 			else if (lhs.simple() == SimpleType::List && lhs == rhs)
 				return lhs;
 			break;
+		}
 
 		case BinaryOperator::EqualTo:
 		case BinaryOperator::NotEqualTo:
@@ -227,6 +236,7 @@ namespace lx
 		case BinaryOperator::Except:
 			if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::Pattern()))
 				return DataType::Pattern();
+			break;
 
 		case BinaryOperator::Repeat:
 			if (lhs.can_cast_implicit(DataType::Pattern()) && rhs.can_cast_implicit(DataType::IRange()))
@@ -255,6 +265,8 @@ namespace lx
 			return PrefixOperator::Ahead;
 		case Keyword::Behind:
 			return PrefixOperator::Behind;
+		case Keyword::Dereference:
+			return PrefixOperator::Dereference;
 		case Keyword::Max:
 			return PrefixOperator::Max;
 		case Keyword::Min:
@@ -290,6 +302,11 @@ namespace lx
 		{
 		case PrefixOperator::Address:
 			return DataType::Ref(type);
+
+		case PrefixOperator::Dereference:
+			if (type.simple() == SimpleType::Ref)
+				return type.underlying();
+			break;
 
 		case PrefixOperator::Ahead:
 		case PrefixOperator::Behind:

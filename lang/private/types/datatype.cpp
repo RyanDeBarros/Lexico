@@ -227,12 +227,20 @@ namespace lx
 			return !other._underlying;
 	}
 
+	DataType DataType::root() const
+	{
+		const DataType* type = this;
+		while (type->simple() == SimpleType::Ref)
+			type = type->_underlying.get();
+		return *type;
+	}
+
 	bool DataType::can_cast_implicit(const DataType& to) const
 	{
 		if (to.simple() == SimpleType::Void || *this == to)
 			return true;
 
-		switch (_simple)
+		switch (simple())
 		{
 		case SimpleType::Int:
 			return to.simple() == SimpleType::Float || to.simple() == SimpleType::Bool || to.simple() == SimpleType::IRange;
@@ -262,7 +270,7 @@ namespace lx
 		if (can_cast_implicit(to))
 			return true;
 
-		switch (_simple)
+		switch (simple())
 		{
 		case SimpleType::Int:
 		case SimpleType::Float:

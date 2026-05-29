@@ -21,6 +21,7 @@ namespace lx
 		Assign,
 		Dot,
 		Address,
+		Dereference,
 
 		// Literals
 		Integer,
@@ -80,6 +81,7 @@ namespace lx
 		Color,
 		Continue,
 		Delete,
+		Dereference,
 		Elif,
 		Else,
 		End,

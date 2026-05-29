@@ -11,10 +11,10 @@ namespace lx
 		return DataType::Matches();
 	}
 
-	TypeVariant Matches::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Matches::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Matches)
-			return *this;
+			return Matches(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else if (type == DataType::List(DataType::Match()))
@@ -23,7 +23,7 @@ namespace lx
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Matches::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Matches::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Matches)
 			return std::move(*this);

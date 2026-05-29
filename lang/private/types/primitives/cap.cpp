@@ -18,17 +18,17 @@ namespace lx
 		return DataType::Cap();
 	}
 
-	TypeVariant Cap::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Cap::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Cap)
-			return *this;
+			return Cap(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Cap::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Cap::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Cap)
 			return std::move(*this);

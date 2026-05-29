@@ -27,7 +27,7 @@ namespace lx
 		return DataType::String();
 	}
 	
-	TypeVariant String::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint String::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
 		{
@@ -38,7 +38,7 @@ namespace lx
 		case SimpleType::Bool:
 			return Bool::make_from_literal(ctx.env, _value);
 		case SimpleType::String:
-			return *this;
+			return String(*this);
 		case SimpleType::StringView:
 			return StringView(ctx.env, ctx.self, IRange(std::nullopt, std::nullopt));
 		case SimpleType::Pattern:
@@ -50,7 +50,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant String::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint String::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::String)
 			return std::move(*this);

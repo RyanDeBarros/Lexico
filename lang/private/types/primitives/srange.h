@@ -15,8 +15,8 @@ namespace lx
 		SRange(std::optional<std::string_view> min, const ScriptSegment* min_segment, std::optional<std::string_view> max, const ScriptSegment* max_segment);
 
 		static DataType data_type();
-		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
-		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
+		DataPoint cast_copy(const VarContext& ctx, const DataType& type) const;
+		DataPoint cast_move(VarContext&& ctx, const DataType& type) &&;
 		Variable pass_arg(VarContext ctx);
 		void print(const EvalContext& env, std::ostream& ss) const;
 

@@ -3,8 +3,6 @@
 #include "include.h"
 #include "runtime.h"
 
-// TODO all primitives should allow for cast_copy/cast_move to ref[primitive]
-
 namespace lx
 {
 	Ref::Ref(Variable subobject)
@@ -16,18 +14,20 @@ namespace lx
 	{
 		return DataType::Ref(_subobject.ref().data_type());
 	}
-
-	// TODO cast to underlying to copy by value
 	
-	TypeVariant Ref::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Ref::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type == data_type())
 			return Ref(*this);
+		else if (type == data_type().root())
+			return root().variant();
+		else if (type == DataType::Void())
+			return Void();
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 	
-	TypeVariant Ref::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Ref::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);
@@ -98,5 +98,18 @@ namespace lx
 		while (sub->data_type().simple() == SimpleType::Ref)
 			sub = &sub->get<Ref>().val();
 		return *sub;
+	}
+
+	Variable Ref::root_var() const
+	{
+		Variable sub = _subobject;
+		while (sub.ref().data_type().simple() == SimpleType::Ref)
+			sub = sub.ref().get<Ref>()._subobject;
+		return std::move(sub);
+	}
+
+	Variable Ref::dereference() const
+	{
+		return _subobject;
 	}
 }

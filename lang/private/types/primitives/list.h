@@ -17,8 +17,8 @@ namespace lx
 		List(const EvalContext& env, std::vector<Variable>&& elements);
 
 		DataType data_type() const;
-		TypeVariant cast_copy(const VarContext& ctx, const DataType& type) const;
-		TypeVariant cast_move(VarContext&& ctx, const DataType& type) &&;
+		DataPoint cast_copy(const VarContext& ctx, const DataType& type) const;
+		DataPoint cast_move(VarContext&& ctx, const DataType& type) &&;
 		Variable pass_arg(VarContext ctx);
 		void print(const EvalContext& env, std::ostream& ss) const;
 

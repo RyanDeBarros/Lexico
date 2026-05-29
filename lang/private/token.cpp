@@ -214,6 +214,8 @@ namespace lx
 	{
 		if (type == TokenType::Address)
 			return Keyword::Address;
+		else if (type == TokenType::Dereference)
+			return Keyword::Dereference;
 		else if (type != TokenType::Identifier)
 			return std::nullopt;
 
@@ -426,6 +428,7 @@ namespace lx
 		case Keyword::Address:
 		case Keyword::Ahead:
 		case Keyword::Behind:
+		case Keyword::Dereference:
 		case Keyword::Max:
 		case Keyword::Min:
 		case Keyword::Not:
@@ -460,7 +463,9 @@ namespace lx
 		switch (type)
 		{
 		case TokenType::Address:
+		case TokenType::Dereference:
 			return Precedence::Address;
+
 
 		case TokenType::Asterisk:
 		case TokenType::Slash:

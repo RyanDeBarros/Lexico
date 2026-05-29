@@ -55,7 +55,7 @@ namespace lx
 		return DataType::Pattern();
 	}
 
-	TypeVariant Pattern::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Pattern::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Pattern)
 			return Pattern(*this);
@@ -65,7 +65,7 @@ namespace lx
 			ctx.env.throw_bad_cast(DataType::Pattern(), type);
 	}
 
-	TypeVariant Pattern::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Pattern::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		if (type.simple() == SimpleType::Pattern)

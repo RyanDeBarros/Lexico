@@ -133,14 +133,14 @@ namespace lx
 		return DataType::SRange();
 	}
 
-	TypeVariant SRange::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint SRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
 		{
 		case SimpleType::String:
 			return String(string());
 		case SimpleType::SRange:
-			return *this;
+			return SRange(*this);
 		case SimpleType::Pattern:
 		{
 			Pattern ptn;
@@ -154,7 +154,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant SRange::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint SRange::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);

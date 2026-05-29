@@ -57,7 +57,7 @@ namespace lx
 		return DataType::StringView();
 	}
 
-	TypeVariant StringView::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint StringView::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		// TODO v0.3 more efficient `make_from_literal` conversions over iterators without using temporaries
 		switch (type.simple())
@@ -71,7 +71,7 @@ namespace lx
 		case SimpleType::String:
 			return String(copy_value(ctx.env));
 		case SimpleType::StringView:
-			return *this;
+			return StringView(*this);
 		case SimpleType::Pattern:
 			return Pattern::make_from_subpattern<SubpatternString>(copy_value(ctx.env));
 		case SimpleType::Void:
@@ -81,7 +81,7 @@ namespace lx
 		}
 	}
 
-	TypeVariant StringView::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint StringView::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type == DataType::String())
 			return String(std::move(*this).consume_value(ctx.env));

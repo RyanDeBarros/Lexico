@@ -40,6 +40,7 @@ namespace lx
 		Address,
 		Ahead,
 		Behind,
+		Dereference,
 		Max,
 		Min,
 		Minus,

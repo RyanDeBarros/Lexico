@@ -15,10 +15,10 @@ namespace lx
 		return DataType::IRange();
 	}
 
-	TypeVariant IRange::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint IRange::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::IRange)
-			return *this;
+			return IRange(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else if (type == DataType::List(DataType::Int()))
@@ -49,7 +49,7 @@ namespace lx
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant IRange::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint IRange::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);

@@ -20,17 +20,17 @@ namespace lx
 		return DataType::CapId();
 	}
 
-	TypeVariant CapId::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint CapId::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::CapId)
-			return *this;
+			return CapId(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant CapId::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint CapId::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);

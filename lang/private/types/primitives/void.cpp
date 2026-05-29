@@ -10,7 +10,7 @@ namespace lx
 		return DataType::Void();
 	}
 
-	TypeVariant Void::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Void::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Void)
 			return Void();
@@ -18,7 +18,7 @@ namespace lx
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Void::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Void::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);

@@ -69,6 +69,7 @@ namespace lx
 		size_t hash() const;
 		bool operator==(const DataType& other) const;
 
+		DataType root() const;
 		bool can_cast_implicit(const DataType& to) const;
 		bool can_cast_explicit(const DataType& to) const;
 		bool is_view() const;

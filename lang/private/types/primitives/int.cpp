@@ -32,12 +32,12 @@ namespace lx
 		return DataType::Int();
 	}
 
-	TypeVariant Int::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Int::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		switch (type.simple())
 		{
 		case SimpleType::Int:
-			return *this;
+			return Int(*this);
 		case SimpleType::Float:
 			return Float(static_cast<float>(_value));
 		case SimpleType::Bool:
@@ -55,7 +55,7 @@ namespace lx
 		}
 	}
 	
-	TypeVariant Int::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Int::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		(void*)this; // ignore const warning
 		return cast_copy(ctx, type);

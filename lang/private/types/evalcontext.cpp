@@ -22,6 +22,7 @@ namespace lx
 			return LxError(ErrorType::Internal, std::string(message));
 	}
 
+	// TODO v0.3 log in yellow in GUI -> keep track of warning position segments, then overlay yellow parts on top of normal log (replace other characters with blank ' 's)
 	void EvalContext::log_runtime_warning(const std::string_view message) const
 	{
 		if (segment)

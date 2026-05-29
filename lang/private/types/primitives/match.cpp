@@ -16,17 +16,17 @@ namespace lx
 		return DataType::Match();
 	}
 
-	TypeVariant Match::cast_copy(const VarContext& ctx, const DataType& type) const
+	DataPoint Match::cast_copy(const VarContext& ctx, const DataType& type) const
 	{
 		if (type.simple() == SimpleType::Match)
-			return *this;
+			return Match(*this);
 		else if (type.simple() == SimpleType::Void)
 			return Void();
 		else
 			ctx.env.throw_bad_cast(data_type(), type);
 	}
 
-	TypeVariant Match::cast_move(VarContext&& ctx, const DataType& type) &&
+	DataPoint Match::cast_move(VarContext&& ctx, const DataType& type) &&
 	{
 		if (type.simple() == SimpleType::Match)
 			return std::move(*this);

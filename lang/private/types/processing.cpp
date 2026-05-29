@@ -3,8 +3,6 @@
 #include "evalcontext.h"
 #include "find.h"
 
-// TODO handle 'ref' operations
-
 namespace lx
 {
 	static std::optional<Variable> arithmetic_operate(const EvalContext& env, BinaryOperator op, Variable& lhs, Variable& rhs)
@@ -269,7 +267,14 @@ namespace lx
 		switch (op)
 		{
 		case PrefixOperator::Address:
+			if (var.temporary())
+				env.log_runtime_warning("cannot refer to temporary variable");
 			return env.runtime.unbound_variable(Ref(std::move(var)));
+
+		case PrefixOperator::Dereference:
+			if (var.ref().data_type().simple() == SimpleType::Ref)
+				return var.ref().get<Ref>().dereference();
+			break;
 
 		case PrefixOperator::Ahead:
 			if (var.ref().can_cast_implicit(DataType::Pattern()))

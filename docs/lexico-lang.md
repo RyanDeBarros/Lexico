@@ -635,6 +635,8 @@ Here is a comprehensive list of reserved words, meaning new identifiers cannot u
 
 | Keyword | Description |
 | - | - |
+| `@` | Refer to |
+| `~` | Dereference |
 | `ahead` |
 | `and` |
 | `append` |
