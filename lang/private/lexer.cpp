@@ -70,8 +70,8 @@ namespace lx
 		char _c;
 
 	public:
-		Tokenizer(const std::string_view script, std::vector<Token>& tokens, const std::vector<std::string_view>& _script_lines, std::vector<LxError>& errors)
-			: _script(script), _tokens(tokens), _script_lines(_script_lines), _errors(errors), _token(new_token())
+		Tokenizer(const std::string_view script, std::vector<Token>& tokens, const std::vector<std::string_view>& script_lines, std::vector<LxError>& errors)
+			: _script(script), _tokens(tokens), _script_lines(script_lines), _errors(errors), _token(new_token())
 		{
 			for (size_t i = 0; i < script.size(); ++i)
 			{
@@ -244,28 +244,32 @@ namespace lx
 					continue;
 				}
 
-				add_token();
+				push_error("unrecognized token", true);
+				add_token();  // add ongoing token
 				_ptr.move_right();
-
-				ScriptSegment error_segment = _token.segment;
-				error_segment.end_line = _ptr.last_line();
-				error_segment.end_column = _ptr.last_column();
-				_errors.push_back(LxError::segment_error(error_segment, ErrorType::Syntax, "unrecognized token"));
 			}
 
 			if (_token.type == TokenType::String)
-			{
-				ScriptSegment error_segment = _token.segment;
-				error_segment.end_line = _ptr.last_line();
-				error_segment.end_column = _ptr.last_column();
-				_errors.push_back(LxError::segment_error(error_segment, ErrorType::Syntax, "expected closing \""));
-			}
+				push_error("expected closing \"", false);
 
 			add_token();  // add ongoing token
 
 			start_token(TokenType::EndOfFile);
 			impl_add_token();
 			concat_runoffs();
+		}
+
+		void push_error(const std::string_view cause, bool reset_segment)
+		{
+			ScriptSegment error_segment = _token.segment;
+			if (reset_segment)
+			{
+				error_segment.start_line = _ptr.line();
+				error_segment.start_column = _ptr.column();
+			}
+			error_segment.end_line = _ptr.last_line();
+			error_segment.end_column = _ptr.last_column();
+			_errors.push_back(LxError::segment_error(error_segment, ErrorType::Syntax, cause));
 		}
 
 		Token new_token() const
