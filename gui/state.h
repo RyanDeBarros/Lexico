@@ -26,7 +26,8 @@ inline GUIState GUI{};
 
 namespace dialogs
 {
-    inline ImGui::FileBrowser INPUT_FILE{};
+    extern ImGui::FileBrowser INPUT_FILE;
+    extern ImGui::FileBrowser OUTPUT_FILE;
 }
 
 inline std::vector<std::string> DROPPED_PATHS;

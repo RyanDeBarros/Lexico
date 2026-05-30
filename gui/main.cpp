@@ -320,7 +320,7 @@ static void draw_input_window()
                 dialogs::INPUT_FILE.Open();
 
             if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Open Input File (Ctrl+O)");
+                ImGui::SetTooltip("Load Input From File (Ctrl+O)");
 
             ImGui::EndMenu();
         }
@@ -377,6 +377,19 @@ static void draw_output_window()
 
     if (ImGui::BeginMenuBar())
     {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Save"))
+                dialogs::OUTPUT_FILE.Open();
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Save Output To File (Ctrl+S)");
+
+            // TODO save input file + output file + highlight metadata into special file, then ability to load that here (sort of a project file *.lxproj)
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::Button("Highlight"))
         {
             GUI.show_highlight_modal = true;
@@ -444,8 +457,8 @@ static void handle_shortcuts()
     if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
         dialogs::INPUT_FILE.Open();
 
-    if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteGlobal))
-        close_file_dialogs();
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+        dialogs::OUTPUT_FILE.Open();
 }
 
 static void glfw_drop_callback(GLFWwindow* window, int count, const char** paths)

@@ -1,5 +1,17 @@
 #include "state.h"
 
+ImGui::FileBrowser dialogs::INPUT_FILE(
+    ImGuiFileBrowserFlags_EditPathString |
+    ImGuiFileBrowserFlags_CreateNewDir |
+    ImGuiFileBrowserFlags_CloseOnEsc
+);
+
+ImGui::FileBrowser dialogs::OUTPUT_FILE(
+    ImGuiFileBrowserFlags_EditPathString |
+    ImGuiFileBrowserFlags_EnterNewFilename |
+    ImGuiFileBrowserFlags_CreateNewDir |
+    ImGuiFileBrowserFlags_CloseOnEsc);
+
 void init_state()
 {
     std::fill(STATE.show_highlights.begin(), STATE.show_highlights.end(), true);
@@ -13,6 +25,11 @@ void init_state()
     GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Purple)] = ImVec4(1.0f, 0.0f, 1.0f, 0.5f);
     GUI.highlight_colors[lx::color_idx(lx::HighlightColor::Orange)] = ImVec4(1.0f, 0.6f, 0.0f, 0.5f);
 
-    dialogs::INPUT_FILE.SetTitle("Open Input File");
+    // TODO use user cache and SetDirectory() to load last opened directories from previous app instance
+
+    dialogs::INPUT_FILE.SetTitle("Load Input From File");
     dialogs::INPUT_FILE.SetTypeFilters({ ".txt", ".*" });
+
+    dialogs::OUTPUT_FILE.SetTitle("Save Output To File");
+    dialogs::OUTPUT_FILE.SetTypeFilters({ ".txt", ".*" });
 }

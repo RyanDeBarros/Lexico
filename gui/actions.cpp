@@ -13,17 +13,23 @@ void run_script()
     STATE.success = res.success;
 }
 
+// TODO handle file io errors
+
 void open_input_file(const std::filesystem::path& path)
 {
-    std::ifstream f;
-    f.open(path);
-
+    std::ifstream f(path);
     size_t size = std::filesystem::file_size(path);
     STATE.input.resize(size);
     f.read(STATE.input.data(), static_cast<std::streamsize>(size));
 }
 
-static void process_input_file()
+void save_output_file(const std::filesystem::path& path)
+{
+    std::ofstream f(path);
+    f << STATE.output;
+}
+
+void process_file_dialogs()
 {
     dialogs::INPUT_FILE.Display();
 
@@ -32,14 +38,12 @@ static void process_input_file()
         open_input_file(dialogs::INPUT_FILE.GetSelected());
         dialogs::INPUT_FILE.ClearSelected();
     }
-}
 
-void process_file_dialogs()
-{
-    process_input_file();
-}
+    dialogs::OUTPUT_FILE.Display();
 
-void close_file_dialogs()
-{
-    dialogs::INPUT_FILE.Close();
+    if (dialogs::OUTPUT_FILE.HasSelected())
+    {
+        save_output_file(dialogs::OUTPUT_FILE.GetSelected());
+        dialogs::OUTPUT_FILE.ClearSelected();
+    }
 }
