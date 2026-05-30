@@ -29,6 +29,20 @@ void save_output_file(const std::filesystem::path& path)
     f << STATE.output;
 }
 
+void open_script_file(const std::filesystem::path& path)
+{
+    std::ifstream f(path);
+    size_t size = std::filesystem::file_size(path);
+    STATE.script.resize(size);
+    f.read(STATE.script.data(), static_cast<std::streamsize>(size));
+}
+
+void save_script_file(const std::filesystem::path& path)
+{
+    std::ofstream f(path);
+    f << STATE.script;
+}
+
 void process_file_dialogs()
 {
     dialogs::INPUT_FILE.Display();
@@ -45,5 +59,21 @@ void process_file_dialogs()
     {
         save_output_file(dialogs::OUTPUT_FILE.GetSelected());
         dialogs::OUTPUT_FILE.ClearSelected();
+    }
+
+    dialogs::SCRIPT_OPEN_FILE.Display();
+
+    if (dialogs::SCRIPT_OPEN_FILE.HasSelected())
+    {
+        open_script_file(dialogs::SCRIPT_OPEN_FILE.GetSelected());
+        dialogs::SCRIPT_OPEN_FILE.ClearSelected();
+    }
+
+    dialogs::SCRIPT_SAVE_FILE.Display();
+
+    if (dialogs::SCRIPT_SAVE_FILE.HasSelected())
+    {
+        save_script_file(dialogs::SCRIPT_SAVE_FILE.GetSelected());
+        dialogs::SCRIPT_SAVE_FILE.ClearSelected();
     }
 }

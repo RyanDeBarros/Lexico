@@ -28,6 +28,8 @@ namespace dialogs
 {
     extern ImGui::FileBrowser INPUT_FILE;
     extern ImGui::FileBrowser OUTPUT_FILE;
+    extern ImGui::FileBrowser SCRIPT_OPEN_FILE;
+    extern ImGui::FileBrowser SCRIPT_SAVE_FILE;
 }
 
 inline std::vector<std::string> DROPPED_PATHS;

@@ -416,6 +416,23 @@ static void draw_script_window()
 
     if (ImGui::BeginMenuBar())
     {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Open"))
+                dialogs::SCRIPT_OPEN_FILE.Open();
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Open Script (Ctrl+Alt+O)");
+
+            if (ImGui::MenuItem("Save"))
+                dialogs::SCRIPT_SAVE_FILE.Open();
+
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Save Script (Ctrl+Alt+S)");
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::Button("Run"))
             run_script();
 
@@ -459,6 +476,12 @@ static void handle_shortcuts()
 
     if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
         dialogs::OUTPUT_FILE.Open();
+
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_O, ImGuiInputFlags_RouteGlobal))
+        dialogs::SCRIPT_OPEN_FILE.Open();
+
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_S, ImGuiInputFlags_RouteGlobal))
+        dialogs::SCRIPT_SAVE_FILE.Open();
 }
 
 static void glfw_drop_callback(GLFWwindow* window, int count, const char** paths)
